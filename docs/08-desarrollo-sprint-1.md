@@ -17,12 +17,12 @@ El código está en `web/src/lib/catalog.ts`, `web/src/lib/selection.ts` y `web/
 ## Orden de trabajo en Jira
 
 1. Registrar en Jira el código y las cinco pruebas automáticas de catálogo, publicación y selección incompatible.
-2. Revisar manualmente en navegador la interacción y los estados de error y vacío.
+2. Revisar la experiencia visual y la accesibilidad con una persona del equipo. La prueba automatizada de Chrome ya cubrió interacción, vacío, error, reintento y respuesta tardía.
 3. Pedir a una persona docente que revise cada uno de los seis temas y sus DBA. Antes de publicar, crear y validar explicaciones y bancos de preguntas. La compilación local no demuestra aprobación curricular.
 
 ## Ejecución local
 
-Desde `web/`: `npm.cmd install`, `npm.cmd run dev`, abrir `http://localhost:3000`. Verificación: `npm.cmd test`, `npm.cmd run lint` y `npm.cmd run build`. El 30 de septiembre pasaron cinco pruebas, lint y build; la API local devolvió HTTP 200 para combinaciones válidas y 400 para una materia incompatible.
+Desde `web/`: `npm.cmd install`, `npm.cmd run dev`, abrir `http://localhost:3000`. Verificación: `npm.cmd test`, `npm.cmd run lint` y `npm.cmd run build`. Para la prueba de Chrome, arrancar producción en el puerto 3100 y ejecutar `npm.cmd run test:browser`. El 30 de septiembre pasaron seis pruebas de lógica, las pruebas de Chrome, lint y build; la API local devolvió HTTP 200 para combinaciones válidas y 400 para una materia incompatible.
 
 ## Riesgo de plazo
 

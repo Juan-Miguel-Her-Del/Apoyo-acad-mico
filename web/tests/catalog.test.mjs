@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   grades, subjects, topics, getDemoSubjects, getDemoTopics,
-  getPublishedTopics, getPublishedSubjects, isPublishedGrade, isDemoGrade,
+  getPublishedTopics, getPublishedSubjects, isPublishedGrade, isPublishableTopic, isDemoGrade,
 } from "../src/lib/catalog.ts";
 import {
   emptySelection, selectGrade, selectSubject, selectTopic, validSelection,
@@ -28,21 +28,37 @@ test("catálogo colombiano: 11 grados y 26 combinaciones válidas", () => {
 
 test("piloto: solo 5.º y 10.º; Física y Química solo desde 10.º", () => {
   assert.deepEqual(grades.filter((grade) => isDemoGrade(grade.id)).map((grade) => grade.id), ["G05", "G10"]);
+  assert.equal(isDemoGrade("G01"), false);
+  assert.equal(isDemoGrade("G11"), false);
   assert.deepEqual(getDemoSubjects("G05").map((subject) => subject.id), ["MAT", "ESP"]);
   assert.deepEqual(getDemoSubjects("G10").map((subject) => subject.id), ["MAT", "ESP", "FIS", "QUI"]);
   assert.equal(getDemoSubjects("G03").length, 0);
   assert.equal(getDemoTopics("G05", "FIS").length, 0);
   assert.equal(getDemoTopics("G11", "QUI").length, 0);
   assert.equal(topics.filter((topic) => topic.pilotCandidate).length, 6);
+  assert.equal(getDemoTopics("G05", "ESP")[0].name, "Planear y producir un texto informativo");
+  assert.equal(getDemoTopics("G10", "ESP")[0].name, "Comprensión crítica y argumentación sobre textos");
 });
 
 test("ningún contenido de prueba puede considerarse publicado", () => {
   for (const topic of topics) {
     assert.equal(topic.approvedForPublication, false);
+    assert.equal(topic.explanationApproved, false);
     assert.equal(topic.validatedQuestionCount, 0);
     assert.deepEqual(getPublishedTopics(topic.gradeId, topic.subjectId), []);
   }
   assert.ok(topics.filter((topic) => !topic.pilotCandidate).every((topic) => !topic.active));
+});
+
+test("la publicación exige tema activo, revisión, explicación y preguntas validadas", () => {
+  const candidate = topics.find((topic) => topic.id === "G10-FIS");
+  assert.ok(candidate);
+  const complete = { ...candidate, approvedForPublication: true, explanationApproved: true, validatedQuestionCount: 1 };
+  assert.equal(isPublishableTopic(complete), true);
+  assert.equal(isPublishableTopic({ ...complete, active: false }), false);
+  assert.equal(isPublishableTopic({ ...complete, approvedForPublication: false }), false);
+  assert.equal(isPublishableTopic({ ...complete, explanationApproved: false }), false);
+  assert.equal(isPublishableTopic({ ...complete, validatedQuestionCount: 0 }), false);
 });
 
 test("cambiar grado o materia borra las selecciones dependientes", () => {

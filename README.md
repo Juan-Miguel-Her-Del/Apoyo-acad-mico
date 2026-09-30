@@ -24,6 +24,8 @@ npm.cmd run build
 
 Las pruebas automáticas usan el ejecutor incluido en Node.js; no requieren librerías de prueba adicionales.
 
+Para probar también la interfaz en Chrome, primero ejecuta `npm.cmd run build` y `npm.cmd run start -- -p 3100` en una terminal. En otra terminal, dentro de `web/`, ejecuta `npm.cmd run test:browser`. La prueba usa Chrome sin ventana y acepta `CHROME_PATH` si está instalado en otra ruta.
+
 ## Qué hace el Sprint 1
 
 1. Muestra los grados 1.º–11.º agrupados en Primaria (1.º–5.º) y Bachillerato (6.º–11.º). Conserva los subciclos básica secundaria y media.
@@ -44,7 +46,7 @@ El catálogo completo propone **26 combinaciones**: Matemáticas y Español para
 | G10-FIS | 10.º | Física | Fuerzas y movimiento | Ciencias Naturales 10.º, DBA 1 (v.1) |
 | G10-QUI | 10.º | Química | Reacciones inorgánicas y balanceo | Ciencias Naturales 10.º, DBA 3 (v.1) |
 
-Los DBA se consultan en [Colombia Aprende](https://colombiaaprende.edu.co/contenidos/coleccion/derechos-basicos-de-aprendizaje). **Estos seis registros son ejemplos de navegación, no contenido aprobado para estudiantes.** Los otros 20 temas son borradores y no salen en el selector. En los datos, `approvedForPublication=false` y `validatedQuestionCount=0` para todos. El filtro `getPublishedTopics` devuelve una lista vacía hasta que haya aprobación real.
+Los DBA se consultan en [Colombia Aprende](https://colombiaaprende.edu.co/contenidos/coleccion/derechos-basicos-de-aprendizaje). **Estos seis registros son ejemplos de navegación, no contenido aprobado para estudiantes.** Los otros 20 temas son borradores y no salen en el selector. En los datos, `approvedForPublication=false`, `explanationApproved=false` y `validatedQuestionCount=0` para todos. El filtro `getPublishedTopics` devuelve una lista vacía hasta que haya aprobación real de tema, explicación y preguntas.
 
 ## Dónde está cada parte
 
@@ -55,13 +57,14 @@ Los DBA se consultan en [Colombia Aprende](https://colombiaaprende.edu.co/conten
 | [web/src/app/api/catalog/route.ts](web/src/app/api/catalog/route.ts) | API de lectura de grados, materias y temas de demostración. |
 | [web/src/app/page.tsx](web/src/app/page.tsx) | Pantalla con los tres pasos y estados de carga, vacío y error. |
 | [web/tests/catalog.test.mjs](web/tests/catalog.test.mjs) | Pruebas de la matriz, filtro de publicación y selección incompatible. |
+| [web/tests/browser-smoke.mjs](web/tests/browser-smoke.mjs) | Pruebas reales en Chrome de navegación, vacío, error, reintento y respuesta tardía. |
 | [docs/08-desarrollo-sprint-1.md](docs/08-desarrollo-sprint-1.md) | Decisiones y seguimiento del Sprint 1. |
 
 La API responde a `/api/catalog?resource=grades`, `/api/catalog?resource=subjects&grade=G05` y `/api/catalog?resource=topics&grade=G10&subject=FIS`. Las respuestas llevan `mode: "demo"`. Una materia incompatible, como Física en 5.º, devuelve HTTP 400. El servidor no guarda cambios ni cuentas.
 
 ## Verificación realizada
 
-Al 30 de septiembre de 2026: cinco pruebas automáticas aprobadas, ESLint sin errores, compilación de producción correcta y consultas HTTP locales con respuestas 200 para combinaciones válidas y 400 para una combinación incompatible. Las pruebas cubren 11 grados, 26 combinaciones, seis candidatos piloto, limpieza al cambiar grado o materia, tema inactivo y respuesta vacía. La interfaz aún requiere una revisión manual completa en navegador con alguien del equipo.
+Al 30 de septiembre de 2026: seis pruebas de lógica aprobadas, ESLint sin errores, compilación de producción correcta y consultas HTTP locales con respuestas 200 para combinaciones válidas y 400 para una combinación incompatible. La prueba de Chrome pasó el recorrido de los tres pasos, limpieza al cambiar grado o materia, estados vacíos, errores con reintento y descarte de una respuesta tardía. Las pruebas cubren 11 grados, 26 combinaciones, seis candidatos piloto, tema inactivo y requisitos de publicación. Sigue siendo aconsejable una revisión humana de presentación y accesibilidad antes del lanzamiento.
 
 ## Qué falta para cerrar la entrega curricular
 

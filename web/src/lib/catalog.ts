@@ -29,6 +29,7 @@ export type Topic = {
   pilotCandidate: boolean;
   active: boolean;
   approvedForPublication: boolean;
+  explanationApproved: boolean;
   order: number;
   validatedQuestionCount: number;
 };
@@ -87,7 +88,7 @@ const spanishTopics = [
   "Textos argumentativos sustentados",
 ];
 
-type TopicDraft = Omit<Topic, "active" | "approvedForPublication" | "order" | "validatedQuestionCount">;
+type TopicDraft = Omit<Topic, "active" | "approvedForPublication" | "explanationApproved" | "order" | "validatedQuestionCount">;
 
 const baseTopics: TopicDraft[] = gradeNumbers.flatMap((number) => {
   const gradeId = `G${String(number).padStart(2, "0")}`;
@@ -151,6 +152,7 @@ export const topics: readonly Topic[] = topicDrafts.map((topic, index) => ({
   ...topic,
   active: topic.pilotCandidate,
   approvedForPublication: false,
+  explanationApproved: false,
   order: index + 1,
   validatedQuestionCount: 0,
 }));
@@ -189,10 +191,13 @@ export function getPublishedTopics(gradeId: string, subjectId: SubjectId): Topic
   return topics.filter((topic) =>
     topic.gradeId === gradeId &&
     topic.subjectId === subjectId &&
-    topic.active &&
-    topic.approvedForPublication &&
-    topic.validatedQuestionCount > 0,
+    isPublishableTopic(topic),
   );
+}
+
+export function isPublishableTopic(topic: Topic): boolean {
+  return topic.active && topic.approvedForPublication &&
+    topic.explanationApproved && topic.validatedQuestionCount > 0;
 }
 
 export function getPublishedSubjects(gradeId: string): Subject[] {
