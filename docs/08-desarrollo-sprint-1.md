@@ -1,6 +1,6 @@
 # Desarrollo del Sprint 1
 
-**Estado al 30 de septiembre de 2026:** Sprint 1 aceptado como prototipo funcional; selector técnico y datos de demostración implementados y verificados localmente. La publicación curricular sigue pendiente de revisión educativa en AP-314. Fuente de alcance: historias AP-10, AP-17, AP-24 y AP-31 y sus tareas en Jira. La versión MVP tiene fecha objetivo 10 de noviembre de 2026.
+**Estado al 30 de septiembre de 2026:** Sprint 1 cerrado en Jira como prototipo funcional; selector técnico y datos de demostración implementados y verificados localmente. La publicación curricular sigue pendiente de revisión educativa en AP-314. Fuente de alcance: historias AP-10, AP-17, AP-24 y AP-31 y sus tareas en Jira. La versión MVP tiene fecha objetivo 10 de noviembre de 2026.
 
 En Jira figuran **28/28 incidencias en «Listo»** para el alcance de prototipo acordado. La revisión de los seis contenidos antes de publicar quedó en [AP-314](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-314) y el control de acceso al diagnóstico real, en [AP-56](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-56). El [README](../README.md) contiene el detalle.
 
