@@ -73,3 +73,5 @@ La publicación del piloto requiere revisar las seis referencias y temas con una
 **Sprint 1 cerrado en Jira el 30 de septiembre de 2026:** prototipo funcional de selección y datos de demostración. Las 28 incidencias del sprint están en «Listo»; la revisión curricular y la integración del diagnóstico permanecen en AP-314 y AP-56. Los temas de prueba siguen sin aprobación de publicación.
 
 Consulta [la documentación del proyecto](docs/README.md) y el [plan del Sprint 1](docs/08-desarrollo-sprint-1.md) para más contexto.
+
+Para preparar el desarrollo siguiente, consulta [los agentes y skills del Sprint 2](docs/09-agentes-skills-sprint-2.md).
