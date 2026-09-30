@@ -66,18 +66,10 @@ La API responde a `/api/catalog?resource=grades`, `/api/catalog?resource=subject
 
 Al 30 de septiembre de 2026: seis pruebas de lógica aprobadas, ESLint sin errores, compilación de producción correcta y consultas HTTP locales con respuestas 200 para combinaciones válidas y 400 para una combinación incompatible. La prueba de Chrome pasó el recorrido de los tres pasos, limpieza al cambiar grado o materia, estados vacíos, errores con reintento y descarte de una respuesta tardía. Las pruebas cubren 11 grados, 26 combinaciones, seis candidatos piloto, tema inactivo y requisitos de publicación. Sigue siendo aconsejable una revisión humana de presentación y accesibilidad antes del lanzamiento.
 
-## Qué falta para cerrar la entrega curricular
+## Qué falta antes de publicar lecciones
 
-La publicación del piloto requiere revisar las seis referencias y temas con una persona docente, aprobar explicaciones y bancos de preguntas, y registrar esa aprobación en Jira. Después se puede activar cada tema para estudiantes. El objetivo de MVP sigue siendo **10 de noviembre de 2026**, condicionado a esa validación y a los siguientes sprints. El Sprint 1 entrega la navegación técnica y los datos de prueba; cuentas, diagnóstico, práctica, progreso y despliegue corresponden a trabajo posterior.
+La publicación del piloto requiere revisar las seis referencias y temas con una persona conocedora de cada materia, aprobar explicaciones y bancos de preguntas, y registrar esa aprobación en [AP-314](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-314). “Revisión docente” es una comprobación de calidad del contenido educativo antes de ofrecerlo a estudiantes; no es un trámite legal para ejecutar el prototipo. Después se puede activar cada tema para estudiantes. La conexión con el diagnóstico está planificada en [AP-56](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-56). El objetivo de MVP sigue siendo **10 de noviembre de 2026**, condicionado a esa validación y a los siguientes sprints. Cuentas, diagnóstico, práctica, progreso y despliegue corresponden a trabajo posterior.
 
-**Estado de Jira al 30 de septiembre de 2026:** 21 de las 28 incidencias de Sprint 1 están en «Listo». Siete continúan «En curso»:
-
-| Incidencias | Motivo concreto |
-| --- | --- |
-| AP-10, AP-17, AP-24 y AP-31 (historias) | Sus criterios de lanzamiento exigen contenido aprobado; la pantalla actual usa datos de demostración. |
-| AP-25 y AP-26 (catálogo de temas) | Faltan la revisión docente, las explicaciones y los bancos de preguntas validados de las seis combinaciones piloto. |
-| AP-28 (selector de tema) | Su criterio pide comprobar la habilitación del diagnóstico con un tema válido; el diagnóstico se implementará después. |
-
-Las casillas de verificación funcional ya están completadas en Jira con evidencia de las pruebas. Las casillas de AP-26 que requieren revisión docente siguen abiertas. **No se cerró el sprint en Jira**, porque esos siete criterios todavía no están cumplidos.
+**Alcance aceptado del Sprint 1:** prototipo funcional de selección y datos de demostración. Las 28 incidencias del sprint están verificadas y documentadas en Jira; la revisión curricular y la integración del diagnóstico permanecen en AP-314 y AP-56. Los temas de prueba siguen sin aprobación de publicación.
 
 Consulta [la documentación del proyecto](docs/README.md) y el [plan del Sprint 1](docs/08-desarrollo-sprint-1.md) para más contexto.

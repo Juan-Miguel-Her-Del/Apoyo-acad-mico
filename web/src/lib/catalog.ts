@@ -61,12 +61,12 @@ export const subjects: readonly Subject[] = [
 // El catálogo propone 26 temas. Solo seis se usan como datos de demostración
 // del Sprint 1; ninguno está aprobado para publicarse a estudiantes.
 const mathTopics = [
-  "Contar y comparar números hasta 100",
-  "Valor posicional, sumas y restas",
-  "Multiplicación y división",
-  "Fracciones y equivalencias",
+  "Contar, comparar y representar números hasta 100",
+  "Valor posicional; sumas y restas en problemas",
+  "Multiplicación y división en situaciones cotidianas",
+  "Fracciones como parte de un todo y equivalencias",
   "Problemas con fracciones",
-  "Números racionales",
+  "Números racionales y resolución de problemas",
   "Razones, proporciones y porcentajes",
   "Expresiones algebraicas y relaciones lineales",
   "Funciones y ecuaciones cuadráticas",
@@ -75,17 +75,17 @@ const mathTopics = [
 ];
 
 const spanishTopics = [
-  "Sonidos, letras y palabras",
-  "Lectura de relatos breves",
-  "Textos narrativos e informativos",
-  "Ideas principales en textos",
+  "Relación entre sonidos, letras y palabras",
+  "Lectura de relatos breves y secuencia de hechos",
+  "Comprensión de textos narrativos e informativos",
+  "Identificación de ideas principales en textos",
   "Planear y producir un texto informativo",
-  "Tipos de texto y propósito comunicativo",
-  "Lectura crítica y argumentos sencillos",
-  "Interpretación de textos",
-  "Comparación de fuentes",
+  "Comprensión de tipos de texto y propósito comunicativo",
+  "Lectura crítica de textos y argumentos sencillos",
+  "Interpretación de textos y recursos del lenguaje",
+  "Comparación de fuentes e inferencias en lectura",
   "Comprensión crítica y argumentación sobre textos",
-  "Textos argumentativos sustentados",
+  "Producción de textos argumentativos sustentados",
 ];
 
 type TopicDraft = Omit<Topic, "active" | "approvedForPublication" | "explanationApproved" | "order" | "validatedQuestionCount">;
@@ -126,7 +126,7 @@ const topicDrafts: readonly TopicDraft[] = [
     id: "G11-FIS",
     gradeId: "G11",
     subjectId: "FIS",
-    name: "Ondas de luz y sonido",
+    name: "Ondas de luz y sonido; circuitos resistivos sencillos",
     dba: null,
     pilotCandidate: false,
   },

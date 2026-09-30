@@ -1,8 +1,8 @@
 # Desarrollo del Sprint 1
 
-**Estado al 30 de septiembre de 2026:** Sprint 1 activo; selector técnico y datos de demostración implementados y verificados localmente. La publicación curricular sigue pendiente de revisión docente. Fuente de alcance: historias AP-10, AP-17, AP-24 y AP-31 y sus tareas en Jira. La versión MVP tiene fecha objetivo 10 de noviembre de 2026.
+**Estado al 30 de septiembre de 2026:** Sprint 1 aceptado como prototipo funcional; selector técnico y datos de demostración implementados y verificados localmente. La publicación curricular sigue pendiente de revisión educativa en AP-314. Fuente de alcance: historias AP-10, AP-17, AP-24 y AP-31 y sus tareas en Jira. La versión MVP tiene fecha objetivo 10 de noviembre de 2026.
 
-En Jira figuran **21/28 incidencias en «Listo»**. Siguen «En curso» AP-10, AP-17, AP-24, AP-25, AP-26 y AP-31 por contenido curricular sin validar, además de AP-28 por la integración pendiente con diagnóstico. El sprint sigue activo; el [README](../README.md) contiene el detalle de cada bloqueo.
+En Jira figuran **28/28 incidencias en «Listo»** para el alcance de prototipo acordado. La revisión de los seis contenidos antes de publicar quedó en [AP-314](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-314) y el control de acceso al diagnóstico real, en [AP-56](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-56). El [README](../README.md) contiene el detalle.
 
 ## Decisiones vigentes
 
@@ -20,7 +20,7 @@ El código está en `web/src/lib/catalog.ts`, `web/src/lib/selection.ts` y `web/
 
 1. Registrar en Jira el código y las cinco pruebas automáticas de catálogo, publicación y selección incompatible.
 2. Revisar la experiencia visual y la accesibilidad con una persona del equipo. La prueba automatizada de Chrome ya cubrió interacción, vacío, error, reintento y respuesta tardía.
-3. Pedir a una persona docente que revise cada uno de los seis temas y sus DBA. Antes de publicar, crear y validar explicaciones y bancos de preguntas. La compilación local no demuestra aprobación curricular.
+3. Antes de publicar, completar AP-314: revisar los seis temas y sus DBA con una persona conocedora de la materia, validar explicaciones y bancos de preguntas. La compilación local no demuestra aprobación curricular.
 
 ## Ejecución local
 
