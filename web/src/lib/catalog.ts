@@ -7,12 +7,17 @@ export type Grade = {
   label: string;
   group: GradeGroup;
   formalCycle: "Básica primaria" | "Básica secundaria" | "Media";
+  active: boolean;
+  order: number;
 };
 
 export type Subject = {
   id: SubjectId;
   name: string;
   grades: readonly number[];
+  alias: string;
+  active: boolean;
+  order: number;
 };
 
 export type Topic = {
@@ -22,6 +27,10 @@ export type Topic = {
   name: string;
   dba: string | null;
   pilotCandidate: boolean;
+  active: boolean;
+  approvedForPublication: boolean;
+  order: number;
+  validatedQuestionCount: number;
 };
 
 const gradeNumbers = Array.from({ length: 11 }, (_, index) => index + 1);
@@ -37,13 +46,15 @@ export const grades: readonly Grade[] = gradeNumbers.map((number) => ({
       : number <= 9
         ? "Básica secundaria"
         : "Media",
+  active: true,
+  order: number,
 }));
 
 export const subjects: readonly Subject[] = [
-  { id: "MAT", name: "Matemáticas", grades: gradeNumbers },
-  { id: "ESP", name: "Español", grades: gradeNumbers },
-  { id: "FIS", name: "Física", grades: [10, 11] },
-  { id: "QUI", name: "Química", grades: [10, 11] },
+  { id: "MAT", name: "Matemáticas", alias: "Matemáticas", grades: gradeNumbers, active: true, order: 1 },
+  { id: "ESP", name: "Español", alias: "Lengua Castellana", grades: gradeNumbers, active: true, order: 2 },
+  { id: "FIS", name: "Física", alias: "Ciencias Naturales: Física", grades: [10, 11], active: true, order: 3 },
+  { id: "QUI", name: "Química", alias: "Ciencias Naturales: Química", grades: [10, 11], active: true, order: 4 },
 ];
 
 // El catálogo propone 26 temas. Solo seis se usan como datos de demostración
@@ -67,16 +78,18 @@ const spanishTopics = [
   "Lectura de relatos breves",
   "Textos narrativos e informativos",
   "Ideas principales en textos",
-  "Producción de textos informativos",
+  "Planear y producir un texto informativo",
   "Tipos de texto y propósito comunicativo",
   "Lectura crítica y argumentos sencillos",
   "Interpretación de textos",
   "Comparación de fuentes",
-  "Comprensión crítica de textos",
+  "Comprensión crítica y argumentación sobre textos",
   "Textos argumentativos sustentados",
 ];
 
-const baseTopics: Topic[] = gradeNumbers.flatMap((number) => {
+type TopicDraft = Omit<Topic, "active" | "approvedForPublication" | "order" | "validatedQuestionCount">;
+
+const baseTopics: TopicDraft[] = gradeNumbers.flatMap((number) => {
   const gradeId = `G${String(number).padStart(2, "0")}`;
   return [
     {
@@ -98,7 +111,7 @@ const baseTopics: Topic[] = gradeNumbers.flatMap((number) => {
   ];
 });
 
-export const topics: readonly Topic[] = [
+const topicDrafts: readonly TopicDraft[] = [
   ...baseTopics,
   {
     id: "G10-FIS",
@@ -134,28 +147,64 @@ export const topics: readonly Topic[] = [
   },
 ];
 
+export const topics: readonly Topic[] = topicDrafts.map((topic, index) => ({
+  ...topic,
+  active: topic.pilotCandidate,
+  approvedForPublication: false,
+  order: index + 1,
+  validatedQuestionCount: 0,
+}));
+
 export function getDemoTopics(gradeId: string, subjectId: SubjectId): Topic[] {
   return topics.filter(
     (topic) =>
       topic.pilotCandidate &&
+      topic.active &&
       topic.gradeId === gradeId &&
       topic.subjectId === subjectId,
-  );
+  ).sort((a, b) => a.order - b.order);
 }
 
 export function getDemoSubjects(gradeId: string): Subject[] {
   const grade = grades.find((item) => item.id === gradeId);
-  if (!grade) return [];
+  if (!grade?.active) return [];
 
   return subjects.filter(
     (subject) =>
-      subject.grades.includes(grade.number) &&
+      subject.active && subject.grades.includes(grade.number) &&
       getDemoTopics(gradeId, subject.id).length > 0,
-  );
+  ).sort((a, b) => a.order - b.order);
 }
 
 export function isDemoGrade(gradeId: string): boolean {
-  return topics.some(
+  return grades.some((grade) => grade.id === gradeId && grade.active) && topics.some(
     (topic) => topic.pilotCandidate && topic.gradeId === gradeId,
   );
+}
+
+export function getPublishedTopics(gradeId: string, subjectId: SubjectId): Topic[] {
+  const grade = grades.find((item) => item.id === gradeId && item.active);
+  const subject = subjects.find((item) => item.id === subjectId && item.active);
+  if (!grade || !subject?.grades.includes(grade.number)) return [];
+  return topics.filter((topic) =>
+    topic.gradeId === gradeId &&
+    topic.subjectId === subjectId &&
+    topic.active &&
+    topic.approvedForPublication &&
+    topic.validatedQuestionCount > 0,
+  );
+}
+
+export function getPublishedSubjects(gradeId: string): Subject[] {
+  const grade = grades.find((item) => item.id === gradeId && item.active);
+  if (!grade) return [];
+  return subjects.filter((subject) =>
+    subject.active &&
+    subject.grades.includes(grade.number) &&
+    getPublishedTopics(gradeId, subject.id).length > 0,
+  ).sort((a, b) => a.order - b.order);
+}
+
+export function isPublishedGrade(gradeId: string): boolean {
+  return getPublishedSubjects(gradeId).length > 0;
 }

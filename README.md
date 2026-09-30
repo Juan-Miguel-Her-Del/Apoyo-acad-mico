@@ -1,29 +1,70 @@
 # Apoyo_academico
 
-Proyecto de apoyo académico personalizado para estudiantes de Colombia. El MVP previsto permite elegir grado, materia y tema; realizar un diagnóstico; identificar dificultades; recibir una explicación adaptada; practicar y consultar el progreso con una cuenta.
+Aplicación de apoyo académico para estudiantes de Colombia. Este repositorio contiene la base del **Sprint 1**: seleccionar un grado, una materia y un tema compatible. El trabajo se sigue en el proyecto [AP de Jira](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP).
 
-El alcance vigente se mantiene en [Jira AP](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP). El código de la aplicación web está en [`web/`](web/). Los documentos anteriores a este inicio pueden contener propuestas históricas; consulta [el plan actual del Sprint 1](docs/08-desarrollo-sprint-1.md).
+## Cómo abrir el proyecto
 
-## Estado al 30 de septiembre de 2026
-
-- Planificación: 9 épicas, 40 historias, 88 tareas y 176 subtareas en Jira.
-- Desarrollo: iniciado. Existe una aplicación Next.js con el selector de grado → materia → tema y datos de demostración.
-- Verificación local: compilación de producción, lint y comprobación de la matriz curricular correctas. Despliegue no iniciado.
-- Equipo: una persona, disponibilidad aproximada de 20 horas por semana.
-- Horizonte de Jira: seis sprints hasta el 10 de noviembre de 2026. Esa fecha es un objetivo con riesgo de capacidad, no una entrega garantizada.
-
-## Documentación
-
-Comienza en el [índice de documentación](docs/README.md). La [presentación](docs/presentacion-proyecto.md) ofrece una base para exposición académica.
-
-## Ejecución
-
-Requiere Node.js 20.9 o superior. En Windows PowerShell, usa `npm.cmd` porque la política local puede bloquear `npm.ps1`.
+Requiere Node.js 20.9 o superior. Desde PowerShell:
 
 ```powershell
-cd web
+cd "C:\Users\JUAN M\OneDrive\Desktop\Proyecto_Academico\web"
 npm.cmd install
 npm.cmd run dev
 ```
 
-Abre `http://localhost:3000`. Para verificar: `npm.cmd run lint` y `npm.cmd run build`. La pantalla actual es un prototipo del Sprint 1: los temas aún requieren revisión docente y el diagnóstico no está implementado.
+Abre [http://localhost:3000](http://localhost:3000). En Windows se usa `npm.cmd` porque PowerShell puede bloquear `npm.ps1`.
+
+Para verificar el cambio:
+
+```powershell
+npm.cmd test
+npm.cmd run lint
+npm.cmd run build
+```
+
+Las pruebas automáticas usan el ejecutor incluido en Node.js; no requieren librerías de prueba adicionales.
+
+## Qué hace el Sprint 1
+
+1. Muestra los grados 1.º–11.º agrupados en Primaria (1.º–5.º) y Bachillerato (6.º–11.º). Conserva los subciclos básica secundaria y media.
+2. Permite recorrer **5.º** y **10.º** con datos de demostración. Los otros nueve grados aparecen como «Próximamente».
+3. En 5.º ofrece Matemáticas y Español; en 10.º, Matemáticas, Español, Física y Química.
+4. Muestra un tema compatible con la combinación elegida. Al cambiar el grado, limpia materia y tema; al cambiar la materia, limpia el tema.
+5. Consulta el catálogo por HTTP. Muestra carga, estado vacío y error con botón «Reintentar». Descarta respuestas tardías para que no aparezcan opciones de una selección anterior.
+6. Impide que una selección de tema incompatible o inactiva aparezca como válida. No existe todavía el diagnóstico, así que no hay forma de iniciarlo desde esta pantalla.
+
+El catálogo completo propone **26 combinaciones**: Matemáticas y Español para 1.º–11.º, Física y Química para 10.º–11.º. Solo seis son candidatas del piloto:
+
+| ID | Grado | Materia | Tema de demostración | Referencia curricular propuesta |
+| --- | --- | --- | --- | --- |
+| G05-MAT | 5.º | Matemáticas | Problemas con fracciones | Matemáticas 5.º, DBA 1 (v.2) |
+| G05-ESP | 5.º | Español | Planear y producir un texto informativo | Lenguaje 5.º, DBA 8 (v.2) |
+| G10-MAT | 10.º | Matemáticas | Razones y funciones trigonométricas | Matemáticas 10.º, DBA 4 (v.2) |
+| G10-ESP | 10.º | Español | Comprensión crítica y argumentación sobre textos | Lenguaje 10.º, DBA 6 (v.2) |
+| G10-FIS | 10.º | Física | Fuerzas y movimiento | Ciencias Naturales 10.º, DBA 1 (v.1) |
+| G10-QUI | 10.º | Química | Reacciones inorgánicas y balanceo | Ciencias Naturales 10.º, DBA 3 (v.1) |
+
+Los DBA se consultan en [Colombia Aprende](https://colombiaaprende.edu.co/contenidos/coleccion/derechos-basicos-de-aprendizaje). **Estos seis registros son ejemplos de navegación, no contenido aprobado para estudiantes.** Los otros 20 temas son borradores y no salen en el selector. En los datos, `approvedForPublication=false` y `validatedQuestionCount=0` para todos. El filtro `getPublishedTopics` devuelve una lista vacía hasta que haya aprobación real.
+
+## Dónde está cada parte
+
+| Archivo | Función |
+| --- | --- |
+| [web/src/lib/catalog.ts](web/src/lib/catalog.ts) | Grados, materias, temas, matriz de disponibilidad y filtro de publicación. |
+| [web/src/lib/selection.ts](web/src/lib/selection.ts) | Limpieza y validación de las selecciones dependientes. |
+| [web/src/app/api/catalog/route.ts](web/src/app/api/catalog/route.ts) | API de lectura de grados, materias y temas de demostración. |
+| [web/src/app/page.tsx](web/src/app/page.tsx) | Pantalla con los tres pasos y estados de carga, vacío y error. |
+| [web/tests/catalog.test.mjs](web/tests/catalog.test.mjs) | Pruebas de la matriz, filtro de publicación y selección incompatible. |
+| [docs/08-desarrollo-sprint-1.md](docs/08-desarrollo-sprint-1.md) | Decisiones y seguimiento del Sprint 1. |
+
+La API responde a `/api/catalog?resource=grades`, `/api/catalog?resource=subjects&grade=G05` y `/api/catalog?resource=topics&grade=G10&subject=FIS`. Las respuestas llevan `mode: "demo"`. Una materia incompatible, como Física en 5.º, devuelve HTTP 400. El servidor no guarda cambios ni cuentas.
+
+## Verificación realizada
+
+Al 30 de septiembre de 2026: cinco pruebas automáticas aprobadas, ESLint sin errores, compilación de producción correcta y consultas HTTP locales con respuestas 200 para combinaciones válidas y 400 para una combinación incompatible. Las pruebas cubren 11 grados, 26 combinaciones, seis candidatos piloto, limpieza al cambiar grado o materia, tema inactivo y respuesta vacía. La interfaz aún requiere una revisión manual completa en navegador con alguien del equipo.
+
+## Qué falta para cerrar la entrega curricular
+
+La publicación del piloto requiere revisar las seis referencias y temas con una persona docente, aprobar explicaciones y bancos de preguntas, y registrar esa aprobación en Jira. Después se puede activar cada tema para estudiantes. El objetivo de MVP sigue siendo **10 de noviembre de 2026**, condicionado a esa validación y a los siguientes sprints. El Sprint 1 entrega la navegación técnica y los datos de prueba; cuentas, diagnóstico, práctica, progreso y despliegue corresponden a trabajo posterior.
+
+Consulta [la documentación del proyecto](docs/README.md) y el [plan del Sprint 1](docs/08-desarrollo-sprint-1.md) para más contexto.

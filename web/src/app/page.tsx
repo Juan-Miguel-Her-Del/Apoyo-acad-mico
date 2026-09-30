@@ -1,38 +1,65 @@
 "use client";
 
-import { useState } from "react";
-import {
-  getDemoSubjects,
-  getDemoTopics,
-  grades,
-  isDemoGrade,
-  type GradeGroup,
-  type SubjectId,
-} from "@/lib/catalog";
+import { useEffect, useState } from "react";
+import { isDemoGrade, type Grade, type GradeGroup, type Subject, type Topic } from "@/lib/catalog";
+import { emptySelection, selectGrade, selectSubject, selectTopic, validSelection } from "@/lib/selection";
 
+type Result<T> = { key: string; status: "success" | "error"; items: T[] };
 const groups: GradeGroup[] = ["Primaria", "Bachillerato"];
 
+function useCatalogResource<T>(url: string | null) {
+  const [retryCount, setRetryCount] = useState(0);
+  const [result, setResult] = useState<Result<T> | null>(null);
+  const key = url ? `${url}|${retryCount}` : "";
+
+  useEffect(() => {
+    if (!url) return;
+    const controller = new AbortController();
+    fetch(url, { signal: controller.signal, cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("No se pudo cargar el catálogo.");
+        const body: unknown = await response.json();
+        if (!body || typeof body !== "object" || !("items" in body) || !Array.isArray(body.items)) {
+          throw new Error("Respuesta del catálogo no válida.");
+        }
+        if (!controller.signal.aborted) setResult({ key, status: "success", items: body.items as T[] });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setResult({ key, status: "error", items: [] });
+      });
+    return () => controller.abort();
+  }, [key, url]);
+
+  return {
+    items: result?.key === key && result.status === "success" ? result.items : [],
+    status: !url ? "idle" : result?.key === key ? result.status : "loading",
+    retry: () => setRetryCount((value) => value + 1),
+  };
+}
+
+function LoadState({ status, retry, empty, error }: { status: string; retry: () => void; empty: string; error: string }) {
+  if (status === "loading") return <p className="empty-state" role="status">Cargando opciones…</p>;
+  if (status === "error") return <div className="empty-state" role="alert"><span>{error}</span><button type="button" className="retry-button" onClick={retry}>Reintentar</button></div>;
+  return <p className="empty-state">{empty}</p>;
+}
+
 export default function Home() {
-  const [gradeId, setGradeId] = useState<string | null>(null);
-  const [subjectId, setSubjectId] = useState<SubjectId | null>(null);
-  const [topicId, setTopicId] = useState<string | null>(null);
+  const [selection, setSelection] = useState(emptySelection);
+  const gradeResource = useCatalogResource<Grade>("/api/catalog?resource=grades");
+  const subjectUrl = selection.gradeId
+    ? `/api/catalog?resource=subjects&grade=${encodeURIComponent(selection.gradeId)}` : null;
+  const subjectResource = useCatalogResource<Subject>(subjectUrl);
+  const topicUrl = selection.gradeId && selection.subjectId
+    ? `/api/catalog?resource=topics&grade=${encodeURIComponent(selection.gradeId)}&subject=${encodeURIComponent(selection.subjectId)}` : null;
+  const topicResource = useCatalogResource<Topic>(topicUrl);
 
-  const grade = grades.find((item) => item.id === gradeId);
-  const availableSubjects = gradeId ? getDemoSubjects(gradeId) : [];
-  const availableTopics = gradeId && subjectId ? getDemoTopics(gradeId, subjectId) : [];
-  const subject = availableSubjects.find((item) => item.id === subjectId);
-  const topic = availableTopics.find((item) => item.id === topicId);
-
-  function selectGrade(nextGradeId: string) {
-    setGradeId(nextGradeId);
-    setSubjectId(null);
-    setTopicId(null);
-  }
-
-  function selectSubject(nextSubjectId: SubjectId) {
-    setSubjectId(nextSubjectId);
-    setTopicId(null);
-  }
+  const grades = gradeResource.items;
+  const availableSubjects = subjectResource.items;
+  const availableTopics = topicResource.items;
+  const valid = validSelection(selection, grades, availableSubjects, availableTopics);
+  const grade = grades.find((item) => item.id === valid.gradeId);
+  const subject = availableSubjects.find((item) => item.id === valid.subjectId);
+  const topic = availableTopics.find((item) => item.id === valid.topicId);
 
   return (
     <main className="app-shell">
@@ -56,31 +83,31 @@ export default function Home() {
 
       <section className="step-card" aria-labelledby="grade-title">
         <div className="step-intro"><span className="step-number">01</span><div><h3 id="grade-title">¿En qué grado estás?</h3><p>Elige el grado que cursas actualmente.</p></div></div>
-        <div className="grade-groups">
-          {groups.map((group) => (
-            <div className="grade-group" key={group}>
-              <div className="group-heading"><span>{group}</span><span>{group === "Primaria" ? "1.º a 5.º" : "6.º a 11.º"}</span></div>
-              <div className="grade-grid">
-                {grades.filter((item) => item.group === group).map((item) => {
-                  const available = isDemoGrade(item.id);
-                  return (
-                    <button className={`grade-choice ${gradeId === item.id ? "selected" : ""}`} type="button" key={item.id} disabled={!available} aria-pressed={gradeId === item.id} onClick={() => selectGrade(item.id)}>
+        {gradeResource.status !== "success" ? <LoadState status={gradeResource.status} retry={gradeResource.retry} empty="Aún no hay grados disponibles. Inténtalo más tarde." error="No se pudo cargar el catálogo. Inténtalo de nuevo." /> : grades.length === 0 ? <LoadState status="empty" retry={gradeResource.retry} empty="Aún no hay grados disponibles. Inténtalo más tarde." error="" /> : (
+          <div className="grade-groups">
+            {groups.map((group) => (
+              <div className="grade-group" key={group}>
+                <div className="group-heading"><span>{group}</span><span>{group === "Primaria" ? "1.º a 5.º" : "6.º a 11.º"}</span></div>
+                <div className="grade-grid">
+                  {grades.filter((item) => item.group === group).map((item) => {
+                    const available = isDemoGrade(item.id);
+                    return <button className={`grade-choice ${valid.gradeId === item.id ? "selected" : ""}`} type="button" key={item.id} disabled={!available} aria-pressed={valid.gradeId === item.id} onClick={() => setSelection((current) => selectGrade(current, item.id))}>
                       <strong>{item.label}</strong><span>{available ? "Disponible" : "Próximamente"}</span>
-                    </button>
-                  );
-                })}
+                    </button>;
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="step-card" aria-labelledby="subject-title">
         <div className="step-intro"><span className="step-number">02</span><div><h3 id="subject-title">Elige una materia</h3><p>Verás las materias disponibles para tu grado.</p></div></div>
-        {!grade ? <p className="empty-state">Selecciona un grado para ver sus materias.</p> : availableSubjects.length === 0 ? <p className="empty-state">Contenido próximamente para este grado.</p> : (
+        {!grade ? <p className="empty-state">Selecciona un grado para ver sus materias.</p> : subjectResource.status !== "success" ? <LoadState status={subjectResource.status} retry={subjectResource.retry} empty="No hay materias disponibles para este grado." error="No pudimos cargar las materias. Inténtalo de nuevo." /> : availableSubjects.length === 0 ? <LoadState status="empty" retry={subjectResource.retry} empty="No hay materias disponibles para este grado." error="" /> : (
           <div className="subject-grid">
             {availableSubjects.map((item) => (
-              <button className={`subject-choice ${subjectId === item.id ? "selected" : ""}`} type="button" key={item.id} aria-pressed={subjectId === item.id} onClick={() => selectSubject(item.id)}>
+              <button className={`subject-choice ${valid.subjectId === item.id ? "selected" : ""}`} type="button" key={item.id} aria-pressed={valid.subjectId === item.id} onClick={() => setSelection((current) => selectSubject(current, item.id))}>
                 <span className={`subject-icon subject-${item.id.toLowerCase()}`} aria-hidden="true">{item.id === "MAT" ? "∑" : item.id === "ESP" ? "Aa" : item.id === "FIS" ? "↗" : "⚗"}</span>
                 <span>{item.name}</span><span className="choice-arrow" aria-hidden="true">↗</span>
               </button>
@@ -91,10 +118,10 @@ export default function Home() {
 
       <section className="step-card" aria-labelledby="topic-title">
         <div className="step-intro"><span className="step-number">03</span><div><h3 id="topic-title">Selecciona un tema</h3><p>Elige lo que te gustaría repasar primero.</p></div></div>
-        {!subject ? <p className="empty-state">Selecciona una materia para ver sus temas.</p> : availableTopics.length === 0 ? <p className="empty-state">No hay temas disponibles para esta materia.</p> : (
+        {!subject ? <p className="empty-state">Selecciona una materia para ver sus temas.</p> : topicResource.status !== "success" ? <LoadState status={topicResource.status} retry={topicResource.retry} empty="No hay temas disponibles para esta materia." error="No se pudo cargar el catálogo. Inténtalo de nuevo." /> : availableTopics.length === 0 ? <LoadState status="empty" retry={topicResource.retry} empty="No hay temas disponibles para esta materia." error="" /> : (
           <div className="topic-list">
             {availableTopics.map((item) => (
-              <button className={`topic-choice ${topicId === item.id ? "selected" : ""}`} type="button" key={item.id} aria-pressed={topicId === item.id} onClick={() => setTopicId(item.id)}>
+              <button className={`topic-choice ${valid.topicId === item.id ? "selected" : ""}`} type="button" key={item.id} aria-pressed={valid.topicId === item.id} onClick={() => setSelection((current) => selectTopic(current, item.id))}>
                 <span className="radio-indicator" aria-hidden="true" /><span><strong>{item.name}</strong><small>{item.dba}</small></span>
               </button>
             ))}
