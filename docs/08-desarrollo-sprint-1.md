@@ -2,6 +2,8 @@
 
 **Estado al 30 de septiembre de 2026:** Sprint 1 activo; selector técnico y datos de demostración implementados y verificados localmente. La publicación curricular sigue pendiente de revisión docente. Fuente de alcance: historias AP-10, AP-17, AP-24 y AP-31 y sus tareas en Jira. La versión MVP tiene fecha objetivo 10 de noviembre de 2026.
 
+En Jira figuran **21/28 incidencias en «Listo»**. Siguen «En curso» AP-10, AP-17, AP-24, AP-25, AP-26 y AP-31 por contenido curricular sin validar, además de AP-28 por la integración pendiente con diagnóstico. El sprint sigue activo; el [README](../README.md) contiene el detalle de cada bloqueo.
+
 ## Decisiones vigentes
 
 - Estructura colombiana: Primaria 1.º–5.º y Bachillerato 6.º–11.º; se conserva el subciclo formal básica secundaria 6.º–9.º y media 10.º–11.º.

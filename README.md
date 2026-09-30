@@ -70,4 +70,14 @@ Al 30 de septiembre de 2026: seis pruebas de lógica aprobadas, ESLint sin error
 
 La publicación del piloto requiere revisar las seis referencias y temas con una persona docente, aprobar explicaciones y bancos de preguntas, y registrar esa aprobación en Jira. Después se puede activar cada tema para estudiantes. El objetivo de MVP sigue siendo **10 de noviembre de 2026**, condicionado a esa validación y a los siguientes sprints. El Sprint 1 entrega la navegación técnica y los datos de prueba; cuentas, diagnóstico, práctica, progreso y despliegue corresponden a trabajo posterior.
 
+**Estado de Jira al 30 de septiembre de 2026:** 21 de las 28 incidencias de Sprint 1 están en «Listo». Siete continúan «En curso»:
+
+| Incidencias | Motivo concreto |
+| --- | --- |
+| AP-10, AP-17, AP-24 y AP-31 (historias) | Sus criterios de lanzamiento exigen contenido aprobado; la pantalla actual usa datos de demostración. |
+| AP-25 y AP-26 (catálogo de temas) | Faltan la revisión docente, las explicaciones y los bancos de preguntas validados de las seis combinaciones piloto. |
+| AP-28 (selector de tema) | Su criterio pide comprobar la habilitación del diagnóstico con un tema válido; el diagnóstico se implementará después. |
+
+Las casillas de verificación funcional ya están completadas en Jira con evidencia de las pruebas. Las casillas de AP-26 que requieren revisión docente siguen abiertas. **No se cerró el sprint en Jira**, porque esos siete criterios todavía no están cumplidos.
+
 Consulta [la documentación del proyecto](docs/README.md) y el [plan del Sprint 1](docs/08-desarrollo-sprint-1.md) para más contexto.
