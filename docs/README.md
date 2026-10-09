@@ -15,6 +15,8 @@ La fuente funcional vigente es el [backlog AP de Jira](https://juanmiguelsworksp
 | [Agentes y skills del Sprint 2](09-agentes-skills-sprint-2.md) | Roles Codex, skills reutilizables y ejemplos de uso |
 | [Consentimiento para menores](10-consentimiento-menores-sprint-2.md) | Diseño técnico para revisión jurídica y de privacidad |
 | [Desarrollo del Sprint 2](11-desarrollo-sprint-2.md) | Diagnóstico de demostración, pruebas y trabajo pendiente |
+| [Aviso para menores (borrador)](12-aviso-consentimiento-menores-borrador.md) | Texto candidato para revisión jurídica y de privacidad |
+| [Banco diagnóstico demo](13-banco-diagnostico-demo.md) | Especificación de preguntas de prueba, casos y límites |
 | [Criterios de aceptación](criterios-aceptacion.md) | Escenarios comprobables para las historias |
 | [Estimaciones](estimaciones.md) | Esfuerzo preliminar y capacidad |
 | [Pruebas](pruebas.md) | Estrategia y resultados disponibles |

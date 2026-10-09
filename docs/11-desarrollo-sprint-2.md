@@ -8,13 +8,17 @@ En `web/`, selecciona 5.º o 10.º, una materia y un tema piloto, y pulsa **Empe
 
 El resultado solo existe en la página. No hay cuenta, sesión de intento en el servidor ni progreso entre visitas. Una llamada POST directa repetida puede obtener la misma evaluación. Por eso el flujo actual **no cierra** [AP-52](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-52), [AP-56](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-56), [AP-76](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-76) ni [AP-80](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-80) como diagnóstico real. Los temas y preguntas siguen sin aprobación docente en [AP-314](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-314). La dificultad adaptativa de AP-83 y sus tareas tampoco está implementada.
 
+### Indicación formativa de la demostración (AP-63)
+
+**Entrada:** una selección piloto válida y una lista no vacía de preguntas demo. **Salida antes de responder:** la pantalla «Antes de comenzar» indica cuántas preguntas habrá y muestra el mensaje «No recibirás una nota académica y podrás salir cuando quieras». Si el banco tiene una pregunta, usa el singular. **Caso límite:** al salir y volver a iniciar, aparece el mismo aviso antes de la primera respuesta; si no hay preguntas, la API devuelve 409 y no aparece un resultado ficticio. El texto es para el prototipo y requiere validación pedagógica antes del uso con estudiantes. La evidencia está en `web/src/app/diagnostic-demo.tsx`, `web/tests/browser-smoke.mjs` y `web/tests/diagnostic.test.mjs`.
+
 ## Consentimiento
 
 El [diseño para menores](10-consentimiento-menores-sprint-2.md) propone un flujo de autorización, datos mínimos, evidencia protegida, revocación, control del servidor y pruebas con identidades sintéticas para AP-304, AP-305, AP-308 y AP-311. Es una propuesta sin endpoints ni registro de cuentas. Falta aprobar el aviso, las finalidades, el método de verificar al representante y la conservación de datos con asesoría jurídica/privacidad colombiana. Ninguna historia de consentimiento se considera terminada ni habilita pruebas con menores reales.
 
 ## Verificación del incremento
 
-Desde `web/`, ejecutar `npm.cmd test`, `npm.cmd run lint` y `npm.cmd run build`. Para el recorrido en Chrome, arrancar `npm.cmd run start -- -p 3100` y, en otra terminal, `npm.cmd run test:browser`. El 8 de octubre pasaron 10 pruebas automáticas, lint, build y el recorrido de Chrome, que cubrió HTTP 400/409, ausencia de soluciones en GET, dos preguntas con resumen, doble clic como un solo POST desde la interfaz, cambio de grado durante una carga y regresiones del selector.
+Desde `web/`, ejecutar `npm.cmd test`, `npm.cmd run lint` y `npm.cmd run build`. Para el recorrido en Chrome, arrancar `npm.cmd run start -- -p 3100` y, en otra terminal, `npm.cmd run test:browser`. El 8 de octubre pasaron 11 pruebas automáticas, lint, build y 11 escenarios de Chrome. Cubren HTTP 400/409, banco vacío sin resultado, ausencia de soluciones en GET, dos preguntas con resumen, indicador 1 de 1, aviso tras salir y volver, doble clic como un solo POST desde la interfaz, evaluación pendiente con reintento, cambio de grado durante una carga y regresiones del selector.
 
 ## Siguientes pasos del sprint
 

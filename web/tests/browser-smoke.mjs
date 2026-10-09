@@ -122,12 +122,14 @@ try {
   await evaluate("document.querySelector('.answer-option input').click()");
   await evaluate("const answerButton = document.querySelector('.diagnostic-panel .primary-button'); answerButton.click(); answerButton.click()");
   await waitText(".answer-feedback", "Respuesta de referencia");
+  assert.equal(await evaluate("document.querySelector('.answer-feedback.incorrect strong')?.textContent"), "Respuesta incorrecta");
   assert.equal(await evaluate("window.__answerPosts"), 1, "doble clic envía una sola respuesta");
   await click(".answer-feedback .primary-button", "Siguiente pregunta");
   await waitText(".question-progress", "Pregunta 2 de 2");
   await evaluate("document.querySelector('.answer-option input').click()");
   await click(".diagnostic-panel .primary-button", "Revisar respuesta");
   await waitText(".answer-feedback", "Respuesta de referencia");
+  assert.equal(await evaluate("document.querySelector('.answer-feedback.correct strong')?.textContent"), "Respuesta correcta");
   await click(".answer-feedback .primary-button", "Ver resumen");
   await waitText(".diagnostic-panel", "Terminaste la demostración");
   assert.equal(await evaluate("document.querySelector('.diagnostic-panel').textContent.includes('Respondiste 2 de 2')"), true);
@@ -155,6 +157,47 @@ try {
       await send("Page.removeScriptToEvaluateOnNewDocument", { identifier });
     }
   }
+
+  await scenario(`(() => { const original = window.fetch.bind(window); let failOnce = true;
+    window.fetch = async (url, options) => {
+      if (String(url).includes("/api/diagnostic?mode=demo")) {
+        const response = await original(url, options);
+        const body = await response.json();
+        return new Response(JSON.stringify({ ...body, questions: body.questions.slice(0, 1) }), { status: response.status });
+      }
+      if (String(url).endsWith("/api/diagnostic") && options?.method === "POST" && failOnce) {
+        failOnce = false;
+        throw new Error("Fallo simulado al evaluar");
+      }
+      return original(url, options);
+    };
+  })();`, async () => {
+    await waitText(".grade-groups", "5.º");
+    await click(".grade-choice", "5.º");
+    await waitText(".subject-grid", "Matemáticas");
+    await click(".subject-choice", "Matemáticas");
+    await waitText(".topic-list", "Problemas con fracciones");
+    await click(".topic-choice", "Problemas con fracciones");
+    await click(".diagnostic-card .primary-button", "Empezar a estudiar");
+    await waitText(".diagnostic-panel", "1 pregunta de prueba");
+    await click(".diagnostic-card .text-button", "Salir de la demostración");
+    assert.equal(await evaluate("document.querySelector('.diagnostic-panel') === null"), true);
+    await click(".diagnostic-card .primary-button", "Empezar a estudiar");
+    await waitText(".diagnostic-panel", "No recibirás una nota académica");
+    await click(".diagnostic-panel .primary-button", "Comenzar preguntas");
+    await waitText(".question-progress", "Pregunta 1 de 1");
+    assert.equal(await evaluate("document.querySelector('.diagnostic-panel progress').max"), 1);
+    await evaluate("document.querySelector('.answer-option input').click()");
+    await click(".diagnostic-panel .primary-button", "Revisar respuesta");
+    await waitText(".answer-feedback.pending", "Evaluación pendiente");
+    assert.equal(await evaluate("document.querySelector('.answer-feedback.correct, .answer-feedback.incorrect') === null"), true);
+    assert.equal(await evaluate("document.querySelector('.answer-option input').checked"), true, "conserva la selección tras fallo");
+    await click(".diagnostic-panel .primary-button", "Reintentar evaluación");
+    await waitText(".answer-feedback", "Respuesta de referencia");
+    await click(".answer-feedback .primary-button", "Ver resumen");
+    await waitText(".diagnostic-panel", "Respondiste 1 de 1");
+  });
+  console.log("OK: aviso al reingresar, banco de una pregunta, progreso 1/1, evaluación pendiente sin acierto supuesto y reintento.");
 
   await scenario(`(() => { const original = window.fetch.bind(window); let once = false;
       window.fetch = (url, options) => {

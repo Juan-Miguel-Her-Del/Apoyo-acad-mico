@@ -2,6 +2,8 @@
 
 **Estado:** propuesta técnica, 8 de octubre de 2026. **No implementado ni aprobado jurídicamente.** Este documento prepara [AP-304](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-304), [AP-305](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-305), [AP-308](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-308) y [AP-311](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-311). AP-304 y AP-305 están «En curso»; AP-308 y AP-311 siguen «Por hacer». La revisión jurídica/privacidad, el texto aprobado y la política de conservación son condiciones pendientes; por ello este diseño no habilita registro ni pruebas con menores reales.
 
+El [borrador de aviso y autorización](12-aviso-consentimiento-menores-borrador.md) contiene el texto candidato para representante y estudiante, la lista de datos/finalidades, las decisiones externas y los criterios de prueba. Tiene campos pendientes entre corchetes; **no constituye un aviso aprobado ni una autorización operativa**.
+
 ## Reglas consultadas y alcance de la propuesta
 
 | Fuente oficial | Lo que sustenta | Consecuencia propuesta |

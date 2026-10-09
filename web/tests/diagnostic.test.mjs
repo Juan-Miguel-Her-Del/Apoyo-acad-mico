@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { evaluateDemoAnswer, getDiagnostic } from "../src/lib/diagnostic.ts";
+import { createDiagnosticReader, evaluateDemoAnswer, getDiagnostic } from "../src/lib/diagnostic.ts";
 
 test("las seis combinaciones piloto ofrecen preguntas demo finitas, únicas y sin soluciones en GET", () => {
   for (const [grade, subject] of [["G05", "MAT"], ["G05", "ESP"], ["G10", "MAT"], ["G10", "ESP"], ["G10", "FIS"], ["G10", "QUI"]]) {
@@ -25,6 +25,19 @@ test("el modo publicado permanece bloqueado sin aprobación curricular", () => {
   assert.equal(result.status, 409);
   assert.match(result.error, /aprobado/);
   assert.equal("questions" in result, false);
+});
+
+test("un tema piloto sin preguntas demo devuelve estado vacío sin resultado ni publicar contenido", () => {
+  const readEmptyBank = createDiagnosticReader([]);
+  const empty = readEmptyBank("G05", "MAT", "G05-MAT", "demo");
+  assert.equal(empty.status, 409);
+  assert.match(empty.error, /no hay preguntas de demostración/);
+  assert.equal("questions" in empty, false);
+  assert.equal("correct" in empty, false);
+  const published = readEmptyBank("G05", "MAT", "G05-MAT", "published");
+  assert.equal(published.status, 409);
+  assert.equal("questions" in published, false);
+  assert.equal(getDiagnostic("G05", "MAT", "G05-MAT", "demo").status, 200);
 });
 
 test("solo evalúa una opción existente de la pregunta y tema enviados", () => {

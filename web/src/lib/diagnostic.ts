@@ -32,18 +32,22 @@ const demoBank: readonly DemoQuestion[] = [
   { id: "demo-g10-qui-02", topicId: "G10-QUI", skill: "conservación", difficulty: "inicial", prompt: "Al balancear una reacción química, ¿qué debe conservarse?", options: [{ id: "a", text: "La cantidad de átomos de cada elemento" }, { id: "b", text: "El orden de las palabras" }, { id: "c", text: "El número de sustancias" }], correctOptionId: "a", explanation: "Debe haber igual número de átomos de cada elemento a ambos lados.", validation: "demo-unreviewed" },
 ];
 
-export function getDiagnostic(gradeId: string, subjectId: string, topicId: string, mode: string) {
-  if (mode !== "demo" && mode !== "published") return { status: 400, error: "Modo no válido." } as const;
-  const subject = subjectId as SubjectId;
-  const topics = mode === "demo" ? getDemoTopics(gradeId, subject) : getPublishedTopics(gradeId, subject);
-  if (!topics.some((item) => item.id === topicId)) {
-    return { status: mode === "demo" ? 400 : 409, error: mode === "demo" ? "La selección no corresponde a un tema piloto activo." : "Este tema aún no tiene contenido aprobado para estudiantes." } as const;
-  }
-  if (mode === "published") return { status: 409, error: "Aún no hay un banco de preguntas aprobado para este tema." } as const;
-  const questions = demoBank.filter((question) => question.topicId === topicId);
-  if (questions.length < 2) return { status: 409, error: "Aún no hay suficientes preguntas de demostración para este tema." } as const;
-  return { status: 200, mode: "demo", questions: questions.map(({ id, prompt, options }) => ({ id, prompt, options })) } as const;
+export function createDiagnosticReader(bank: readonly DemoQuestion[]) {
+  return function getDiagnostic(gradeId: string, subjectId: string, topicId: string, mode: string) {
+    if (mode !== "demo" && mode !== "published") return { status: 400, error: "Modo no válido." } as const;
+    const subject = subjectId as SubjectId;
+    const topics = mode === "demo" ? getDemoTopics(gradeId, subject) : getPublishedTopics(gradeId, subject);
+    if (!topics.some((item) => item.id === topicId)) {
+      return { status: mode === "demo" ? 400 : 409, error: mode === "demo" ? "La selección no corresponde a un tema piloto activo." : "Este tema aún no tiene contenido aprobado para estudiantes." } as const;
+    }
+    if (mode === "published") return { status: 409, error: "Aún no hay un banco de preguntas aprobado para este tema." } as const;
+    const questions = bank.filter((question) => question.topicId === topicId);
+    if (questions.length < 1) return { status: 409, error: "Aún no hay preguntas de demostración para este tema." } as const;
+    return { status: 200, mode: "demo", questions: questions.map(({ id, prompt, options }) => ({ id, prompt, options })) } as const;
+  };
 }
+
+export const getDiagnostic = createDiagnosticReader(demoBank);
 
 export function evaluateDemoAnswer(gradeId: string, subjectId: string, topicId: string, questionId: string, optionId: string) {
   const diagnostic = getDiagnostic(gradeId, subjectId, topicId, "demo");
