@@ -1,6 +1,6 @@
 # Desarrollo del Sprint 2
 
-**Estado al 8 de octubre de 2026:** el Sprint 2 está activo en Jira (6–12 de octubre). Su objetivo es definir y verificar el consentimiento para menores y avanzar el diagnóstico, con una capacidad planificada de 20 horas por semana. Este incremento entrega un **diagnóstico de demostración** y un diseño de consentimiento para revisión. El sprint no está cerrado.
+**Estado al 8 de octubre de 2026:** el Sprint 2 se cerró en Jira como **prototipo de demostración con pendientes explícitos**; véase el [acta de cierre](14-cierre-sprint-2.md). Estaba planificado del 6 al 12 de octubre, con capacidad de 20 horas por semana. Entregó un diagnóstico de demostración y un diseño de consentimiento para revisión.
 
 ## Qué se puede probar
 
@@ -20,9 +20,9 @@ El [diseño para menores](10-consentimiento-menores-sprint-2.md) propone un fluj
 
 Desde `web/`, ejecutar `npm.cmd test`, `npm.cmd run lint` y `npm.cmd run build`. Para el recorrido en Chrome, arrancar `npm.cmd run start -- -p 3100` y, en otra terminal, `npm.cmd run test:browser`. El 8 de octubre pasaron 11 pruebas automáticas, lint, build y 11 escenarios de Chrome. Cubren HTTP 400/409, banco vacío sin resultado, ausencia de soluciones en GET, dos preguntas con resumen, indicador 1 de 1, aviso tras salir y volver, doble clic como un solo POST desde la interfaz, evaluación pendiente con reintento, cambio de grado durante una carga y regresiones del selector.
 
-## Siguientes pasos del sprint
+## Pendientes para la siguiente planificación
 
-1. Revisar las doce preguntas de demostración y reunir un banco piloto aprobado por tema en AP-314/AP-53 antes de habilitar el diagnóstico publicado.
+1. Revisar las doce preguntas de demostración y reunir un banco piloto aprobado por tema en AP-314 antes de habilitar el diagnóstico publicado. AP-53 se cerró solo como especificación del banco demo.
 2. Diseñar el intento de diagnóstico en el servidor, con respuestas únicas y resultado verificable; después integrar AP-52/AP-56/AP-76/AP-80.
 3. Definir y aprobar con asesoría jurídica el aviso y método de verificación del representante antes de implementar AP-308/AP-311 o activar cuentas.
-4. Reestimar el trabajo restante de las 24 incidencias del Sprint 2 frente a la capacidad declarada y replanificar lo que no quepa antes del cierre.
+4. Reestimar las 14 incidencias pendientes de Sprint 2 antes de incorporarlas a un sprint futuro; Sprint 3 ya contiene 20 incidencias principales.

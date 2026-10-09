@@ -1,6 +1,6 @@
 # Apoyo_academico
 
-Aplicación de apoyo académico para estudiantes de Colombia. El **Sprint 1** entregó el selector de grado, materia y tema; el **Sprint 2** está activo y añade una demostración de diagnóstico. El trabajo se sigue en el proyecto [AP de Jira](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP).
+Aplicación de apoyo académico para estudiantes de Colombia. El **Sprint 1** entregó el selector de grado, materia y tema; el **Sprint 2** añadió una demostración de diagnóstico. Ambos sprints están cerrados en el proyecto [AP de Jira](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP).
 
 ## Cómo abrir el proyecto
 
@@ -72,11 +72,11 @@ La publicación del piloto requiere revisar las seis referencias y temas con una
 
 **Sprint 1 cerrado en Jira el 30 de septiembre de 2026:** prototipo funcional de selección y datos de demostración. Las 28 incidencias del sprint están en «Listo»; la revisión curricular y la integración del diagnóstico permanecen en AP-314 y AP-56. Los temas de prueba siguen sin aprobación de publicación.
 
-## Sprint 2 en curso: probar el diagnóstico
+## Sprint 2 cerrado: probar el diagnóstico
 
 Después de elegir un tema piloto, pulsa **Empezar a estudiar (demo)**. Verás un aviso, dos preguntas de prueba, tu avance y un resumen que desaparece al recargar la página. Las doce preguntas del banco de demostración no han sido revisadas por un docente. La ruta publicada sigue bloqueada y no se guardan respuestas ni progreso personal.
 
-También quedó preparado el [diseño de consentimiento para menores](docs/10-consentimiento-menores-sprint-2.md), pendiente de revisión jurídica antes de crear cuentas para estudiantes. El [registro del Sprint 2](docs/11-desarrollo-sprint-2.md) explica las pruebas y lo que falta para cumplir las historias reales de Jira. El sprint está activo; no se ha cerrado.
+También quedó preparado el [diseño de consentimiento para menores](docs/10-consentimiento-menores-sprint-2.md), pendiente de revisión jurídica antes de crear cuentas para estudiantes. El [registro del Sprint 2](docs/11-desarrollo-sprint-2.md) explica las pruebas. El [cierre del Sprint 2](docs/14-cierre-sprint-2.md) detalla qué incidencias se completaron como prototipo y cuáles quedaron pendientes para replanificar: **10 de 24 incidencias principales en «Listo»; 14 pendientes**. El sprint se cerró en Jira el 8 de octubre de 2026.
 
 Consulta [la documentación del proyecto](docs/README.md) y el [plan del Sprint 1](docs/08-desarrollo-sprint-1.md) para más contexto.
 

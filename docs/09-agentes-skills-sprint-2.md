@@ -1,6 +1,6 @@
 # Agentes y skills para el Sprint 2
 
-Estas configuraciones son **locales al repositorio**. Preparan a Codex para trabajar en Apoyo_academico; no inician el sprint ni implementan por sí solas las historias. El Sprint 2 de Jira AP está planificado del **6 al 12 de octubre de 2026**, con diagnóstico y consentimiento para menores como frentes principales.
+Estas configuraciones son **locales al repositorio**. Preparan a Codex para trabajar en Apoyo_academico; no inician el sprint ni implementan por sí solas las historias. El Sprint 2 de Jira AP se planificó del **6 al 12 de octubre de 2026** y se [cerró el 8 de octubre como demostración](14-cierre-sprint-2.md), con pendientes explícitos de diagnóstico y consentimiento para menores.
 
 ## Agentes disponibles
 
