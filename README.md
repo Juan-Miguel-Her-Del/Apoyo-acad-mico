@@ -81,3 +81,9 @@ También quedó preparado el [diseño de consentimiento para menores](docs/10-co
 Consulta [la documentación del proyecto](docs/README.md) y el [plan del Sprint 1](docs/08-desarrollo-sprint-1.md) para más contexto.
 
 Para preparar el desarrollo siguiente, consulta [los agentes y skills del Sprint 2](docs/09-agentes-skills-sprint-2.md).
+
+## Sprint 3 en preparación
+
+Jira programa el Sprint 3 del **13 al 19 de octubre de 2026**. Su [plan de trabajo](docs/15-plan-sprint-3.md) separa el análisis de dificultades de demostración de las cuentas y explicaciones publicadas. El [contexto técnico de explicaciones](docs/16-contexto-explicaciones.md) rechaza fuentes sin revisión. El registro real continúa sujeto al consentimiento de menores y a las decisiones de privacidad pendientes.
+
+Ya puedes ver el [primer avance](docs/17-desarrollo-sprint-3.md): al terminar las dos preguntas de la demo, el resumen muestra los subtemas, las preguntas que los respaldan y si hay una señal de dificultad o evidencia insuficiente. Para ver una señal, elige **10.º → Matemáticas** y responde incorrectamente las dos preguntas. En las demás combinaciones el resultado por subtema queda indeterminado porque solo hay una pregunta de cada uno. La regla es provisional y el resultado no se guarda.

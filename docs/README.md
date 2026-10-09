@@ -18,6 +18,9 @@ La fuente funcional vigente es el [backlog AP de Jira](https://juanmiguelsworksp
 | [Aviso para menores (borrador)](12-aviso-consentimiento-menores-borrador.md) | Texto candidato para revisión jurídica y de privacidad |
 | [Banco diagnóstico demo](13-banco-diagnostico-demo.md) | Especificación de preguntas de prueba, casos y límites |
 | [Cierre del Sprint 2](14-cierre-sprint-2.md) | Estados de Jira, evidencia, casillas y pendientes para replanificar |
+| [Plan del Sprint 3](15-plan-sprint-3.md) | Alcance vigente, dependencias y orden de trabajo antes del inicio formal |
+| [Contexto de explicaciones](16-contexto-explicaciones.md) | Contrato AP-132, caso válido, límite y decisiones pendientes |
+| [Avance del Sprint 3](17-desarrollo-sprint-3.md) | Análisis demo por subtema, evidencia de pruebas y trabajo restante |
 | [Criterios de aceptación](criterios-aceptacion.md) | Escenarios comprobables para las historias |
 | [Estimaciones](estimaciones.md) | Esfuerzo preliminar y capacidad |
 | [Pruebas](pruebas.md) | Estrategia y resultados disponibles |

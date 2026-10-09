@@ -4,6 +4,7 @@ export type QuestionView = {
   id: string;
   prompt: string;
   options: { id: string; text: string }[];
+  skill?: string;
 };
 
 type DemoQuestion = QuestionView & {
@@ -43,7 +44,7 @@ export function createDiagnosticReader(bank: readonly DemoQuestion[]) {
     if (mode === "published") return { status: 409, error: "Aún no hay un banco de preguntas aprobado para este tema." } as const;
     const questions = bank.filter((question) => question.topicId === topicId);
     if (questions.length < 1) return { status: 409, error: "Aún no hay preguntas de demostración para este tema." } as const;
-    return { status: 200, mode: "demo", questions: questions.map(({ id, prompt, options }) => ({ id, prompt, options })) } as const;
+    return { status: 200, mode: "demo", questions: questions.map(({ id, prompt, options, skill }) => ({ id, prompt, options, skill })) } as const;
   };
 }
 

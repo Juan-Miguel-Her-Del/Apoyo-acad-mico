@@ -12,6 +12,10 @@ Verificación: `npm.cmd test`, `npm.cmd run lint`, `npm.cmd run build` y, con `n
 
 ## Ejecutar en tu computador
 
+### Primer avance del Sprint 3
+
+Al terminar la demo, el resumen muestra resultados por subtema con una regla provisional y las preguntas que sustentan cada estado. Una sola respuesta por subtema se muestra como **indeterminada**. En **10.º → Matemáticas**, dos errores en el mismo subtema producen una *señal de dificultad (demo)*. No es un diagnóstico curricular ni se guarda. El preparador interno de explicaciones (`src/lib/explanation-context.ts`) rechaza el catálogo actual porque no hay fuentes aprobadas; no hay servicio de IA ni registro de cuentas. Consulta el [avance documentado](../docs/17-desarrollo-sprint-3.md).
+
 Desde esta carpeta en PowerShell:
 
 ```powershell

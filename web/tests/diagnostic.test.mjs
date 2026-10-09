@@ -9,6 +9,7 @@ test("las seis combinaciones piloto ofrecen preguntas demo finitas, únicas y si
     assert.equal(result.questions.length, 2);
     assert.equal(new Set(result.questions.map((question) => question.id)).size, 2);
     assert.ok(result.questions.every((question) => question.options.length === 3));
+    assert.ok(result.questions.every((question) => typeof question.skill === "string" && question.skill.length > 0));
     assert.ok(result.questions.every((question) => !("correctOptionId" in question) && !("explanation" in question)));
   }
 });

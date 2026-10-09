@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { analyzeDemoSkills } from "@/lib/diagnostic-analysis";
 import type { QuestionView } from "@/lib/diagnostic";
 import type { Selection } from "@/lib/selection";
 
@@ -24,6 +25,8 @@ export default function DiagnosticDemo({ selection }: { selection: Selection }) 
 
   const ready = Boolean(selection.gradeId && selection.subjectId && selection.topicId);
   const question = questions[index];
+  const analysis = analyzeDemoSkills(questions, answers);
+  const difficulties = analysis.results.filter((result) => result.status === "dificultad-demo");
 
   async function prepare() {
     if (!ready || stage === "loading") return;
@@ -103,7 +106,16 @@ export default function DiagnosticDemo({ selection }: { selection: Selection }) 
       {feedback?.state === "pending" && <div className="answer-feedback pending" role="status"><strong>Evaluación pendiente</strong><p>{feedback.message} Conservamos tu selección para que puedas reintentar; aún no contamos esta respuesta como acierto ni error.</p></div>}
       {feedback?.state === "evaluated" && <div className={`answer-feedback ${feedback.correct ? "correct" : "incorrect"}`} role="status"><strong>{feedback.correct ? "Respuesta correcta" : "Respuesta incorrecta"}</strong><p>{feedback.explanation}</p><p>Respuesta de referencia: {question.options.find((option) => option.id === feedback.correctOptionId)?.text}</p><button className="primary-button" type="button" onClick={next}>{index + 1 === questions.length ? "Ver resumen" : "Siguiente pregunta"}</button></div>}
     </div>}
-    {stage === "finished" && <div className="diagnostic-panel" role="status"><h3>Terminaste la demostración</h3><p>Respondiste {answers.length} de {questions.length} preguntas de prueba. Acertaste {answers.filter((answer) => answer.correct).length}.</p><p>Este resumen es orientativo; no equivale a una evaluación validada y se perderá al cerrar o recargar la página.</p><button className="primary-button" type="button" onClick={reset}>Volver a empezar</button></div>}
+    {stage === "finished" && <div className="diagnostic-panel" role="status"><h3>Terminaste la demostración</h3><p>Respondiste {answers.length} de {questions.length} preguntas de prueba. Acertaste {answers.filter((answer) => answer.correct).length}.</p>
+      <h4>Resultados por subtema</h4>
+      <p>Regla provisional: se necesitan al menos 2 respuestas del mismo subtema. Con 0 aciertos aparece una señal de dificultad; con todos los aciertos, ninguna señal; un resultado mixto queda indeterminado. No equivale a un diagnóstico académico.</p>
+      {difficulties.length > 0 ? <p className="skill-summary">Señales de dificultad en esta prueba: {difficulties.map((result) => result.skill).join(", ")}.</p> : <p className="skill-summary">No hay subtemas con una señal de dificultad según esta regla. Revisa los estados indeterminados antes de sacar conclusiones.</p>}
+      {analysis.results.length > 0 && <ul className="skill-results">{analysis.results.map((result) => <li key={result.skill}>
+        <strong>{result.skill}</strong>: {result.status === "dificultad-demo" ? "señal de dificultad (demo)" : result.status === "sin-senal-demo" ? "sin señal de dificultad en esta prueba" : "indeterminado: evidencia insuficiente o resultado mixto"}.
+        <span> {result.correct}/{result.answered} aciertos; preguntas {result.questionIds.map((id) => questions.findIndex((item) => item.id === id) + 1).join(", ")}.</span>
+      </li>)}</ul>}
+      {analysis.unmappedQuestionIds.length > 0 && <p className="diagnostic-error">Resultado incompleto: {analysis.unmappedQuestionIds.length} {analysis.unmappedQuestionIds.length === 1 ? "pregunta no tiene" : "preguntas no tienen"} un subtema vinculado; no se les asignó dificultad.</p>}
+      <p>Este resumen es orientativo; no equivale a una evaluación validada y se perderá al cerrar o recargar la página.</p><button className="primary-button" type="button" onClick={reset}>Volver a empezar</button></div>}
     {error && <p className="diagnostic-error" role="alert">{error}</p>}
     {stage !== "idle" && stage !== "finished" && <button className="text-button" type="button" onClick={reset}>Salir de la demostración</button>}
   </section>;
