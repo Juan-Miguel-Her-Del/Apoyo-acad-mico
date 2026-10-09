@@ -1,6 +1,6 @@
 # Apoyo_academico
 
-Aplicación de apoyo académico para estudiantes de Colombia. Este repositorio contiene la base del **Sprint 1**: seleccionar un grado, una materia y un tema compatible. El trabajo se sigue en el proyecto [AP de Jira](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP).
+Aplicación de apoyo académico para estudiantes de Colombia. El **Sprint 1** entregó el selector de grado, materia y tema; el **Sprint 2** está activo y añade una demostración de diagnóstico. El trabajo se sigue en el proyecto [AP de Jira](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP).
 
 ## Cómo abrir el proyecto
 
@@ -33,7 +33,7 @@ Para probar también la interfaz en Chrome, primero ejecuta `npm.cmd run build` 
 3. En 5.º ofrece Matemáticas y Español; en 10.º, Matemáticas, Español, Física y Química.
 4. Muestra un tema compatible con la combinación elegida. Al cambiar el grado, limpia materia y tema; al cambiar la materia, limpia el tema.
 5. Consulta el catálogo por HTTP. Muestra carga, estado vacío y error con botón «Reintentar». Descarta respuestas tardías para que no aparezcan opciones de una selección anterior.
-6. Impide que una selección de tema incompatible o inactiva aparezca como válida. No existe todavía el diagnóstico, así que no hay forma de iniciarlo desde esta pantalla.
+6. Impide que una selección de tema incompatible o inactiva aparezca como válida. Al cerrar ese sprint todavía no existía el diagnóstico.
 
 El catálogo completo propone **26 combinaciones**: Matemáticas y Español para 1.º–11.º, Física y Química para 10.º–11.º. Solo seis son candidatas del piloto:
 
@@ -68,9 +68,15 @@ Al 30 de septiembre de 2026: seis pruebas de lógica aprobadas, ESLint sin error
 
 ## Qué falta antes de publicar lecciones
 
-La publicación del piloto requiere revisar las seis referencias y temas con una persona conocedora de cada materia, aprobar explicaciones y bancos de preguntas, y registrar esa aprobación en [AP-314](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-314). “Revisión docente” es una comprobación de calidad del contenido educativo antes de ofrecerlo a estudiantes; no es un trámite legal para ejecutar el prototipo. Después se puede activar cada tema para estudiantes. La conexión con el diagnóstico está planificada en [AP-56](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-56). El objetivo de MVP sigue siendo **10 de noviembre de 2026**, condicionado a esa validación y a los siguientes sprints. Cuentas, diagnóstico, práctica, progreso y despliegue corresponden a trabajo posterior.
+La publicación del piloto requiere revisar las seis referencias y temas con una persona conocedora de cada materia, aprobar explicaciones y bancos de preguntas, y registrar esa aprobación en [AP-314](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-314). “Revisión docente” es una comprobación de calidad del contenido educativo antes de ofrecerlo a estudiantes; no es un trámite legal para ejecutar el prototipo. Después se puede activar cada tema para estudiantes. El Sprint 2 conecta el selector con una **demostración** de diagnóstico, mientras la integración publicada de [AP-56](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-56) sigue pendiente. El objetivo de MVP es **10 de noviembre de 2026**, condicionado a esa validación y a los siguientes sprints. Cuentas, práctica, progreso y despliegue corresponden a trabajo posterior.
 
 **Sprint 1 cerrado en Jira el 30 de septiembre de 2026:** prototipo funcional de selección y datos de demostración. Las 28 incidencias del sprint están en «Listo»; la revisión curricular y la integración del diagnóstico permanecen en AP-314 y AP-56. Los temas de prueba siguen sin aprobación de publicación.
+
+## Sprint 2 en curso: probar el diagnóstico
+
+Después de elegir un tema piloto, pulsa **Empezar a estudiar (demo)**. Verás un aviso, dos preguntas de prueba, tu avance y un resumen que desaparece al recargar la página. Las doce preguntas del banco de demostración no han sido revisadas por un docente. La ruta publicada sigue bloqueada y no se guardan respuestas ni progreso personal.
+
+También quedó preparado el [diseño de consentimiento para menores](docs/10-consentimiento-menores-sprint-2.md), pendiente de revisión jurídica antes de crear cuentas para estudiantes. El [registro del Sprint 2](docs/11-desarrollo-sprint-2.md) explica las pruebas y lo que falta para cumplir las historias reales de Jira. El sprint está activo; no se ha cerrado.
 
 Consulta [la documentación del proyecto](docs/README.md) y el [plan del Sprint 1](docs/08-desarrollo-sprint-1.md) para más contexto.
 

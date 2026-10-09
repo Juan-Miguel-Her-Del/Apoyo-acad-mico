@@ -1,6 +1,6 @@
 # Documentación de Apoyo_academico
 
-La fuente funcional vigente es el [backlog AP de Jira](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP). El desarrollo comenzó el 30 de septiembre de 2026 en `web/`. Los documentos 01–07 y las estimaciones originales recogen el análisis previo; algunas clasificaciones y decisiones cambiaron después. El [Sprint 1](08-desarrollo-sprint-1.md) está cerrado como prototipo. Para preparar el trabajo siguiente, consulta [agentes y skills del Sprint 2](09-agentes-skills-sprint-2.md).
+La fuente funcional vigente es el [backlog AP de Jira](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP). El desarrollo comenzó el 30 de septiembre de 2026 en `web/`. Los documentos 01–07 y las estimaciones originales recogen el análisis previo; algunas clasificaciones y decisiones cambiaron después. El [Sprint 1](08-desarrollo-sprint-1.md) está cerrado como prototipo; el [Sprint 2](11-desarrollo-sprint-2.md) está en curso.
 
 | Documento | Contenido |
 |---|---|
@@ -13,6 +13,8 @@ La fuente funcional vigente es el [backlog AP de Jira](https://juanmiguelsworksp
 | [Auditoría de Jira](07-auditoria-jira.md) | Estado comprobado, cambios realizados y decisiones abiertas |
 | [Desarrollo del Sprint 1](08-desarrollo-sprint-1.md) | Decisiones, prototipo entregado y verificación |
 | [Agentes y skills del Sprint 2](09-agentes-skills-sprint-2.md) | Roles Codex, skills reutilizables y ejemplos de uso |
+| [Consentimiento para menores](10-consentimiento-menores-sprint-2.md) | Diseño técnico para revisión jurídica y de privacidad |
+| [Desarrollo del Sprint 2](11-desarrollo-sprint-2.md) | Diagnóstico de demostración, pruebas y trabajo pendiente |
 | [Criterios de aceptación](criterios-aceptacion.md) | Escenarios comprobables para las historias |
 | [Estimaciones](estimaciones.md) | Esfuerzo preliminar y capacidad |
 | [Pruebas](pruebas.md) | Estrategia y resultados disponibles |

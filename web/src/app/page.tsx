@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { isDemoGrade, type Grade, type GradeGroup, type Subject, type Topic } from "@/lib/catalog";
 import { emptySelection, selectGrade, selectSubject, selectTopic, validSelection } from "@/lib/selection";
+import DiagnosticDemo from "./diagnostic-demo";
 
 type Result<T> = { key: string; status: "success" | "error"; items: T[] };
 const groups: GradeGroup[] = ["Primaria", "Bachillerato"];
@@ -74,7 +75,7 @@ export default function Home() {
           <p className="eyebrow">Tu punto de partida</p>
           <h1 id="hero-title">Encuentra el tema que quieres estudiar.</h1>
           <p className="hero-description">Elige tu grado, después una materia y un tema. Así podremos preparar una experiencia que corresponda a lo que estudias.</p>
-          <div className="prototype-note" role="note">Vista de prueba. Los temas del piloto están pendientes de revisión docente y aún no incluyen diagnóstico.</div>
+          <div className="prototype-note" role="note">Vista de prueba. Los temas del piloto están pendientes de revisión docente. Puedes probar un diagnóstico de demostración al elegir un tema.</div>
         </div>
         <div className="hero-art" aria-hidden="true"><span>∑</span><span>A+</span><span>⚛</span></div>
       </section>
@@ -133,6 +134,7 @@ export default function Home() {
         <div><p className="eyebrow">Tu selección</p><h2>{topic ? "Tu ruta está preparada" : "Tu ruta aparecerá aquí"}</h2><p>{topic && grade && subject ? `${grade.label} · ${subject.name} · ${topic.name}` : "Completa los tres pasos para ver el tema elegido."}</p></div>
         <span aria-hidden="true">✦</span>
       </section>
+      <DiagnosticDemo key={`${valid.gradeId ?? ""}/${valid.subjectId ?? ""}/${valid.topicId ?? ""}`} selection={valid} />
       <footer className="site-footer"><span>Apoyo académico</span><span>Contenido del piloto en revisión</span></footer>
     </main>
   );

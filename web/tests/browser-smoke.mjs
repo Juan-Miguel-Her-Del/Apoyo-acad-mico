@@ -11,7 +11,7 @@ const browser = process.env.CHROME_PATH ??
 const baseUrl = process.env.BROWSER_TEST_URL ?? "http://localhost:3100";
 const profile = mkdtempSync(join(tmpdir(), "ap-sprint1-browser-"));
 const chrome = spawn(browser, [
-  "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
+  "--headless=new", "--disable-gpu", "--no-sandbox", "--no-first-run", "--no-default-browser-check",
   "--disable-extensions", "--remote-debugging-port=0", `--user-data-dir=${profile}`,
   "about:blank",
 ], { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
@@ -43,6 +43,10 @@ try {
 
   let nextId = 1;
   const pending = new Map();
+  socket.addEventListener("close", () => {
+    for (const { reject } of pending.values()) reject(new Error(`Chrome cerró DevTools: ${browserError}`));
+    pending.clear();
+  });
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
     if (!message.id || !pending.has(message.id)) return;
@@ -63,8 +67,9 @@ try {
     if (response.exceptionDetails) throw new Error(response.exceptionDetails.text);
     return response.result.value;
   }
+  let navigationCount = 0;
   async function navigate() {
-    await send("Page.navigate", { url: baseUrl });
+    await send("Page.navigate", { url: `${baseUrl}/?smoke=${++navigationCount}` });
     await waitFor(() => evaluate("document.readyState === 'complete'"), "carga de página");
   }
   async function waitText(selector, fragment) {
@@ -96,10 +101,42 @@ try {
   await waitText(".topic-list", "Reacciones inorgánicas");
   await click(".topic-choice", "Reacciones inorgánicas");
   await waitText(".selection-summary", "Reacciones inorgánicas");
+  const published = await fetch(`${baseUrl}/api/diagnostic?grade=G10&subject=QUI&topic=G10-QUI`);
+  assert.equal(published.status, 409, "la ruta publicada debe quedar bloqueada");
+  const invalid = await fetch(`${baseUrl}/api/diagnostic?mode=demo&grade=G05&subject=QUI&topic=G10-QUI`);
+  assert.equal(invalid.status, 400, "el servidor rechaza una combinación cruzada");
+  const questionsResponse = await fetch(`${baseUrl}/api/diagnostic?mode=demo&grade=G10&subject=QUI&topic=G10-QUI`);
+  const questionsBody = await questionsResponse.json();
+  assert.equal(questionsResponse.status, 200);
+  assert.equal(questionsBody.questions.length, 2);
+  assert.equal("correctOptionId" in questionsBody.questions[0], false, "GET no revela soluciones");
+  const badAnswer = await fetch(`${baseUrl}/api/diagnostic`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "demo", gradeId: "G10", subjectId: "QUI", topicId: "G10-QUI", questionId: questionsBody.questions[0].id, optionId: "z" }) });
+  assert.equal(badAnswer.status, 400, "POST rechaza opciones inválidas");
+  const publishedAnswer = await fetch(`${baseUrl}/api/diagnostic`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "published", gradeId: "G10", subjectId: "QUI", topicId: "G10-QUI", questionId: questionsBody.questions[0].id, optionId: "a" }) });
+  assert.equal(publishedAnswer.status, 409, "POST no evalúa modo publicado");
+  await click(".diagnostic-card .primary-button", "Empezar a estudiar");
+  await waitText(".diagnostic-panel", "Antes de comenzar");
+  await click(".diagnostic-panel .primary-button", "Comenzar preguntas");
+  await waitText(".question-progress", "Pregunta 1 de 2");
+  await evaluate("window.__answerPosts = 0; const originalDiagnosticFetch = window.fetch; window.fetch = (...args) => { if (String(args[0]).endsWith('/api/diagnostic') && args[1]?.method === 'POST') window.__answerPosts++; return originalDiagnosticFetch(...args); }");
+  await evaluate("document.querySelector('.answer-option input').click()");
+  await evaluate("const answerButton = document.querySelector('.diagnostic-panel .primary-button'); answerButton.click(); answerButton.click()");
+  await waitText(".answer-feedback", "Respuesta de referencia");
+  assert.equal(await evaluate("window.__answerPosts"), 1, "doble clic envía una sola respuesta");
+  await click(".answer-feedback .primary-button", "Siguiente pregunta");
+  await waitText(".question-progress", "Pregunta 2 de 2");
+  await evaluate("document.querySelector('.answer-option input').click()");
+  await click(".diagnostic-panel .primary-button", "Revisar respuesta");
+  await waitText(".answer-feedback", "Respuesta de referencia");
+  await click(".answer-feedback .primary-button", "Ver resumen");
+  await waitText(".diagnostic-panel", "Terminaste la demostración");
+  assert.equal(await evaluate("document.querySelector('.diagnostic-panel').textContent.includes('Respondiste 2 de 2')"), true);
+  console.log("OK: HTTP demo/publicado, respuestas válidas, doble clic, avance y resultado solo en memoria.");
   await click(".grade-choice", "5.º");
   await waitText(".subject-grid", "Español");
   assert.equal(await evaluate("document.querySelectorAll('.subject-choice').length"), 2);
   assert.equal(await evaluate("document.querySelector('.selection-summary').textContent.includes('Reacciones inorgánicas')"), false);
+  assert.equal(await evaluate("document.querySelector('.diagnostic-panel') === null"), true, "cambiar grado reinicia el intento");
   await click(".subject-choice", "Español");
   await waitText(".topic-list", "Planear y producir");
   await click(".topic-choice", "Planear y producir");
@@ -205,6 +242,26 @@ try {
     await waitText(".topic-list", "Reacciones inorgánicas");
   });
   console.log("OK: error y reintento de temas.");
+
+  await scenario(`(() => { const original = window.fetch.bind(window);
+    window.fetch = (url, options) => String(url).includes("/api/diagnostic?mode=demo")
+      ? new Promise((resolve, reject) => setTimeout(() => original(url, options).then(resolve, reject), 450))
+      : original(url, options);
+  })();`, async () => {
+    await waitText(".grade-groups", "10.º");
+    await click(".grade-choice", "10.º");
+    await waitText(".subject-grid", "Química");
+    await click(".subject-choice", "Química");
+    await waitText(".topic-list", "Reacciones inorgánicas");
+    await click(".topic-choice", "Reacciones inorgánicas");
+    await click(".diagnostic-card .primary-button", "Empezar a estudiar");
+    await waitText(".diagnostic-card", "Preparando preguntas");
+    await click(".grade-choice", "5.º");
+    await new Promise((done) => setTimeout(done, 700));
+    assert.equal(await evaluate("document.querySelector('.diagnostic-panel') === null"), true);
+    assert.equal(await evaluate("document.querySelector('.diagnostic-card').textContent.includes('Antes de comenzar')"), false);
+  });
+  console.log("OK: respuesta tardía del diagnóstico descartada al cambiar el grado.");
 
   await scenario(`(() => { const original = window.fetch.bind(window);
     window.fetch = (url, options) => String(url).includes("resource=topics") && String(url).includes("grade=G10")
