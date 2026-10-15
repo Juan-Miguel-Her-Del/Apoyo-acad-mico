@@ -4,7 +4,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { DatabaseSync } from "node:sqlite";
 import { topics } from "./catalog.ts";
-import { getPracticeBank, publicPracticeQuestions, PRACTICE_BANK_VERSION, type PracticeQuestion } from "./practice.ts";
+import { getPracticeBank, publicPracticeQuestions, PRACTICE_BANK_VERSION, PRACTICE_SKILL_CORRECTIONS, type PracticeQuestion } from "./practice.ts";
 import { correctionExplanation } from "./practice-feedback.ts";
 
 const scrypt = promisify(scryptCallback);
@@ -260,6 +260,12 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
     if (skillId) db.prepare("UPDATE practice_answers SET skill_id=? WHERE session_id=? AND question_id=?")
       .run(skillId, answer.session_id, answer.question_id);
   }
+  // Corrige solo la clasificación histórica: conserva la pregunta, la clave y
+  // la respuesta originales que quedaron guardadas en cada sesión.
+  const reclassify = db.prepare("UPDATE practice_answers SET skill_id=? WHERE question_id=? AND skill_id<>?");
+  for (const [questionId, skillId] of Object.entries(PRACTICE_SKILL_CORRECTIONS)) {
+    reclassify.run(skillId, questionId, skillId);
+  }
   function startPractice(userId: string, body: unknown) {
     activeUser(userId);
     if (!body || typeof body !== "object" || Array.isArray(body)) throw new AuthError(400, "Selección no válida.");
@@ -338,7 +344,8 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
       }
       db.prepare(`INSERT INTO practice_answers(session_id,question_id,option_id,correct,correct_option_id,explanation,skill_id,answered_at)
         VALUES (?,?,?,?,?,?,?,?)`).run(session.id, question.id, optionId, correct ? 1 : 0,
-        question.correctOptionId, question.explanation, question.skillId, answeredAt);
+        question.correctOptionId, question.explanation,
+        PRACTICE_SKILL_CORRECTIONS[question.id] ?? question.skillId, answeredAt);
       const answered = Number((db.prepare("SELECT COUNT(*) AS count FROM practice_answers WHERE session_id=?").get(session.id) as { count: number }).count);
       if (answered === session.total) {
         db.prepare("UPDATE practice_sessions SET status='completed',completed_at=? WHERE id=?").run(answeredAt, session.id);

@@ -1,5 +1,5 @@
 // Metadatos públicos de subtemas. Este módulo no incluye respuestas.
-const skillPairs: Readonly<Record<string, readonly [readonly [string, string], readonly [string, string]]>> = {
+const skillPairs: Readonly<Record<string, readonly (readonly [string, string])[]>> = {
   "G01-MAT": [["comparar-numeros", "Comparar números"], ["decenas-y-unidades", "Decenas y unidades"]],
   "G02-MAT": [["valor-posicional", "Valor posicional"], ["sumas-y-restas", "Sumas y restas"]],
   "G03-MAT": [["multiplicacion", "Multiplicación"], ["reparto-y-division", "Reparto y división"]],
@@ -15,12 +15,12 @@ const skillPairs: Readonly<Record<string, readonly [readonly [string, string], r
   "G02-ESP": [["secuencia-de-hechos", "Secuencia de hechos"], ["hechos-antes-y-despues", "Hechos antes y después"]],
   "G03-ESP": [["dato-y-ficcion", "Dato y ficción"], ["proposito-informativo", "Propósito informativo"]],
   "G04-ESP": [["tema-del-texto", "Tema del texto"], ["idea-principal", "Idea principal"]],
-  "G05-ESP": [["titulo-informativo", "Título informativo"], ["subtitulo-informativo", "Subtítulo informativo"]],
+  "G05-ESP": [["titulo-informativo", "Título informativo"], ["subtitulo-informativo", "Subtítulo informativo"], ["frase-introductoria", "Frase introductoria"]],
   "G06-ESP": [["proposito-instruir", "Propósito de instruir"], ["proposito-informar", "Propósito de informar"]],
   "G07-ESP": [["razones-pertinentes", "Razones pertinentes"], ["identificar-razon", "Identificar la razón"]],
   "G08-ESP": [["sentido-figurado", "Sentido figurado"], ["inferir-metafora", "Inferir metáforas"]],
   "G09-ESP": [["fecha-de-la-fuente", "Fecha de la fuente"], ["comparar-fuentes", "Comparar fuentes"]],
-  "G10-ESP": [["identificar-tesis", "Identificar la tesis"], ["evidencia-pertinente", "Evidencia pertinente"]],
+  "G10-ESP": [["identificar-tesis", "Identificar la tesis"], ["evidencia-pertinente", "Evidencia pertinente"], ["identificar-razon", "Identificar la razón"]],
   "G11-ESP": [["evidencia-verificable", "Evidencia verificable"], ["evaluar-muestra", "Evaluar la muestra"]],
   "G10-FIS": [["fuerza-con-masa-y-aceleracion", "Fuerza con masa y aceleración"], ["aceleracion-con-fuerza-y-masa", "Aceleración con fuerza y masa"]],
   "G11-FIS": [["voltaje-ley-ohm", "Voltaje con ley de Ohm"], ["resistencia-ley-ohm", "Resistencia con ley de Ohm"]],

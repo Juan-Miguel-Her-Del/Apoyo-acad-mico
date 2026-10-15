@@ -29,7 +29,7 @@ La comparación de cuentas adultas solo sirve para la demostración: [AP-236](ht
 | AP-229, gráfica | Barras accesibles con fecha, aciertos y porcentaje de hasta 200 intentos; una sola medición no muestra tendencia. | Listo: cálculo, acceso textual y Chrome probados. |
 | AP-236, progreso estudiantil | Contrato interno de cuenta, autorización, sesión y comparación persistente con pruebas sintéticas en [22-cuentas-estudiantes-consentimiento.md](22-cuentas-estudiantes-consentimiento.md). | Documento formal, verificador del representante, integración de sesiones reales de estudiantes y rutas protegidas; sigue abierta. |
 
-El banco actual es `demo-2026-10-v2`, con preguntas **provisionales**. Las preguntas de cada sesión se guardan como snapshot para conservar el intento aunque cambie el banco. Las sesiones previas de dos preguntas se migran sin revelar sus explicaciones provisionales. El historial visual muestra los 200 intentos más recientes; el cálculo de subtemas usa todos los intentos guardados de la cuenta. No es una medida académica validada.
+El banco de esta entrega era `demo-2026-10-v2`; la [revisión técnica posterior](30-aplicacion-revision-tecnica-piloto.md) produjo `demo-2026-10-v3`. Las preguntas siguen siendo **provisionales**. Las preguntas de cada sesión se guardan como snapshot para conservar el intento aunque cambie el banco. Las sesiones previas de dos preguntas se migran sin revelar sus explicaciones provisionales. El historial visual muestra los 200 intentos más recientes; el cálculo de subtemas usa todos los intentos guardados de la cuenta. No es una medida académica validada.
 
 ### Casos de verificación
 

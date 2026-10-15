@@ -1,16 +1,14 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execFileSync } from "node:child_process";
 import { topics, subjects } from "../src/lib/catalog.ts";
 import { getStudyDemo } from "../src/lib/study-demo.ts";
 import { getDiagnostic, evaluateDemoAnswer } from "../src/lib/diagnostic.ts";
-import { getPracticeBank } from "../src/lib/practice.ts";
+import { getPracticeBank, PRACTICE_BANK_VERSION } from "../src/lib/practice.ts";
 
 const pilotIds = ["G05-MAT", "G05-ESP", "G10-MAT", "G10-ESP", "G10-FIS", "G10-QUI"];
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const output = join(root, "docs", "28-paquete-revision-docente-piloto.html");
-const sourceCommit = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const date = new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", year: "numeric", month: "long", day: "numeric" }).format(new Date());
 
 function html(value) {
@@ -82,8 +80,9 @@ const document = `<!doctype html><html lang="es"><head><meta charset="utf-8"><ti
 @page{size:A4;margin:17mm 17mm 18mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#192337;font-size:10.5pt;line-height:1.4;margin:0}h1{font-size:22pt;line-height:1.12;margin:0 0 10mm}h2{font-size:17pt;margin:2mm 0 6mm;color:#143976}h3{font-size:12pt;color:#143976;margin:8mm 0 3mm}p{margin:2.5mm 0}li{margin:1mm 0}.cover{page-break-after:always}.eyebrow,.topic-kicker{font-weight:700;color:#245497;letter-spacing:.04em;text-transform:uppercase}.eyebrow{margin:7mm 0}.summary{padding:5mm;background:#eaf1fa;border-left:4px solid #245497;margin:7mm 0}.caution{color:#7a3c00;background:#fff5e7;padding:2mm 3mm}.topic{page-break-before:always}.topic-kicker{font-size:9pt}.lesson{padding:3mm 4mm;background:#f3f6fa;border:1px solid #dce6f2}.lesson h3{margin:1mm 0 2mm}.question{break-inside:avoid;border-bottom:1px solid #d9e0ea;padding:3mm 0}.question p{margin:1mm 0}.question-heading{display:flex;gap:4mm;justify-content:space-between}.question-heading strong{flex:1}.question-heading span,.meta{font-size:8.5pt;color:#516078}.choices{margin:2mm 0;padding-left:7mm}.review{break-inside:avoid;border:2px solid #245497;padding:4mm;margin-top:7mm}.review h3{margin:0 0 3mm}.writing{height:8mm;border-bottom:1px solid #aebbd0}@media screen{body{max-width:900px;margin:auto;padding:32px}.cover{min-height:800px}.topic{border-top:3px solid #245497;padding-top:20px}}
 </style></head><body>
 <section class="cover"><p class="eyebrow">Apoyo_academico · revisión curricular</p><h1>Seis combinaciones piloto<br>Paquete para revisión docente</h1>
-<p>Generado el ${html(date)} a partir del código en commit <code>${html(sourceCommit)}</code>.</p>
+<p>Generado el ${html(date)} · Banco provisional <code>${html(PRACTICE_BANK_VERSION)}</code>.</p>
 <div class="summary"><strong>Contenido provisional, sin aprobación docente.</strong> Incluye seis temas, seis explicaciones y ejemplos, doce preguntas diagnósticas de vista previa y treinta y seis preguntas de práctica. Las claves se muestran aquí para revisión; la app no las entrega en la consulta pública.</div>
+<p class="caution">Esta edición incorpora correcciones técnicas de etiquetas y enunciados señaladas en el informe recibido el 15 de octubre de 2026. Sus estados propuestos no equivalen a aprobación docente.</p>
 <h2>Cómo revisar</h2><ol>
 <li>Comprueba que el tema y la referencia DBA candidata correspondan al grado y a la materia. Añade la referencia exacta o corrige la propuesta.</li>
 <li>Lee explicación y ejemplo; corrige exactitud, claridad y dificultad del lenguaje.</li>

@@ -8,6 +8,7 @@ import { AuthError, openAuthStore } from "../src/lib/auth.ts";
 import { topics } from "../src/lib/catalog.ts";
 import { getDiagnostic } from "../src/lib/diagnostic.ts";
 import { getPracticeBank, practiceBankCoverage, publicPracticeQuestions } from "../src/lib/practice.ts";
+import { getPracticeSkills } from "../src/lib/practice-skills.ts";
 import { comparePracticeSessions } from "../src/lib/practice-history.ts";
 
 function fixture(t) {
@@ -18,7 +19,7 @@ function fixture(t) {
   return () => { const store = openAuthStore(dbPath); stores.push(store); return store; };
 }
 
-test("26 temas tienen seis preguntas provisionales, dos niveles y dos subtemas, sin clave pública", () => {
+test("26 temas tienen seis preguntas provisionales, dos niveles y subtemas coherentes, sin clave pública", () => {
   assert.equal(topics.length, 26);
   const ids = new Set();
   for (const topic of topics) {
@@ -26,7 +27,9 @@ test("26 temas tienen seis preguntas provisionales, dos niveles y dos subtemas, 
     assert.equal(bank?.length, 6, topic.id);
     assert.notEqual(bank[0].prompt, bank[1].prompt, topic.id);
     assert.equal(new Set(bank.map((question) => question.prompt)).size, 6, topic.id);
-    assert.equal(new Set(bank.map((question) => question.skillId)).size, 2, topic.id);
+    const skills = getPracticeSkills(topic.id);
+    assert.equal(new Set(bank.map((question) => question.skillId)).size, skills.length, topic.id);
+    assert.ok(bank.every((question) => skills.some((skill) => skill.id === question.skillId)), topic.id);
     assert.deepEqual(practiceBankCoverage(topic.gradeId, topic.subjectId, topic.id).byDifficulty, { 1: 4, 2: 2 });
     assert.equal(practiceBankCoverage(topic.gradeId, topic.subjectId, topic.id).sufficientForTwoDistinctRounds, true);
     const diagnostic = getDiagnostic(topic.gradeId, topic.subjectId, topic.id, "demo");
@@ -48,6 +51,62 @@ test("26 temas tienen seis preguntas provisionales, dos niveles y dos subtemas, 
   assert.equal(insufficient.total, 3);
   assert.equal(insufficient.sufficientForTwoDistinctRounds, false);
   assert.equal(practiceBankCoverage("G05", "MAT", "G05-MAT", null).sufficientForTwoDistinctRounds, false);
+});
+
+test("correcciones técnicas del piloto conservan IDs y claves mientras ajustan subtemas y enunciados", () => {
+  const ids = ["G05-MAT", "G05-ESP", "G10-MAT", "G10-ESP", "G10-FIS", "G10-QUI"];
+  const banks = Object.fromEntries(ids.map((id) => {
+    const topic = topics.find((item) => item.id === id);
+    return [id, getPracticeBank(topic.gradeId, topic.subjectId, id)];
+  }));
+  const question = (topic, number) => banks[topic][number - 1];
+  assert.equal(question("G05-MAT", 1).skillId, "G05-MAT:suma-distinto-denominador");
+  assert.equal(question("G05-ESP", 1).skillId, "G05-ESP:frase-introductoria");
+  assert.equal(question("G10-MAT", 2).skillId, "G10-MAT:seno");
+  assert.match(question("G10-MAT", 4).prompt, /ángulo agudo formado por el cateto de 8 y la hipotenusa/);
+  assert.equal(question("G10-MAT", 4).options.find((option) => option.id === question("G10-MAT", 4).correctOptionId).text, "8/10");
+  assert.equal(question("G10-ESP", 2).skillId, "G10-ESP:identificar-razon");
+  assert.equal(question("G10-QUI", 1).skillId, "G10-QUI:balanceo-coeficientes");
+  assert.equal(question("G10-QUI", 2).skillId, "G10-QUI:atomos-en-formulas");
+  const physics = getDiagnostic("G10", "FIS", "G10-FIS", "demo");
+  const chemistry = getDiagnostic("G10", "QUI", "G10-QUI", "demo");
+  assert.match(physics.questions[0].prompt, /misma dirección y el mismo sentido/);
+  assert.match(chemistry.questions[0].prompt, /coeficientes enteros mínimos/);
+});
+
+test("respuestas y sesiones antiguas conservan su clave y actualizan el subtema corregido", async (t) => {
+  const dir = mkdtempSync(path.join(tmpdir(), "apoyo-skill-correction-"));
+  const dbPath = path.join(dir, "practice.sqlite");
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  let store = openAuthStore(dbPath);
+  const { user } = await store.register({ email: "skill-correction@example.test", password: "clave-segura-123", adultConfirmed: true });
+  const started = store.startPractice(user.id, { gradeId: "G05", subjectId: "MAT", topicId: "G05-MAT" });
+  store.close();
+
+  const db = new DatabaseSync(dbPath);
+  const row = db.prepare("SELECT snapshot_json FROM practice_session_questions WHERE session_id=? AND question_id=?")
+    .get(started.session.id, "practice-g05-mat-01");
+  const snapshot = { ...JSON.parse(row.snapshot_json), skillId: "G05-MAT:suma-mismo-denominador" };
+  db.prepare("UPDATE practice_session_questions SET snapshot_json=? WHERE session_id=? AND question_id=?")
+    .run(JSON.stringify(snapshot), started.session.id, "practice-g05-mat-01");
+  db.close();
+
+  store = openAuthStore(dbPath);
+  const answered = store.answerPractice(user.id, { sessionId: started.session.id,
+    questionId: "practice-g05-mat-01", optionId: "b" });
+  assert.equal(answered.feedback.correct, true);
+  assert.equal(store.getPracticeSession(user.id, started.session.id).answers[0].skillId,
+    "G05-MAT:suma-distinto-denominador");
+  store.close();
+
+  const legacy = new DatabaseSync(dbPath);
+  legacy.prepare("UPDATE practice_answers SET skill_id=? WHERE session_id=? AND question_id=?")
+    .run("G05-MAT:suma-mismo-denominador", started.session.id, "practice-g05-mat-01");
+  legacy.close();
+  store = openAuthStore(dbPath);
+  assert.equal(store.getPracticeSession(user.id, started.session.id).answers[0].skillId,
+    "G05-MAT:suma-distinto-denominador");
+  store.close();
 });
 
 test("sesión persiste tras reinicio, califica y completa progreso solo con dos respuestas", async (t) => {
@@ -246,7 +305,7 @@ test("migra sesiones antiguas de dos preguntas sin alterar sus respuestas ni mos
 test("totales por subtema abarcan todo el histórico aunque la lista visual muestre 200 rondas", async (t) => {
   const store = fixture(t)();
   const { user } = await store.register({ email: "all-history@example.test", password: "clave-segura-123", adultConfirmed: true });
-  const selection = { gradeId: "G05", subjectId: "MAT", topicId: "G05-MAT" };
+  const selection = { gradeId: "G04", subjectId: "MAT", topicId: "G04-MAT" };
   const bank = getPracticeBank(selection.gradeId, selection.subjectId, selection.topicId);
   for (let round = 0; round < 201; round++) {
     const started = store.startPractice(user.id, selection);

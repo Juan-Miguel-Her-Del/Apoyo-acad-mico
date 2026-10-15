@@ -58,22 +58,24 @@ test("sin respuestas, datos anteriores sin skills y cifras corruptas quedan inde
 });
 
 test("agregados por subtema provienen de respuestas persistidas y se aíslan por cuenta", async (t) => {
+  const selectedTopicId = "G04-MAT";
+  const selectedSkillId = "G04-MAT:representar-fracciones";
   const dir = mkdtempSync(path.join(tmpdir(), "apoyo-skill-progress-"));
   const store = openAuthStore(path.join(dir, "progress.sqlite"));
   t.after(() => { store.close(); rmSync(dir, { recursive: true, force: true }); });
   const a = await store.register({ email: "skill-a@example.test", password: "clave-segura-123", adultConfirmed: true });
   const b = await store.register({ email: "skill-b@example.test", password: "clave-segura-123", adultConfirmed: true });
-  const bank = getPracticeBank("G05", "MAT", topicId);
+  const bank = getPracticeBank("G04", "MAT", selectedTopicId);
   assert.ok(bank?.length >= 4);
-  assert.ok(bank.filter((question) => question.skillId === skillId).length >= 2);
+  assert.ok(bank.filter((question) => question.skillId === selectedSkillId).length >= 2);
 
   for (let attemptNumber = 0; attemptNumber < 2; attemptNumber += 1) {
-    const session = store.startPractice(a.user.id, { gradeId: "G05", subjectId: "MAT", topicId });
+    const session = store.startPractice(a.user.id, { gradeId: "G04", subjectId: "MAT", topicId: selectedTopicId });
     for (const question of session.questions) {
       const privateQuestion = bank.find((candidate) => candidate.id === question.id);
       assert.ok(privateQuestion);
       const wrong = privateQuestion.options.find((option) => option.id !== privateQuestion.correctOptionId);
-      const optionId = attemptNumber === 1 && privateQuestion.skillId === skillId
+      const optionId = attemptNumber === 1 && privateQuestion.skillId === selectedSkillId
         ? wrong.id : privateQuestion.correctOptionId;
       store.answerPractice(a.user.id, { sessionId: session.session.id, questionId: question.id, optionId });
     }
@@ -82,12 +84,12 @@ test("agregados por subtema provienen de respuestas persistidas y se aíslan por
   const sessions = store.listPracticeSessions(a.user.id);
   assert.equal(sessions.length, 2);
   assert.ok(sessions.every((session) => session.skills.length === 2));
-  const result = skillInsight(sessions, topicId, skillId, store.listPracticeSkillTotals(a.user.id));
+  const result = skillInsight(sessions, selectedTopicId, selectedSkillId, store.listPracticeSkillTotals(a.user.id));
   assert.equal(result.completeAttempts, 2);
   assert.equal(result.answered, 2);
   assert.equal(result.correct, 1);
   assert.equal(result.level, "developing");
-  assert.equal(skillInsight(store.listPracticeSessions(b.user.id), topicId, skillId,
+  assert.equal(skillInsight(store.listPracticeSessions(b.user.id), selectedTopicId, selectedSkillId,
     store.listPracticeSkillTotals(b.user.id)).level, "indeterminate");
 });
 

@@ -31,6 +31,7 @@ La fuente funcional vigente es el [proyecto AP de Jira](https://juanmiguelsworks
 | [Desarrollo del Sprint 4 restaurado](27-desarrollo-sprint-4-restaurado.md) | Reglas por grado, ejemplos, valoración, pregunta breve, sesiones estudiantiles preparadas y estado de Jira |
 | [Paquete para revisión docente (PDF)](28-paquete-revision-docente-piloto.pdf) · [HTML](28-paquete-revision-docente-piloto.html) | Seis combinaciones piloto, explicaciones, preguntas, respuestas y formato de observaciones; contenido provisional |
 | [Referentes curriculares del MEN](29-trazabilidad-curricular-men.md) | DBA, estándares y mallas oficiales; cotejo preliminar de las seis combinaciones |
+| [Aplicación de la revisión técnica del piloto](30-aplicacion-revision-tecnica-piloto.md) | Cambios técnicos hechos a partir del informe y la matriz recibidos; aprobación docente pendiente |
 | [Corrección explicada](21-retroalimentacion-practica.md) | Contrato y puerta de revisión docente de correcciones |
 | [Cuentas estudiantiles](22-cuentas-estudiantes-consentimiento.md) | Base técnica interna, autorización y decisiones pendientes |
 | [Criterios de aceptación](criterios-aceptacion.md) | Escenarios comprobables para las historias |

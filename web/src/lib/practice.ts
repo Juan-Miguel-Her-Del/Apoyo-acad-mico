@@ -2,7 +2,18 @@ import { topics } from "./catalog.ts";
 import { getStudyDemo } from "./study-demo.ts";
 import { getPracticeSkills } from "./practice-skills.ts";
 
-export const PRACTICE_BANK_VERSION = "demo-2026-10-v2";
+export const PRACTICE_BANK_VERSION = "demo-2026-10-v3";
+
+// Correcciones de clasificación de preguntas existentes. Los IDs se conservan
+// para que las respuestas históricas puedan reclasificarse sin cambiar claves.
+export const PRACTICE_SKILL_CORRECTIONS: Readonly<Record<string, string>> = {
+  "practice-g05-mat-01": "G05-MAT:suma-distinto-denominador",
+  "practice-g05-esp-01": "G05-ESP:frase-introductoria",
+  "practice-g10-mat-02": "G10-MAT:seno",
+  "practice-g10-esp-02": "G10-ESP:identificar-razon",
+  "practice-g10-qui-01": "G10-QUI:balanceo-coeficientes",
+  "practice-g10-qui-02": "G10-QUI:atomos-en-formulas",
+};
 
 export type PracticeQuestionView = {
   id: string;
@@ -93,7 +104,7 @@ const additionalDrafts: Readonly<Record<string, readonly [Draft, Draft]>> = {
   ],
   "G10-MAT": [
     ["Si opuesto = 4 e hipotenusa = 5, ¿cuál es el seno?", ["4/5", "5/4", "3/5"], 0, "Seno = opuesto/hipotenusa."],
-    ["Si un triángulo rectángulo tiene catetos 6 y 8 e hipotenusa 10, ¿cuál es el coseno del ángulo adyacente al cateto de 8?", ["6/10", "8/10", "10/8"], 1, "Coseno = adyacente/hipotenusa = 8/10."],
+    ["Si un triángulo rectángulo tiene catetos 6 y 8 e hipotenusa 10, ¿cuál es el coseno del ángulo agudo formado por el cateto de 8 y la hipotenusa?", ["6/10", "8/10", "10/8"], 1, "Para ese ángulo, el cateto adyacente mide 8; coseno = 8/10."],
   ],
   "G11-MAT": [
     ["Una bolsa contiene 1 bola roja y 3 azules. ¿Probabilidad de roja?", ["1/4", "1/3", "3/4"], 0, "Hay un resultado favorable entre cuatro bolas."],
@@ -195,7 +206,7 @@ const retryDrafts: Readonly<Record<string, readonly [Draft, Draft]>> = {
   "G04-ESP": [["En «Los árboles producen sombra», ¿de qué se habla?", ["De árboles", "De bicicletas", "De libros"], 0, "Los árboles son el tema."],
     ["«El agua es necesaria: sirve para beber y regar». ¿Idea principal?", ["El agua es necesaria", "El agua es azul", "Regar es jugar"], 0, "Los usos desarrollan la idea de su necesidad."]],
   "G05-ESP": [["Un texto explica por qué llueve. ¿Qué título le conviene?", ["Cómo se forma la lluvia", "El gigante invisible", "Día de fiesta"], 0, "El título indica el tema explicado."],
-    ["En un texto sobre perros, ¿qué subtítulo organiza una sección?", ["Cómo se alimentan", "Érase una vez", "¡Sorpresa!"], 0, "Anuncia información concreta."]],
+    ["En un texto sobre perros, ¿qué subtítulo organiza una sección?", ["Cómo se alimentan los perros", "Érase una vez", "¡Sorpresa!"], 0, "El subtítulo anuncia información concreta sobre el tema del texto."]],
   "G06-ESP": [["«No corras en el pasillo». ¿Qué intención tiene?", ["Dar una indicación", "Contar una historia", "Describir una pintura"], 0, "Indica una conducta."],
     ["Un aviso dice «La clase empieza a las 8». ¿Para qué sirve?", ["Informar la hora", "Enseñar una receta", "Inventar un cuento"], 0, "Comunica un horario."]],
   "G07-ESP": [["¿Cuál es una razón para ahorrar agua?", ["Ayuda a conservar el recurso", "La palabra tiene letras", "El vaso es verde"], 0, "Conservar el recurso apoya la propuesta."],
@@ -229,8 +240,8 @@ export function getPracticeBank(gradeId: string, subjectId: string, topicId: str
   const extra = additionalDrafts[topicId];
   const retry = retryDrafts[topicId];
   const skills = getPracticeSkills(topicId);
-  if (!extra || !retry || skills.length !== 2) return null;
-  return [
+  if (!extra || !retry || skills.length < 2) return null;
+  const questions: PracticeQuestion[] = [
     {
       id: `practice-${topicId.toLowerCase()}-01`, topicId,
       prompt: lesson.question.prompt,
@@ -272,6 +283,13 @@ export function getPracticeBank(gradeId: string, subjectId: string, topicId: str
       skillId: skills[index].id,
     })),
   ];
+  return questions.map((question) => {
+    const correctedSkillId = PRACTICE_SKILL_CORRECTIONS[question.id];
+    if (!correctedSkillId) return question;
+    const skill = skills.find((item) => item.id === correctedSkillId);
+    if (!skill) throw new Error(`Subtema no disponible para ${question.id}`);
+    return { ...question, skillId: skill.id };
+  });
 }
 
 export function publicPracticeQuestions(questions: readonly PracticeQuestion[]): PracticeQuestionView[] {
