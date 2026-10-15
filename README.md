@@ -48,10 +48,11 @@ La prueba de navegador usa la compilación de producción. En una terminal ejecu
 
 - [Desarrollo del Sprint 4](docs/19-desarrollo-sprint-4.md): práctica, sesiones y pruebas.
 - [Desarrollo del Sprint 5](docs/20-desarrollo-sprint-5.md): alcance original, práctica, progreso y criterios abiertos.
+- [Auditoría de alcance de sprints](docs/23-auditoria-alcance-sprints.md): revisión de los Sprints 1–6 y restauración de los alcances 2–4.
 - [Correcciones de práctica](docs/21-retroalimentacion-practica.md): regla de revisión antes de mostrar explicaciones.
 - [Cuentas estudiantiles](docs/22-cuentas-estudiantes-consentimiento.md): base técnica y decisiones formales pendientes.
 - [Documentación completa](docs/README.md): planes y cierres anteriores.
 - [Aplicación web](web/README.md): API y detalles técnicos.
 - [Jira AP](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP): seguimiento del proyecto.
 
-Los Sprints 1–4 se cerraron como prototipos. Un cierre anticipado del Sprint 5 quedó en Jira como historial de demostración (id 9; AP-201, AP-202, AP-205 y AP-319). Tras corregir el alcance, el [Sprint 5 original](https://juanmiguelsworkspace-40060689.atlassian.net/jira/software/projects/AP/boards/3) se restauró en un sprint nuevo (id 39) con sus **24 incidencias previstas**: **19 están Listo y 5 En curso**. La revisión curricular y el registro de menores conservan sus dependencias.
+El Sprint 1 conserva sus 12 incidencias terminadas. Los cierres anticipados de demostración de los Sprints 2–5 quedan como historial en Jira; sus alcances completos se restauraron en sprints futuros separados: **Sprint 2: 24 incidencias (10 Listo), Sprint 3: 20 (6 Listo), Sprint 4: 25 (6 Listo) y Sprint 5: 24 (19 Listo)**. El Sprint 6 sigue futuro con sus 23 incidencias vigentes. No se fijaron fechas nuevas para los Sprints 2–4 porque sus fechas originales ya pasaron. La revisión curricular y el registro de menores conservan sus dependencias.

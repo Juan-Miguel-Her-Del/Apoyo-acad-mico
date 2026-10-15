@@ -1,5 +1,7 @@
 # Sprint 4 — práctica con seguimiento
 
+> **Nota posterior (15 de octubre de 2026):** este documento describe el cierre histórico de demostración. Las 25 incidencias principales del alcance previo al cierre se restauraron en un sprint futuro separado, id 42. Véase la [auditoría actual de sprints](23-auditoria-alcance-sprints.md).
+
 **Inicio y cierre:** 15 de octubre de 2026, antes de la entrega académica del 20 de octubre. Jira [AP Sprint 4](https://juanmiguelsworkspace-40060689.atlassian.net/jira/software/projects/AP/boards/3) cerró con **6/6 incidencias principales en Listo**: AP-173, AP-174 y AP-177 para seleccionar y mostrar ejercicios del tema; AP-180, AP-181 y AP-184 para capturar, evaluar y registrar respuestas.
 
 ## Alcance de demostración

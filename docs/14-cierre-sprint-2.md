@@ -1,5 +1,7 @@
 # Cierre del Sprint 2 — Apoyo_academico
 
+> **Nota posterior (15 de octubre de 2026):** esta acta conserva el cierre histórico de demostración. Las 24 incidencias principales del alcance original se restauraron en un sprint futuro separado, id 40. Consulta la [auditoría actual de sprints](23-auditoria-alcance-sprints.md) antes de usar los conteos de esta acta como estado vigente.
+
 **Jira:** Sprint 2 cerrado el **8 de octubre de 2026, 19:25 (Bogotá)**, antes de la fecha planificada del 12 de octubre, por solicitud del titular del proyecto. El alcance aceptado para el cierre es **demostración funcional con pendientes explícitos**, sin declarar listo el diagnóstico publicado ni el tratamiento de datos de menores. [Tablero AP](https://juanmiguelsworkspace-40060689.atlassian.net/jira/software/projects/AP/boards/3).
 
 ## Resultado verificable

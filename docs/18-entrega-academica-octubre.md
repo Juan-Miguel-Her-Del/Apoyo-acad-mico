@@ -1,5 +1,7 @@
 # Entrega académica de octubre — alcance de demostración
 
+> **Nota posterior (15 de octubre de 2026):** el cierre descrito aquí fue una demostración. Las 20 incidencias originalmente planificadas para el Sprint 3 se restauraron en un sprint futuro separado, id 41. Véase la [auditoría actual de sprints](23-auditoria-alcance-sprints.md).
+
 **Actualizado:** 14 de octubre de 2026. El Sprint 3 de Jira se activó y se cerró el 14 de octubre, antes del cierre planificado para el 19 de octubre. La entrega al profesor será el **20 de octubre de 2026**; el titular busca una demostración completa que también pueda presentar a posibles evaluadores de un fondo de emprendimiento.
 
 ## Decisión de producto
