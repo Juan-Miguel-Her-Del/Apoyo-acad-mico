@@ -278,11 +278,19 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
   function listPracticeSessions(userId: string): PracticeSession[] {
     activeUser(userId);
     const rows = db.prepare(`SELECT * FROM (${sessionQuery} WHERE s.user_id=? GROUP BY s.id)
-      ORDER BY started_at DESC,id DESC LIMIT 50`).all(userId) as PracticeSessionRow[];
+      ORDER BY started_at DESC,id DESC LIMIT 200`).all(userId) as PracticeSessionRow[];
     return rows.map(sessionFromRow);
   }
+  function finishPractice(userId: string, body: unknown): PracticeSession {
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new AuthError(400, "Sesión de práctica no válida.");
+    const session = ownedPracticeSession(userId, (body as Record<string, unknown>).sessionId);
+    if (session.status === "completed") return session;
+    db.prepare("UPDATE practice_sessions SET status='completed',completed_at=? WHERE id=? AND user_id=? AND status='open'")
+      .run(new Date().toISOString(), session.id, userId);
+    return ownedPracticeSession(userId, session.id);
+  }
   return { register, login, sessionUser, logout, disableUser, saveProgress, listProgress,
-    startPractice, answerPractice, getPracticeSession, listPracticeSessions, close: () => db.close() };
+    startPractice, answerPractice, finishPractice, getPracticeSession, listPracticeSessions, close: () => db.close() };
 }
 
 type Store = ReturnType<typeof openAuthStore>;

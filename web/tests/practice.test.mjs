@@ -7,6 +7,7 @@ import { AuthError, openAuthStore } from "../src/lib/auth.ts";
 import { topics } from "../src/lib/catalog.ts";
 import { getDiagnostic } from "../src/lib/diagnostic.ts";
 import { getPracticeBank, publicPracticeQuestions } from "../src/lib/practice.ts";
+import { comparePracticeSessions } from "../src/lib/practice-history.ts";
 
 function fixture(t) {
   const dir = mkdtempSync(path.join(tmpdir(), "apoyo-practice-test-"));
@@ -93,4 +94,45 @@ test("rechaza otra cuenta, opciones inválidas, preguntas ajenas, duplicados y s
   assert.equal(store.listPracticeSessions(a.user.id).length, 1);
   store.disableUser(a.user.id);
   fail(() => store.getPracticeSession(a.user.id, started.session.id), 401);
+});
+
+test("finalizar sin respuestas conserva resumen vacío, es idempotente y bloquea respuestas tardías", async (t) => {
+  const store = fixture(t)();
+  const { user } = await store.register({ email: "empty@example.test", password: "clave-segura-123", adultConfirmed: true });
+  const other = await store.register({ email: "other@example.test", password: "clave-segura-123", adultConfirmed: true });
+  const started = store.startPractice(user.id, { gradeId: "G05", subjectId: "MAT", topicId: "G05-MAT" });
+  assert.throws(() => store.finishPractice(other.user.id, { sessionId: started.session.id }), (error) => error instanceof AuthError && error.status === 404);
+  const finished = store.finishPractice(user.id, { sessionId: started.session.id });
+  assert.equal(finished.status, "completed");
+  assert.equal(finished.answered, 0);
+  assert.equal(finished.correctCount, 0);
+  assert.equal(store.finishPractice(user.id, { sessionId: started.session.id }).completedAt, finished.completedAt);
+  const first = getPracticeBank("G05", "MAT", "G05-MAT")[0];
+  assert.throws(() => store.answerPractice(user.id, { sessionId: started.session.id, questionId: first.id, optionId: first.correctOptionId }),
+    (error) => error instanceof AuthError && error.status === 409);
+  assert.deepEqual(store.listProgress(user.id), []);
+  assert.deepEqual(store.listPracticeSessions(other.user.id), []);
+});
+
+test("la comparación usa solo intentos respondidos del mismo tema", async (t) => {
+  const store = fixture(t)();
+  const { user } = await store.register({ email: "compare@example.test", password: "clave-segura-123", adultConfirmed: true });
+  const bank = getPracticeBank("G05", "MAT", "G05-MAT");
+  const first = store.startPractice(user.id, { gradeId: "G05", subjectId: "MAT", topicId: "G05-MAT" });
+  for (const question of bank) store.answerPractice(user.id, { sessionId: first.session.id, questionId: question.id, optionId: question.correctOptionId });
+  const otherTopic = store.startPractice(user.id, { gradeId: "G05", subjectId: "ESP", topicId: "G05-ESP" });
+  store.finishPractice(user.id, { sessionId: otherTopic.session.id });
+  const second = store.startPractice(user.id, { gradeId: "G05", subjectId: "MAT", topicId: "G05-MAT" });
+  for (const question of bank) {
+    const wrong = question.options.find((option) => option.id !== question.correctOptionId);
+    store.answerPractice(user.id, { sessionId: second.session.id, questionId: question.id, optionId: wrong.id });
+  }
+  const items = store.listPracticeSessions(user.id);
+  const comparison = comparePracticeSessions(items, "G05-MAT");
+  assert.equal(comparison.status, "ready");
+  assert.equal(comparison.deltaPoints, -100);
+  assert.equal(comparison.latest.id, second.session.id);
+  assert.equal(comparison.previous.id, first.session.id);
+  assert.equal(comparePracticeSessions(items, "G05-ESP").status, "insufficient");
+  assert.equal(comparePracticeSessions(items, "G10-FIS").status, "insufficient");
 });

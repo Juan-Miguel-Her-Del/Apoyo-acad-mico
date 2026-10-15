@@ -196,12 +196,18 @@ try {
     await click(".practice-session .primary-button", "Revisar respuesta");
     await waitFor(() => evaluate("document.querySelector('.practice-session .answer-feedback') !== null"), "respuesta de práctica 2");
     await click(".practice-session .answer-feedback .primary-button", "Ver resultado");
-    await waitText(".practice-result", "Práctica completada");
+    await waitText(".practice-result", "Práctica terminada");
     const closedPractice = await evaluate("fetch('/api/practice/answer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: localStorage.getItem('apoyo-practice:G10-MAT'), questionId: 'practice-g10-mat-02', optionId: 'a' }) }).then((response) => response.status)");
     assert.equal(closedPractice, 409, "una sesión terminada no debe cambiar de resultado");
     const forgedStudy = await evaluate("fetch('/api/progress', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gradeId: 'G10', subjectId: 'MAT', topicId: 'G10-MAT', kind: 'study', completed: true }) }).then((response) => response.status)");
     assert.equal(forgedStudy, 400, "el avance de práctica no puede declararse desde el cliente");
-    await waitText(".account-panel", "G10-MAT");
+    await waitText(".account-panel", "Razones y funciones trigonométricas");
+    await click(".practice-result .text-button", "Repetir práctica");
+    await waitText(".practice-session .question-progress", "Pregunta 1 de 2");
+    await click(".practice-session > .text-button", "Terminar práctica ahora");
+    await waitText(".practice-result", "sin respuestas");
+    await waitText(".account-panel", "terminada sin respuestas");
+    await waitText(".account-panel", "Aún no hay sesiones suficientes para comparar tu progreso");
   }
   console.log("OK: dos respuestas del mismo subtema muestran señal demo con preguntas trazables.");
   await click(".grade-choice", "5.º");
@@ -425,7 +431,7 @@ try {
     await navigate();
     await waitText(".account-panel", testEmail);
     await waitText(".account-panel", "G10-QUI");
-    await waitText(".account-panel", "G10-MAT");
+    await waitText(".account-panel", "Razones y funciones trigonométricas");
     const logoutStatus = await evaluate("fetch('/api/auth/logout', { method: 'POST' }).then((response) => response.status)");
     assert.equal(logoutStatus, 200);
     await navigate();
@@ -440,7 +446,20 @@ try {
     const loginStatus = await evaluate(`fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(testEmail)}, password: ${JSON.stringify(testPassword)} }) }).then((response) => response.status)`);
     assert.equal(loginStatus, 200);
     await navigate();
-    await waitText(".account-panel", "G10-MAT");
+    await waitText(".account-panel", "Razones y funciones trigonométricas");
+    const secondAttempt = await evaluate(`(async () => {
+      const started = await fetch('/api/practice/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gradeId: 'G10', subjectId: 'MAT', topicId: 'G10-MAT' }) }).then((response) => response.json());
+      for (const question of started.questions) {
+        const response = await fetch('/api/practice/answer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: started.session.id, questionId: question.id, optionId: question.options[0].id }) });
+        if (!response.ok) return false;
+      }
+      return true;
+    })()`);
+    assert.equal(secondAttempt, true);
+    await navigate();
+    await waitText(".comparison-result", "Anterior:");
+    await waitText(".comparison-result", "Reciente:");
+    assert.equal(await evaluate("document.querySelector('.comparison-label select').value"), "G10-MAT");
     console.log("OK: cuenta adulta, progreso persistente, cierre e inicio de sesión en navegador.");
   }
 } finally {

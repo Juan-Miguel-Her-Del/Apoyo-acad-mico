@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { grades, subjects, topics } from "@/lib/catalog";
+import { comparePracticeSessions, type PracticeHistoryItem } from "@/lib/practice-history";
 
 type Account = { id: string; email: string };
 type ProgressItem = {
@@ -11,16 +13,21 @@ type ProgressItem = {
   completed: boolean;
   updatedAt: string;
 };
-type PracticeItem = {
-  id: string; topicId: string; status: "open" | "completed";
-  total: number; answered: number; correctCount: number;
-  completedAt: string | null;
-};
+function topicLabel(item: PracticeHistoryItem) {
+  const grade = grades.find((value) => value.id === item.gradeId)?.label ?? item.gradeId;
+  const subject = subjects.find((value) => value.id === item.subjectId)?.name ?? item.subjectId;
+  const topic = topics.find((value) => value.id === item.topicId)?.name ?? item.topicId;
+  return `${grade} · ${subject} · ${topic}`;
+}
+function dateLabel(value: string | null) {
+  return value ? new Date(value).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" }) : "sin fecha";
+}
 
 export default function AccountPanel() {
   const [account, setAccount] = useState<Account | null>(null);
   const [items, setItems] = useState<ProgressItem[]>([]);
-  const [practiceItems, setPracticeItems] = useState<PracticeItem[]>([]);
+  const [practiceItems, setPracticeItems] = useState<PracticeHistoryItem[]>([]);
+  const [selectedTopic, setSelectedTopic] = useState("");
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -98,6 +105,7 @@ export default function AccountPanel() {
       setAccount(null);
       setItems([]);
       setPracticeItems([]);
+      setSelectedTopic("");
       setMessage("Sesión cerrada.");
       window.dispatchEvent(new Event("ap-auth-changed"));
     } catch (cause) {
@@ -106,6 +114,10 @@ export default function AccountPanel() {
       setBusy(false);
     }
   }
+
+  const completedTopics = [...new Set(practiceItems.filter((item) => item.status === "completed").map((item) => item.topicId))];
+  const comparisonTopic = completedTopics.includes(selectedTopic) ? selectedTopic : completedTopics[0] ?? "";
+  const comparison = comparisonTopic ? comparePracticeSessions(practiceItems, comparisonTopic) : null;
 
   return <section className="account-card" aria-labelledby="account-title">
     <div><p className="eyebrow">Cuenta para la demostración</p><h2 id="account-title">Guarda tu recorrido</h2>
@@ -119,8 +131,24 @@ export default function AccountPanel() {
       </li>)}</ul>}
       <h3>Historial de práctica</h3>
       {practiceItems.length === 0 ? <p>Aún no has iniciado una práctica con seguimiento.</p> : <ul>{practiceItems.map((item) => <li key={item.id}>
-        {item.topicId} · {item.status === "completed" ? `${item.correctCount}/${item.total} correctas` : `${item.answered}/${item.total} respondidas; pendiente`}
+        {topicLabel(item)} · {item.status === "completed" ? item.answered === 0 ? "terminada sin respuestas" : `${item.correctCount}/${item.answered} correctas; ${item.answered}/${item.total} respondidas` : `${item.answered}/${item.total} respondidas; pendiente`} · {dateLabel(item.completedAt ?? item.startedAt)}
       </li>)}</ul>}
+      <h3>Comparar intentos de un tema</h3>
+      {completedTopics.length > 0 && <label className="comparison-label">Tema
+        <select value={comparisonTopic} onChange={(event) => setSelectedTopic(event.target.value)}>
+          {completedTopics.map((topicId) => {
+            const item = practiceItems.find((value) => value.topicId === topicId)!;
+            return <option key={topicId} value={topicId}>{topicLabel(item)}</option>;
+          })}
+        </select>
+      </label>}
+      {!comparison || comparison.status === "insufficient" ? <p>Aún no hay sesiones suficientes para comparar tu progreso.</p> : <div className="comparison-result" role="status">
+        <p>Anterior: {comparison.previous.correctCount}/{comparison.previous.answered} correctas · {dateLabel(comparison.previous.completedAt)}.</p>
+        <p>Reciente: {comparison.latest.correctCount}/{comparison.latest.answered} correctas · {dateLabel(comparison.latest.completedAt)}.</p>
+        <strong>{comparison.deltaPoints > 0 ? `Subiste ${comparison.deltaPoints} puntos porcentuales` : comparison.deltaPoints < 0 ? `Bajaste ${Math.abs(comparison.deltaPoints)} puntos porcentuales` : "Mismo porcentaje de aciertos"}.</strong>
+        <p>Comparación orientativa de las preguntas respondidas en dos intentos de demostración. No es una evaluación académica validada.</p>
+      </div>}
+      {comparison?.status === "insufficient" && comparison.latest && <p>Último intento con respuestas: {comparison.latest.correctCount}/{comparison.latest.answered} correctas · {dateLabel(comparison.latest.completedAt)}.</p>}
       <button className="text-button" type="button" onClick={() => void refreshProgress()}>Actualizar progreso</button>
     </div> : <div className="account-panel">
       <div className="account-tabs"><button type="button" aria-pressed={mode === "login"} onClick={() => { setMode("login"); setMessage(""); }}>Iniciar sesión</button><button type="button" aria-pressed={mode === "register"} onClick={() => { setMode("register"); setMessage(""); }}>Crear cuenta</button></div>

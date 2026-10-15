@@ -9,14 +9,12 @@ type Session = {
   total: number; answered: number; correctCount: number;
 };
 type Feedback = { correct: boolean; correctOptionId: string; explanation: string };
-type SavedAnswer = { questionId: string; optionId: string; correct: boolean };
 
 function storageKey(topicId: string) { return `apoyo-practice:${topicId}`; }
 
 export default function PracticeSession({ selection }: { selection: Selection }) {
   const [session, setSession] = useState<Session | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [answers, setAnswers] = useState<SavedAnswer[]>([]);
   const [index, setIndex] = useState(0);
   const [optionId, setOptionId] = useState("");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -33,13 +31,12 @@ export default function PracticeSession({ selection }: { selection: Selection })
       const response = await fetch(`/api/practice/session?sessionId=${encodeURIComponent(id)}`, {
         cache: "no-store", credentials: "same-origin",
       });
-      if (response.status === 401 || response.status === 503) { setSession(null); setQuestions([]); setAnswers([]); return; }
-      if (response.status === 404) { window.localStorage.removeItem(storageKey(topicId)); setSession(null); setQuestions([]); setAnswers([]); return; }
+      if (response.status === 401 || response.status === 503) { setSession(null); setQuestions([]); return; }
+      if (response.status === 404) { window.localStorage.removeItem(storageKey(topicId)); setSession(null); setQuestions([]); return; }
       const body = await response.json();
       if (!response.ok || !body.session || !Array.isArray(body.questions)) return;
       setSession(body.session);
       setQuestions(body.questions);
-      setAnswers(Array.isArray(body.answers) ? body.answers : []);
       setIndex(body.session.answered);
       setFeedback(null);
       setOptionId("");
@@ -67,7 +64,7 @@ export default function PracticeSession({ selection }: { selection: Selection })
         throw new Error(response.status === 401 ? "Inicia sesión arriba para guardar una práctica de dos preguntas." : body.error ?? "No se pudo iniciar la práctica.");
       }
       window.localStorage.setItem(storageKey(topicId), body.session.id);
-      setSession(body.session); setQuestions(body.questions); setAnswers([]);
+      setSession(body.session); setQuestions(body.questions);
       setIndex(0); setOptionId(""); setFeedback(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo iniciar la práctica.");
@@ -89,11 +86,28 @@ export default function PracticeSession({ selection }: { selection: Selection })
       }
       setSession(body.session);
       setFeedback(body.feedback);
-      setAnswers((current) => [...current, { questionId: question.id, optionId, correct: body.feedback.correct }]);
       if (body.session.status === "completed") window.dispatchEvent(new Event("ap-progress-saved"));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo evaluar la respuesta.");
     } finally { sending.current = false; setBusy(false); }
+  }
+
+  async function finish() {
+    if (!session || session.status !== "open" || busy || sending.current) return;
+    setBusy(true); setError("");
+    try {
+      const response = await fetch("/api/practice/finish", {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin",
+        body: JSON.stringify({ sessionId: session.id }),
+      });
+      const body = await response.json();
+      if (!response.ok || !body.session) throw new Error(body.error ?? "No se pudo terminar la práctica.");
+      setSession(body.session);
+      setFeedback(null);
+      window.dispatchEvent(new Event("ap-progress-saved"));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo terminar la práctica.");
+    } finally { setBusy(false); }
   }
 
   const question = questions[index];
@@ -118,6 +132,7 @@ export default function PracticeSession({ selection }: { selection: Selection })
         <button className="primary-button" type="button" onClick={() => { setIndex(index + 1); setOptionId(""); setFeedback(null); }}>Siguiente pregunta</button>
       </div>}
     </div>}
+    {session?.status === "open" && <button className="text-button" type="button" onClick={finish} disabled={busy}>Terminar práctica ahora</button>}
     {session?.status === "completed" && feedback && question && <div className={`answer-feedback ${feedback.correct ? "correct" : "incorrect"}`} role="status">
       <strong>{feedback.correct ? "Respuesta correcta" : "Respuesta incorrecta"}</strong>
       <p>{feedback.explanation}</p>
@@ -125,10 +140,10 @@ export default function PracticeSession({ selection }: { selection: Selection })
       <button className="primary-button" type="button" onClick={() => setFeedback(null)}>Ver resultado</button>
     </div>}
     {session?.status === "completed" && !feedback && <div className="practice-result" role="status">
-      <strong>Práctica completada: {session.correctCount} de {session.total} respuestas correctas.</strong>
-      <p>Resultado de demostración guardado en tu cuenta. Puedes consultar el historial arriba.</p>
-      {answers.length > 0 && <p>Respuestas registradas: {answers.length}.</p>}
-      <button className="text-button" type="button" onClick={start} disabled={busy}>Intentar otra vez</button>
+      <strong>{session.answered === 0 ? "Práctica terminada sin respuestas." : `Práctica terminada: ${session.correctCount} de ${session.answered} respuestas correctas.`}</strong>
+      <p>{session.answered === 0 ? "No hay un resultado que calcular todavía." : `${session.answered} de ${session.total} preguntas respondidas. ${session.total - session.answered} quedaron sin responder.`}</p>
+      <p>Esta sesión quedó guardada en tu cuenta de demostración. Puedes consultar el historial arriba.</p>
+      <button className="text-button" type="button" onClick={start} disabled={busy}>Repetir práctica de demostración</button>
     </div>}
     {error && <p className="diagnostic-error" role="alert">{error}</p>}
   </div>;
