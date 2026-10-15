@@ -46,6 +46,7 @@ La prueba de navegador usa la compilación de producción. En una terminal ejecu
 
 ## Documentación y estado
 
+- [Paquete para revisión docente de las seis combinaciones piloto (PDF)](docs/28-paquete-revision-docente-piloto.pdf): temas, explicaciones, ejemplos, preguntas, claves y espacio para observaciones. También disponible en [HTML](docs/28-paquete-revision-docente-piloto.html).
 - [Desarrollo del Sprint 4](docs/19-desarrollo-sprint-4.md): práctica, sesiones y pruebas.
 - [Desarrollo del Sprint 5](docs/20-desarrollo-sprint-5.md): alcance original, práctica, progreso y criterios abiertos.
 - [Auditoría de alcance de sprints](docs/23-auditoria-alcance-sprints.md): revisión de los Sprints 1–6 y restauración de los alcances 2–4.
