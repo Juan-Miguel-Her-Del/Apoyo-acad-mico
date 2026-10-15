@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { analyzeDemoSkills } from "@/lib/diagnostic-analysis";
+import { diagnosticSkillInsights, MIN_DIAGNOSTIC_SKILL_ANSWERS } from "@/lib/diagnostic-analysis";
 import type { QuestionView } from "@/lib/diagnostic";
 import type { Selection } from "@/lib/selection";
 import StudyDemo from "./study-demo";
@@ -150,7 +150,7 @@ export default function DiagnosticAccountAttempt({ selection, onExit }: { select
   if (studying) return <><StudyDemo selection={selection} /><button className="text-button" type="button" onClick={() => setStudying(false)}>Volver al diagnóstico guardado</button></>;
 
   const answeredQuestions: QuestionView[] = answers.map((answer) => ({ id: answer.questionId, prompt: "", options: [], skill: answer.skill }));
-  const analysis = analyzeDemoSkills(answeredQuestions, answers);
+  const analysis = diagnosticSkillInsights(answeredQuestions, answers);
   return <div className="diagnostic-account-attempt">
     <h3>Diagnóstico de demostración en tu cuenta</h3>
     <p>Las preguntas y el resultado son provisionales. Tu intento y respuestas se guardan en el servidor de esta cuenta adulta; no son una calificación validada.</p>
@@ -183,8 +183,14 @@ export default function DiagnosticAccountAttempt({ selection, onExit }: { select
       <p>Respondiste {attempt.answered} de {attempt.total} preguntas; acertaste {attempt.correctCount}. Este resultado viene del intento guardado en el servidor.</p>
       {attempt.completionReason === "bank-exhausted" && <p>Se agotaron las preguntas disponibles para este diagnóstico. No se inventó otra pregunta ni un resultado adicional.</p>}
       <h4>Resultados por subtema</h4>
-      <p>Regla provisional: se necesitan al menos dos respuestas del mismo subtema; una sola respuesta no permite concluir dominio o dificultad.</p>
-      {analysis.results.length > 0 && <ul className="skill-results">{analysis.results.map((result) => <li key={result.skill}><strong>{result.skill}</strong>: {result.status === "dificultad-demo" ? "señal de dificultad (demo)" : result.status === "sin-senal-demo" ? "sin señal de dificultad en esta prueba" : "indeterminado: evidencia insuficiente o resultado mixto"}. {result.correct}/{result.answered} aciertos.</li>)}</ul>}
+      <p>Regla provisional: se necesitan al menos {MIN_DIAGNOSTIC_SKILL_ANSWERS} respuestas del mismo subtema. El porcentaje de confianza describe cantidad y consistencia de respuestas de este intento; no mide probabilidad de dominio. Una mezcla equilibrada de aciertos y errores da 0 % y deja el resultado indeterminado.</p>
+      {analysis.skills.length > 0 ? <ul className="skill-results">{analysis.skills.map((result) => <li key={result.skill}>
+        <strong>{result.skill}</strong>: {result.strength ? "fortaleza observada (demo)" : result.status === "dificultad-demo" ? "señal de dificultad (demo)" : "indeterminado: evidencia insuficiente o resultado mixto"}. {result.correct}/{result.answered} aciertos. Confianza en la señal: {result.confidence === null ? "insuficiente por pocas respuestas" : `${result.confidence} % (${result.confidenceLevel})`}.
+      </li>)}</ul> : <p>No hay respuestas por subtema para analizar.</p>}
+      <h4>Fortalezas observadas</h4>
+      {analysis.strengths.length > 0 ? <ul className="skill-strengths">{analysis.strengths.map((result) => <li key={result.skill}>{result.skill} · {result.correct}/{result.answered} aciertos · confianza {result.confidence} %</li>)}</ul>
+        : <p>Aún no hay subtemas con al menos dos respuestas correctas de dos o más preguntas en este intento. Puedes seguir practicando y volver a evaluar el tema.</p>}
+      <p>Este resumen usa solo las respuestas guardadas de este diagnóstico. No representa una tendencia entre sesiones ni una evaluación académica validada.</p>
       <button className="primary-button" type="button" onClick={() => setStudying(true)}>Continuar a estudiar</button>
       <button className="text-button" type="button" onClick={restart} disabled={busy}>Iniciar otro intento</button>
     </div>}
