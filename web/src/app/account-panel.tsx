@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { grades, subjects, topics } from "@/lib/catalog";
 import { comparePracticeSessions, type PracticeHistoryItem } from "@/lib/practice-history";
+import AccountProgressInsights from "./account-progress-insights";
 
 type Account = { id: string; email: string };
 type ProgressItem = {
@@ -44,11 +45,17 @@ export default function AccountPanel() {
         fetch("/api/practice/sessions", { cache: "no-store", credentials: "same-origin" }),
       ]);
       if (epoch !== authEpoch.current) return;
-      if (!progressResponse.ok || !practiceResponse.ok) { setItems([]); setPracticeItems([]); return; }
+      if (!progressResponse.ok || !practiceResponse.ok) {
+        setItems([]);
+        setPracticeItems([]);
+        setMessage("No se pudo cargar tu progreso. Inténtalo de nuevo.");
+        return;
+      }
       const [progressBody, practiceBody] = await Promise.all([progressResponse.json(), practiceResponse.json()]);
       if (epoch !== authEpoch.current) return;
       setItems(Array.isArray(progressBody.items) ? progressBody.items : []);
       setPracticeItems(Array.isArray(practiceBody.items) ? practiceBody.items : []);
+      setMessage((current) => current === "No se pudo cargar tu progreso. Inténtalo de nuevo." ? "" : current);
     } catch {
       if (epoch === authEpoch.current) setMessage("No se pudo cargar tu progreso. Inténtalo de nuevo.");
     }
@@ -133,6 +140,7 @@ export default function AccountPanel() {
       {practiceItems.length === 0 ? <p>Aún no has iniciado una práctica con seguimiento.</p> : <ul>{practiceItems.map((item) => <li key={item.id}>
         {topicLabel(item)} · {item.status === "completed" ? item.answered === 0 ? "terminada sin respuestas" : `${item.correctCount}/${item.answered} correctas; ${item.answered}/${item.total} respondidas` : `${item.answered}/${item.total} respondidas; pendiente`} · {dateLabel(item.completedAt ?? item.startedAt)}
       </li>)}</ul>}
+      <AccountProgressInsights items={practiceItems} />
       <h3>Comparar intentos de un tema</h3>
       {completedTopics.length > 0 && <label className="comparison-label">Tema
         <select value={comparisonTopic} onChange={(event) => setSelectedTopic(event.target.value)}>
