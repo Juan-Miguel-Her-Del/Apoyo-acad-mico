@@ -1,6 +1,8 @@
 import { analyzeDemoSkills } from "./diagnostic-analysis.ts";
 import { prepareExplanationContext, type ReviewedExplanationSource } from "./explanation-context.ts";
 import { topics, type Topic } from "./catalog.ts";
+import { explanationLevelForGrade, words, type ExplanationLevel } from "./explanation-adaptation.ts";
+import { selectReviewedExample } from "./explanation-examples.ts";
 
 export type ExplanationAttempt = {
   attempt: {
@@ -10,15 +12,18 @@ export type ExplanationAttempt = {
   answers: { questionId: string; skill: string; correct: boolean }[];
 };
 
-export type ExplanationRequest = { attemptId: string; subskillId: string };
+export type ExplanationRequest = { attemptId: string; subskillId: string; exampleIndex?: number };
 export type ExplanationProviderInput = {
   gradeId: string; subjectId: string; topicId: string; topicName: string; subskillId: string;
   sourceVersion: string; explanation: string; example: string; reference: string;
+  level: ExplanationLevel; exampleIndex: number;
 };
 export type ExplanationProvider = (input: ExplanationProviderInput) => Promise<unknown>;
 export type ExplanationResult = {
   topicId: string; subskillId: string; explanation: string; example: string;
   reference: string; sourceVersion: string; approvalEvidenceId: string;
+  levelId: ExplanationLevel["id"]; gradeId: string;
+  exampleIndex: number; hasAnotherExample: boolean;
 };
 
 export class ExplanationError extends Error {
@@ -40,14 +45,16 @@ function approvedText(value: unknown, original: string) {
 
 // A provider may extract approved text; it may not introduce new academic claims.
 export function validateGeneratedExplanation(output: unknown, input: ExplanationProviderInput,
-  source: ReviewedExplanationSource): ExplanationResult {
+  source: ReviewedExplanationSource, hasAnotherExample = false): ExplanationResult {
   if (!output || typeof output !== "object" || Array.isArray(output)) {
     throw new ExplanationError(503, "invalid_provider_response", "No pudimos cargar la explicación ahora. Inténtalo de nuevo.", true);
   }
   const data = output as Record<string, unknown>;
   if (data.topicId !== input.topicId || data.subskillId !== input.subskillId ||
       data.sourceVersion !== source.version || !approvedText(data.explanation, source.explanation) ||
-      !approvedText(data.example, source.example)) {
+      !approvedText(data.example, input.example) ||
+      words(data.explanation as string) > input.level.maxExplanationWords ||
+      words(data.example as string) > input.level.maxExampleWords) {
     throw new ExplanationError(503, "invalid_provider_response", "No pudimos cargar la explicación ahora. Inténtalo de nuevo.", true);
   }
   return {
@@ -55,12 +62,15 @@ export function validateGeneratedExplanation(output: unknown, input: Explanation
     explanation: data.explanation as string, example: data.example as string,
     reference: source.reference, sourceVersion: source.version,
     approvalEvidenceId: source.approvalEvidenceId,
+    levelId: input.level.id, gradeId: input.gradeId,
+    exampleIndex: input.exampleIndex, hasAnotherExample,
   };
 }
 
 export async function generateExplanation(args: {
   attempt: ExplanationAttempt;
   subskillId: string;
+  exampleIndex?: number;
   source: ReviewedExplanationSource | undefined;
   provider: ExplanationProvider;
   catalog?: readonly Topic[];
@@ -91,14 +101,25 @@ export async function generateExplanation(args: {
     if (reason === "insufficient_evidence") throw new ExplanationError(409, reason, "El diagnóstico no identificó una dificultad suficiente en este subtema.");
     throw new ExplanationError(409, reason, "La explicación de este subtema está pendiente de revisión académica.");
   }
+  const level = explanationLevelForGrade(prepared.context.gradeId);
+  if (!level) throw new ExplanationError(400, "invalid_grade", "Escoge un grado válido para pedir la explicación.");
+  const choice = selectReviewedExample(source!, args.exampleIndex ?? 0);
+  if (choice.status !== "ready") {
+    if (choice.reason === "invalid_index") throw new ExplanationError(400, choice.reason, "Ejemplo solicitado no válido.");
+    if (choice.reason === "no_alternative_example") {
+      throw new ExplanationError(409, choice.reason, "No hay otro ejemplo revisado disponible para este subtema.");
+    }
+    throw new ExplanationError(409, choice.reason, "Los ejemplos revisados necesitan corrección antes de publicarse.");
+  }
   const input: ExplanationProviderInput = {
     gradeId: prepared.context.gradeId, subjectId: prepared.context.subjectId,
     topicId: prepared.context.topicId, topicName: prepared.context.topicName,
     subskillId, sourceVersion: source!.version,
-    explanation: source!.explanation, example: source!.example, reference: source!.reference,
+    explanation: source!.explanation, example: choice.example, reference: source!.reference,
+    level, exampleIndex: choice.index,
   };
   let output: unknown;
   try { output = await provider(input); }
   catch { throw new ExplanationError(503, "provider_unavailable", "No pudimos cargar la explicación ahora. Inténtalo de nuevo.", true); }
-  return validateGeneratedExplanation(output, input, source!);
+  return validateGeneratedExplanation(output, input, source!, choice.hasAnotherExample);
 }

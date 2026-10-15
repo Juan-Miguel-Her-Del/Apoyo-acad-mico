@@ -4,6 +4,7 @@ import { useState } from "react";
 
 type Explanation = {
   explanation: string; example: string; reference: string; sourceVersion: string;
+  gradeId: string; levelId: string; exampleIndex: number; hasAnotherExample: boolean;
 };
 type ResponseBody = Partial<Explanation> & { error?: string; retryable?: boolean };
 
@@ -15,21 +16,23 @@ export default function ExplanationPanel({ attemptId, subskillId, label, availab
   const [error, setError] = useState("");
   const [retryable, setRetryable] = useState(false);
 
-  async function requestExplanation() {
+  async function requestExplanation(exampleIndex = 0) {
     if (busy) return;
     setBusy(true); setError(""); setRetryable(false);
     try {
       const response = await fetch("/api/explanation", {
         method: "POST", cache: "no-store", credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ attemptId, subskillId }),
+        body: JSON.stringify({ attemptId, subskillId, exampleIndex }),
       });
       const body = await response.json() as ResponseBody;
       if (!response.ok) {
         setError(body.error ?? "No pudimos cargar la explicación.");
         setRetryable(body.retryable === true);
       } else if (typeof body.explanation === "string" && typeof body.example === "string" &&
-                 typeof body.reference === "string" && typeof body.sourceVersion === "string") {
+                 typeof body.reference === "string" && typeof body.sourceVersion === "string" &&
+                 typeof body.gradeId === "string" && typeof body.exampleIndex === "number" &&
+                 typeof body.hasAnotherExample === "boolean") {
         setContent(body as Explanation);
       } else {
         setError("La explicación recibida no es válida. Inténtalo de nuevo."); setRetryable(true);
@@ -42,11 +45,15 @@ export default function ExplanationPanel({ attemptId, subskillId, label, availab
   return <section aria-label={`Explicación de ${label}`}>
     {!available && <p>La explicación de {label} está pendiente de revisión académica. Aún no está disponible.</p>}
     {available && !content && !error &&
-      <button type="button" onClick={requestExplanation} disabled={busy}>{busy ? "Cargando explicación…" : `Solicitar explicación de ${label}`}</button>}
-    {error && <p role="alert">{error} {retryable && <button type="button" onClick={requestExplanation} disabled={busy}>Reintentar</button>}</p>}
+      <button type="button" onClick={() => void requestExplanation(0)} disabled={busy}>{busy ? "Cargando explicación…" : `Solicitar explicación de ${label}`}</button>}
+    {error && <p role="alert">{error} {retryable && <button type="button" onClick={() => void requestExplanation(content?.exampleIndex ?? 0)} disabled={busy}>Reintentar</button>}</p>}
     {content && <div>
-      <p>{content.explanation}</p><p>Ejemplo: {content.example}</p>
+      <p>Explicación revisada para grado {Number(content.gradeId.slice(1))}.</p>
+      <p>{content.explanation}</p><p>{content.exampleIndex === 0 ? "Ejemplo" : "Otro ejemplo"}: {content.example}</p>
       <p>Fuente: {content.reference} (versión {content.sourceVersion}).</p>
+      {content.hasAnotherExample && <button type="button" onClick={() => void requestExplanation(1)} disabled={busy}>
+        {busy ? "Cargando otro ejemplo…" : "Ver otro ejemplo"}
+      </button>}
     </div>}
   </section>;
 }

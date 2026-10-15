@@ -32,10 +32,13 @@ export async function openAIExplanationProvider(input: ExplanationProviderInput)
     body: JSON.stringify({
       model, store: false, max_output_tokens: 350,
       reasoning: { effort: "low" },
-      instructions: "Extrae solo fragmentos literales contiguos de los campos explanation y example aprobados. No parafrasees ni agregues hechos. Devuelve los identificadores exactamente iguales a la entrada. Responde en JSON según el esquema.",
+      instructions: "Extrae solo fragmentos literales contiguos de explanation y example revisados que se ajusten al grado y límites de palabras indicados. No parafrasees ni agregues hechos. Devuelve los identificadores exactamente iguales a la entrada. Responde en JSON según el esquema.",
       input: JSON.stringify({
         topicId: input.topicId, subskillId: input.subskillId, sourceVersion: input.sourceVersion,
         topicName: input.topicName, approvedText: { explanation: input.explanation, example: input.example },
+        level: { gradeId: input.gradeId, vocabulary: input.level.vocabulary,
+          depth: input.level.depth, maxExplanationWords: input.level.maxExplanationWords,
+          maxExampleWords: input.level.maxExampleWords }, exampleIndex: input.exampleIndex,
       }),
       text: { format: { type: "json_schema", name: "approved_explanation_extract", strict: true, schema } },
     }),

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { openAIExplanationProvider } from "../src/lib/explanation-openai.ts";
+import { explanationLevelForGrade } from "../src/lib/explanation-adaptation.ts";
 
 const input = {
   gradeId: "G05", subjectId: "MAT", topicId: "G05-MAT", topicName: "Fracciones",
@@ -8,6 +9,7 @@ const input = {
   explanation: "Dos fracciones son equivalentes cuando representan la misma parte de un todo.",
   example: "Un medio y dos cuartos representan la misma cantidad de una unidad dividida.",
   reference: "Fuente revisada",
+  level: explanationLevelForGrade("G05"), exampleIndex: 0,
 };
 const modelOutput = {
   topicId: input.topicId, subskillId: input.subskillId, sourceVersion: input.sourceVersion,
@@ -31,6 +33,8 @@ test("adaptador OpenAI usa Responses con clave de servidor, salida estructurada 
       assert.equal(request.text.format.type, "json_schema");
       assert.equal(request.text.format.strict, true);
       assert.equal(JSON.parse(request.input).approvedText.explanation, input.explanation);
+      assert.equal(JSON.parse(request.input).level.gradeId, "G05");
+      assert.equal(JSON.parse(request.input).exampleIndex, 0);
       assert.equal(options.body.includes("userId"), false);
       assert.equal(options.body.includes("email"), false);
       return Response.json({ status: "completed", output: [{ type: "message", role: "assistant",

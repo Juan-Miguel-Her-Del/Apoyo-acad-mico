@@ -24,6 +24,7 @@ export type ReviewedExplanationSource = {
   reference: string;
   explanation: string;
   example: string;
+  alternateExamples?: readonly string[];
 };
 
 type ContextResult =

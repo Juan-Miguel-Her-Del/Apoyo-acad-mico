@@ -16,7 +16,11 @@ export const configuredExplanationProvider: ExplanationProvider = async (input: 
       format: "approved-extract-v1", topicId: input.topicId, subskillId: input.subskillId,
       sourceVersion: input.sourceVersion, topicName: input.topicName,
       approvedText: { explanation: input.explanation, example: input.example },
-      instruction: "Return only literal contiguous excerpts from each approvedText field. Do not paraphrase or add facts.",
+      level: { gradeId: input.gradeId, vocabulary: input.level.vocabulary,
+        depth: input.level.depth, maxExplanationWords: input.level.maxExplanationWords,
+        maxExampleWords: input.level.maxExampleWords },
+      exampleIndex: input.exampleIndex,
+      instruction: "Choose literal contiguous excerpts from each approvedText field suitable for this grade. Respect word limits. Do not paraphrase or add facts.",
     }),
   });
   if (!response.ok || Number(response.headers.get("content-length") ?? 0) > 8192) {

@@ -1,9 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { topics } from "../src/lib/catalog.ts";
 import { generateExplanation } from "../src/lib/explanation-service.ts";
 import { handleExplanationRequest } from "../src/lib/explanation-http.ts";
 import { configuredExplanationProvider } from "../src/lib/explanation-provider.ts";
+import { explanationLevelForGrade } from "../src/lib/explanation-adaptation.ts";
+import { selectReviewedExample } from "../src/lib/explanation-examples.ts";
+import { openExplanationReviewStore } from "../src/lib/explanation-review.ts";
 
 const attemptId = "a".repeat(32);
 const subskillId = "G05-MAT:fracciones";
@@ -12,6 +18,7 @@ const source = {
   reviewedBy: "fixture-teacher", reviewedAt: "2026-10-01", reference: "Guía revisada de fracciones",
   explanation: "Dos fracciones son equivalentes cuando representan la misma parte de un todo.",
   example: "Un medio y dos cuartos representan la misma cantidad de una unidad dividida.",
+  alternateExamples: ["Cuatro de ocho partes iguales equivalen a una mitad de la misma unidad."],
 };
 const catalog = topics.map((topic) => topic.id === source.topicId
   ? { ...topic, approvedForPublication: true, explanationApproved: true, validatedQuestionCount: 4 } : topic);
@@ -33,6 +40,47 @@ test("fuente revisada y dificultad comprobada permiten extractos literales con r
   assert.equal(result.example, source.example);
   assert.equal(result.reference, source.reference);
   assert.equal(result.approvalEvidenceId, "fixture-approval");
+  assert.equal(result.gradeId, "G05");
+  assert.equal(result.levelId, "upper-primary");
+  assert.equal(result.hasAnotherExample, true);
+});
+
+test("reglas de grado cubren 1 a 11 y rechazan nivel desconocido", () => {
+  assert.equal(explanationLevelForGrade("G01").id, "initial-primary");
+  assert.equal(explanationLevelForGrade("G05").maxExplanationWords, 70);
+  assert.equal(explanationLevelForGrade("G06").id, "basic-secondary");
+  assert.equal(explanationLevelForGrade("G11").id, "media");
+  assert.equal(explanationLevelForGrade("G12"), null);
+});
+
+test("otro ejemplo solo sale de una alternativa diferente y revisada", async () => {
+  const alternative = await generateExplanation({ attempt: approvedAttempt, subskillId, source,
+    exampleIndex: 1, provider, catalog });
+  assert.equal(alternative.example, source.alternateExamples[0]);
+  assert.equal(alternative.exampleIndex, 1);
+  assert.equal(alternative.hasAnotherExample, false);
+  let calls = 0;
+  const counted = async (input) => { calls++; return provider(input); };
+  await assert.rejects(generateExplanation({ attempt: approvedAttempt, subskillId,
+    source: { ...source, alternateExamples: [] }, exampleIndex: 1, provider: counted, catalog }),
+    (error) => error.code === "no_alternative_example" && error.status === 409 && !error.retryable);
+  assert.equal(selectReviewedExample({ ...source, alternateExamples: [source.example.toUpperCase()] }, 1).reason,
+    "duplicate_example");
+  await assert.rejects(generateExplanation({ attempt: approvedAttempt, subskillId,
+    source, exampleIndex: 1, provider: async (input) => ({
+      topicId: input.topicId, subskillId: input.subskillId, sourceVersion: input.sourceVersion,
+      explanation: input.explanation, example: source.example,
+    }), catalog }), (error) => error.code === "invalid_provider_response");
+  assert.equal(calls, 0);
+});
+
+test("extractos superiores al límite del grado no se publican", async () => {
+  const long = "palabra ".repeat(71).trim();
+  await assert.rejects(generateExplanation({ attempt: approvedAttempt, subskillId,
+    source: { ...source, explanation: long }, catalog,
+    provider: async (input) => ({ topicId: input.topicId, subskillId: input.subskillId,
+      sourceVersion: input.sourceVersion, explanation: input.explanation, example: input.example }),
+  }), (error) => error.code === "invalid_provider_response");
 });
 
 test("sin aprobación curricular, intento demo o evidencia suficiente no se llama al proveedor", async () => {
@@ -101,6 +149,39 @@ test("contrato HTTP exige sesión y origen, rechaza demo y no filtra salida del 
   }
 });
 
+test("respuesta inválida queda registrada para revisión sin texto académico ni identidad", async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "apoyo-explanation-review-"));
+  const store = openExplanationReviewStore(path.join(directory, "review.sqlite"));
+  const old = process.env.APOYO_ENABLE_ADULT_ACCOUNTS;
+  process.env.APOYO_ENABLE_ADULT_ACCOUNTS = "true";
+  try {
+    const request = new Request("https://example.test/api/explanation", {
+      method: "POST", headers: { origin: "https://example.test", host: "example.test",
+        "Content-Type": "application/json" },
+      body: JSON.stringify({ attemptId, subskillId, exampleIndex: 1 }),
+    });
+    const response = await handleExplanationRequest(request, {
+      userId: () => "adult-fixture", attempt: () => approvedAttempt, source: () => source,
+      catalog, review: (event) => store.record(event),
+      provider: async (input) => ({ topicId: input.topicId, subskillId: input.subskillId,
+        sourceVersion: input.sourceVersion, explanation: input.explanation, example: "Texto inventado del proveedor" }),
+    });
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).code, "invalid_provider_response");
+    const rows = store.list();
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].reason, "invalid_provider_response");
+    assert.equal(rows[0].exampleIndex, 1);
+    assert.equal(JSON.stringify(rows).includes("Texto inventado"), false);
+    assert.equal(JSON.stringify(rows).includes("adult-fixture"), false);
+  } finally {
+    store.close();
+    rmSync(directory, { recursive: true, force: true });
+    if (old === undefined) delete process.env.APOYO_ENABLE_ADULT_ACCOUNTS;
+    else process.env.APOYO_ENABLE_ADULT_ACCOUNTS = old;
+  }
+});
+
 test("adaptador HTTP usa solo configuración del servidor, limita tamaño y no acepta URL insegura", async () => {
   const oldUrl = process.env.APOYO_EXPLANATION_PROVIDER_URL;
   const oldToken = process.env.APOYO_EXPLANATION_PROVIDER_TOKEN;
@@ -119,6 +200,7 @@ test("adaptador HTTP usa solo configuración del servidor, limita tamaño y no a
       gradeId: "G05", subjectId: "MAT", topicId: source.topicId, topicName: "Fracciones",
       subskillId, sourceVersion: source.version, explanation: source.explanation,
       example: source.example, reference: source.reference,
+      level: explanationLevelForGrade("G05"), exampleIndex: 0,
     };
     assert.deepEqual(await configuredExplanationProvider(input), { topicId: source.topicId });
     process.env.APOYO_EXPLANATION_PROVIDER_URL = "http://provider.example/explain";
