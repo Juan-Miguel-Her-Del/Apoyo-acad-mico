@@ -2,6 +2,8 @@
 
 **Fecha de implementación:** 15 de octubre de 2026. La entrega al profesor es el 20 de octubre. El alcance ejecutado es un **prototipo local para cuentas de adultos/evaluadores con datos sintéticos**.
 
+**Estado Jira:** Sprint 5 adelantado y cerrado el 15 de octubre con **4/4 incidencias principales en Listo**: AP-201 (historia de resumen), AP-202/AP-205 (tareas técnicas) y AP-319 (comparación local de demostración). Las subtareas AP-203/AP-204/AP-206/AP-207 quedaron en Listo con sus cuatro actividades marcadas y evidencia. Las otras 21 incidencias principales fueron devueltas al backlog; AP-236 conserva el bloqueo de consentimiento y cuenta estudiantil.
+
 ## Alcance verificable
 
 - Una práctica termina automáticamente tras dos respuestas o por **Terminar práctica ahora** con cero o una respuesta. El servidor guarda el cierre y rechaza respuestas posteriores. Repetir la operación de cierre conserva la misma fecha y el mismo resultado.

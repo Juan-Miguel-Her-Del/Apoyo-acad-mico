@@ -51,4 +51,4 @@ La prueba de navegador usa la compilación de producción. En una terminal ejecu
 - [Aplicación web](web/README.md): API y detalles técnicos.
 - [Jira AP](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP): seguimiento del proyecto.
 
-Los Sprints 1, 2, 3 y 4 se cerraron como prototipos. El Sprint 4 quedó cerrado en Jira el 15 de octubre de 2026 con 6/6 incidencias principales en «Listo». Las funciones publicadas para estudiantes reales, la revisión curricular y el registro de menores continúan como trabajo separado del prototipo de entrega.
+Los Sprints 1–5 se cerraron como prototipos. El Sprint 5 quedó cerrado en Jira el 15 de octubre de 2026 con **4/4 incidencias principales en «Listo»**: AP-201, AP-202, AP-205 y AP-319. Las funciones publicadas para estudiantes reales, la revisión curricular y el registro de menores continúan como trabajo separado del prototipo de entrega.
