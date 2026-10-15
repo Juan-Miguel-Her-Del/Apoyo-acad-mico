@@ -10,7 +10,8 @@
     "lint": "eslint",
     "coverage:practice": "node --experimental-strip-types scripts/practice-coverage.mjs",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
-    "test:browser": "node tests/browser-smoke.mjs"
+    "test:browser": "node tests/browser-smoke.mjs",
+    "test:diagnostic-browser": "node tests/diagnostic-account-browser.mjs"
   },
   "dependencies": {
     "next": "16.3.8",

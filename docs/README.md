@@ -25,6 +25,8 @@ La fuente funcional vigente es el [proyecto AP de Jira](https://juanmiguelsworks
 | [Desarrollo del Sprint 4](19-desarrollo-sprint-4.md) | Práctica con seguimiento y replanificación antes de la entrega de octubre |
 | [Desarrollo del Sprint 5](20-desarrollo-sprint-5.md) | Alcance original, rondas, dificultad, progreso y criterios abiertos |
 | [Auditoría de alcance de sprints](23-auditoria-alcance-sprints.md) | Verificación de Sprints 1–6 y restauración de los alcances 2–4 |
+| [Regla adaptativa del diagnóstico](24-regla-diagnostico-adaptativo.md) | Banco provisional, selección de niveles y límites de AP-83/84/87/90 |
+| [Diagnóstico del Sprint 2 restaurado](25-diagnostico-sprint-2-restaurado.md) | Intentos, respuestas, API, verificación y dependencias curriculares |
 | [Corrección explicada](21-retroalimentacion-practica.md) | Contrato y puerta de revisión docente de correcciones |
 | [Cuentas estudiantiles](22-cuentas-estudiantes-consentimiento.md) | Base técnica interna, autorización y decisiones pendientes |
 | [Criterios de aceptación](criterios-aceptacion.md) | Escenarios comprobables para las historias |
