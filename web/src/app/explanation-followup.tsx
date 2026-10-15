@@ -14,6 +14,7 @@ export default function ExplanationFollowup({ explanationId, topicId, question, 
   const [accountAvailable, setAccountAvailable] = useState(false);
   const [ratingMessage, setRatingMessage] = useState("");
   const [ratingBusy, setRatingBusy] = useState(false);
+  const [ratingLoading, setRatingLoading] = useState(mode === "demo" && !!topicId);
   const authEpoch = useRef(0);
   const [answer, setAnswer] = useState("");
   const [checkedAnswer, setCheckedAnswer] = useState("");
@@ -27,6 +28,7 @@ export default function ExplanationFollowup({ explanationId, topicId, question, 
     let mounted = true;
     async function load() {
       const epoch = ++authEpoch.current;
+      setRatingLoading(true);
       try {
         const response = await fetch(`/api/explanation/demo-feedback?topicId=${encodeURIComponent(topicId!)}`,
           { cache: "no-store", credentials: "same-origin" });
@@ -46,16 +48,18 @@ export default function ExplanationFollowup({ explanationId, topicId, question, 
         setRatingMessage("");
       } catch {
         if (mounted && epoch === authEpoch.current) setRatingMessage("No se pudo cargar la valoración guardada.");
+      } finally {
+        if (mounted && epoch === authEpoch.current) setRatingLoading(false);
       }
     }
-    const changed = () => { setRating(null); setAccountAvailable(false); void load(); };
+    const changed = () => { setRating(null); setAccountAvailable(false); setRatingLoading(true); void load(); };
     window.addEventListener("ap-auth-changed", changed);
     void load();
     return () => { mounted = false; window.removeEventListener("ap-auth-changed", changed); };
   }, [explanationId, mode, topicId]);
 
   async function selectRating(value: ExplanationRating) {
-    if (ratingBusy) return;
+    if (ratingBusy || ratingLoading) return;
     if (mode !== "demo" || !topicId || !accountAvailable) {
       setRating((current) => updateRating(current, explanationId, value));
       setRatingMessage("Valoración temporal; inicia sesión en una cuenta adulta de demostración para guardarla.");
@@ -89,9 +93,10 @@ export default function ExplanationFollowup({ explanationId, topicId, question, 
       ? "La valoración de esta explicación se guarda en tu cuenta adulta de demostración."
       : "Esta valoración es temporal y no se guarda en una cuenta."}</p>
     <div role="group" aria-label="Valorar explicación">
-      <button type="button" disabled={ratingBusy} aria-pressed={currentRating === "helped"} onClick={() => void selectRating("helped")}>Sí, me ayudó</button>{" "}
-      <button type="button" disabled={ratingBusy} aria-pressed={currentRating === "confused"} onClick={() => void selectRating("confused")}>Todavía estoy confundido</button>
+      <button type="button" disabled={ratingBusy || ratingLoading} aria-pressed={currentRating === "helped"} onClick={() => void selectRating("helped")}>Sí, me ayudó</button>{" "}
+      <button type="button" disabled={ratingBusy || ratingLoading} aria-pressed={currentRating === "confused"} onClick={() => void selectRating("confused")}>Todavía estoy confundido</button>
     </div>
+    {ratingLoading && <p>Recuperando valoración anterior…</p>}
     {currentRating && <p role="status">Valoración de esta explicación: {currentRating === "helped" ? "me ayudó" : "todavía estoy confundido"}. Puedes cambiarla.</p>}
     {ratingMessage && <p role="status">{ratingMessage}</p>}
 

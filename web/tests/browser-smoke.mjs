@@ -453,6 +453,10 @@ try {
     await waitText(".diagnostic-panel", "Terminaste la demostración");
     await click(".diagnostic-panel .primary-button", "Continuar a estudiar");
     await waitText(".diagnostic-panel", "Explicación breve");
+    await waitText(".explanation-followup", "Comprueba lo que entendiste");
+    await waitFor(() => evaluate("document.querySelector('.explanation-followup button')?.disabled === false"), "valoración lista");
+    await click(".explanation-followup button", "Sí, me ayudó");
+    await waitText(".explanation-followup [role='status']", "me ayudó");
     await click(".quick-practice summary", "Prueba rápida sin cuenta");
     await evaluate("document.querySelector('.quick-practice .answer-option input').click()");
     await click(".quick-practice .primary-button", "Revisar respuesta");
