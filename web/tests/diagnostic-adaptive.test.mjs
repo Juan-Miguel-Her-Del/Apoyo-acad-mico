@@ -39,6 +39,21 @@ test("26 temas tienen un banco diagnóstico provisional con dos niveles e IDs pr
   assert.equal(getAdaptiveDiagnosticBank("G12", "MAT", "G12-MAT"), null);
 });
 
+test("cada tema admite cuatro preguntas distintas tanto con aciertos como con errores", () => {
+  for (const topic of topics) {
+    const questions = getAdaptiveDiagnosticBank(topic.gradeId, topic.subjectId, topic.id);
+    for (const correct of [true, false]) {
+      const answers = [];
+      for (let turn = 0; turn < 4; turn++) {
+        const next = selectNextDiagnosticQuestion({ questions, answers });
+        assert.equal(next.status, "selected", `${topic.id}, turno ${turn}, correct=${correct}`);
+        answers.push({ questionId: next.question.id, correct });
+      }
+      assert.equal(new Set(answers.map((answer) => answer.questionId)).size, 4, topic.id);
+    }
+  }
+});
+
 test("sube al acertar, baja al errar y respeta ambos límites", () => {
   const first = selectNextDiagnosticQuestion({ questions: bank, answers: [] });
   assert.deepEqual([first.status, first.question.id, first.requestedDifficulty], ["selected", "easy-1", 1]);

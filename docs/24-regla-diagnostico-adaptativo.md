@@ -32,4 +32,4 @@ Desde `web/`: `node --experimental-strip-types --test tests/diagnostic-adaptive.
 | Todas las preguntas usadas | `bank-exhausted` | Sin pregunta ni puntuación inventada |
 | Identificador duplicado o ajeno | Error de integridad | Rechazado |
 
-Prueba local del módulo: **4/4 casos aprobados** y lint sin errores. La integración con persistencia, rutas HTTP e interfaz se verifica por separado antes de cerrar AP-83/AP-87 en Jira.
+Prueba local del módulo: **5/5 casos aprobados**, incluidas secuencias de cuatro aciertos y cuatro errores para las 26 combinaciones, y lint sin errores. La integración con persistencia, rutas HTTP e interfaz se verifica por separado antes de cerrar AP-83/AP-87 en Jira.
