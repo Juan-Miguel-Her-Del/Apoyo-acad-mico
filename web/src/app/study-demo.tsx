@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { checkStudyAnswer, getStudyDemo } from "@/lib/study-demo";
 import type { Selection } from "@/lib/selection";
+import ExplanationFollowup from "./explanation-followup";
 import PracticeSession from "./practice-session";
 
 type Attempt = { key: string; selectedIndex: number | null; checked: boolean };
@@ -26,6 +27,16 @@ export default function StudyDemo({ selection }: { selection: Selection }) {
       <p>{lesson.explanation}</p>
       <h4>Ejemplo</h4>
       <p>{lesson.example}</p>
+      <ExplanationFollowup key={`study-draft-v1:${lesson.topicId}`}
+        explanationId={`study-draft-v1:${lesson.topicId}`}
+        mode="demo"
+        question={{
+          id: `study-draft-v1:${lesson.topicId}:short-check`,
+          explanationId: `study-draft-v1:${lesson.topicId}`,
+          prompt: lesson.question.prompt,
+          referenceAnswer: lesson.question.options[lesson.question.correctIndex],
+          validation: "demo-unreviewed",
+        }} />
       <PracticeSession selection={selection} />
       <details className="quick-practice">
         <summary>Prueba rápida sin cuenta</summary>
