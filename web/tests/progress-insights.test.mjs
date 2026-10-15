@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import path from "node:path";
 import { tmpdir } from "node:os";
+import { DatabaseSync } from "node:sqlite";
 import { openAuthStore } from "../src/lib/auth.ts";
 import { getPracticeBank } from "../src/lib/practice.ts";
 import { skillInsight } from "../src/lib/progress-insights.ts";
@@ -16,14 +17,16 @@ function attempt(id, correctCount, answered = 1, total = 2, completedAt = "2026-
 }
 
 test("sin respuestas del subtema o con una medición mantiene dominio indeterminado", () => {
-  assert.deepEqual(skillInsight([], topicId, skillId), {
+  assert.deepEqual(skillInsight([], topicId, skillId, []), {
     topicId, skillId, points: [], completeAttempts: 0, answered: 0, correct: 0,
-    observedPercent: null, level: "indeterminate",
+    observedPercent: null, level: "indeterminate", historyAvailable: true,
   });
-  const one = skillInsight([attempt("a", 1)], topicId, skillId);
+  const one = skillInsight([attempt("a", 1)], topicId, skillId,
+    [{ skillId, completeAttempts: 1, answered: 1, correctCount: 1 }]);
   assert.equal(one.level, "indeterminate");
   assert.equal(one.points.length, 1);
   assert.equal(one.points[0].percent, 100);
+  assert.equal(skillInsight([attempt("a", 1)], topicId, skillId, null).historyAvailable, false);
 });
 
 test("dominio y gráfica usan solo respuestas del mismo subtema y prácticas completas", () => {
@@ -34,7 +37,8 @@ test("dominio y gráfica usan solo respuestas del mismo subtema y prácticas com
     attempt("other-skill", 0, 1, 2, "2026-10-15T15:00:00.000Z", "G05-MAT:suma-distinto-denominador"),
     { ...attempt("other-topic", 0), topicId: "G05-ESP" },
   ];
-  const result = skillInsight(items, topicId, skillId);
+  const result = skillInsight(items, topicId, skillId,
+    [{ skillId, completeAttempts: 2, answered: 2, correctCount: 1 }]);
   assert.equal(result.level, "developing");
   assert.equal(result.observedPercent, 50);
   assert.equal(result.correct, 1);
@@ -48,7 +52,7 @@ test("sin respuestas, datos anteriores sin skills y cifras corruptas quedan inde
   const empty = { ...attempt("empty", 0, 0), answered: 0, skills: [] };
   const legacy = { ...attempt("legacy", 1), skills: undefined };
   const bad = attempt("bad", 2);
-  const result = skillInsight([empty, legacy, bad], topicId, skillId);
+  const result = skillInsight([empty, legacy, bad], topicId, skillId, []);
   assert.equal(result.points.length, 0);
   assert.equal(result.level, "indeterminate");
 });
@@ -78,10 +82,51 @@ test("agregados por subtema provienen de respuestas persistidas y se aíslan por
   const sessions = store.listPracticeSessions(a.user.id);
   assert.equal(sessions.length, 2);
   assert.ok(sessions.every((session) => session.skills.length === 2));
-  const result = skillInsight(sessions, topicId, skillId);
+  const result = skillInsight(sessions, topicId, skillId, store.listPracticeSkillTotals(a.user.id));
   assert.equal(result.completeAttempts, 2);
   assert.equal(result.answered, 2);
   assert.equal(result.correct, 1);
   assert.equal(result.level, "developing");
-  assert.equal(skillInsight(store.listPracticeSessions(b.user.id), topicId, skillId).level, "indeterminate");
+  assert.equal(skillInsight(store.listPracticeSessions(b.user.id), topicId, skillId,
+    store.listPracticeSkillTotals(b.user.id)).level, "indeterminate");
+});
+
+test("agregado completo incluye intentos fuera de la ventana de 200 del gráfico", async (t) => {
+  const dir = mkdtempSync(path.join(tmpdir(), "apoyo-skill-window-"));
+  const dbPath = path.join(dir, "window.sqlite");
+  const store = openAuthStore(dbPath);
+  t.after(() => { store.close(); rmSync(dir, { recursive: true, force: true }); });
+  const { user } = await store.register({ email: "window@example.test", password: "clave-segura-123", adultConfirmed: true });
+  const db = new DatabaseSync(dbPath);
+  const insertSession = db.prepare(`INSERT INTO practice_sessions
+    (id,user_id,grade_id,subject_id,topic_id,status,total,started_at,completed_at)
+    VALUES (?,?,'G05','MAT',?,'completed',2,?,?)`);
+  const insertAnswer = db.prepare(`INSERT INTO practice_answers
+    (session_id,question_id,option_id,correct,correct_option_id,explanation,answered_at,skill_id)
+    VALUES (? ,?,'a',?,'a','prueba',?,?)`);
+  db.exec("BEGIN");
+  for (let index = 0; index < 201; index += 1) {
+    const id = index.toString(16).padStart(32, "0");
+    const date = new Date(Date.UTC(2026, 9, 1, 0, index)).toISOString();
+    insertSession.run(id, user.id, topicId, date, date);
+    insertAnswer.run(id, `q-${index}-skill`, index > 0 && index <= 159 ? 1 : 0, date, skillId);
+    insertAnswer.run(id, `q-${index}-other`, 0, date, "G05-MAT:suma-distinto-denominador");
+  }
+  db.exec("COMMIT");
+  db.close();
+
+  const visible = store.listPracticeSessions(user.id);
+  const totals = store.listPracticeSkillTotals(user.id);
+  assert.equal(visible.length, 200);
+  const visibleCorrect = visible.reduce((sum, item) => sum +
+    (item.skills.find((skill) => skill.skillId === skillId)?.correctCount ?? 0), 0);
+  assert.equal(visibleCorrect, 159);
+  assert.equal(Math.round(visibleCorrect / visible.length * 100), 80, "ventana aislada parecería alta");
+  const result = skillInsight(visible, topicId, skillId, totals);
+  assert.equal(result.points.length, 200);
+  assert.equal(result.completeAttempts, 201);
+  assert.equal(result.answered, 201);
+  assert.equal(result.correct, 159);
+  assert.equal(result.observedPercent, 79);
+  assert.equal(result.level, "developing", "historial completo evita subir de nivel por truncamiento");
 });

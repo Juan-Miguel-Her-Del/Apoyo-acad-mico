@@ -9,6 +9,7 @@ export function GET(request: Request) {
     const store = authStore();
     const user = store.sessionUser(requestToken(request));
     if (!user) throw new AuthError(401, "Sesión requerida.");
-    return Response.json({ items: store.listPracticeSessions(user.id) }, { headers: noStore });
+    return Response.json({ items: store.listPracticeSessions(user.id),
+      skillTotals: store.listPracticeSkillTotals(user.id) }, { headers: noStore });
   } catch (error) { return apiError(error); }
 }

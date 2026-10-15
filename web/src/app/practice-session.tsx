@@ -3,12 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Selection } from "@/lib/selection";
 
-type Question = { id: string; prompt: string; options: { id: string; text: string }[] };
+type Question = { id: string; prompt: string; difficulty: 1 | 2; options: { id: string; text: string }[] };
 type Session = {
   id: string; topicId: string; status: "open" | "completed";
   total: number; answered: number; correctCount: number;
+  targetDifficulty: 1 | 2; difficultyFallback: boolean;
 };
-type Feedback = { correct: boolean; correctOptionId: string; explanation: string };
+type Feedback = { correct: boolean; correctOptionId: string; explanation: string | null;
+  explanationStatus: "approved" | "pending-review" };
+type Coverage = { total: number; byDifficulty: { 1: number; 2: number };
+  sufficientForTwoDistinctRounds: boolean; provisional: true };
 
 function storageKey(topicId: string) { return `apoyo-practice:${topicId}`; }
 
@@ -20,8 +24,27 @@ export default function PracticeSession({ selection }: { selection: Selection })
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [coverage, setCoverage] = useState<Coverage | null>(null);
+  const [coverageError, setCoverageError] = useState("");
   const sending = useRef(false);
   const topicId = selection.topicId ?? "";
+
+  useEffect(() => {
+    if (!selection.gradeId || !selection.subjectId || !topicId) return;
+    const controller = new AbortController();
+    const params = new URLSearchParams({ gradeId: selection.gradeId, subjectId: selection.subjectId, topicId });
+    const timer = window.setTimeout(() => {
+      setCoverage(null); setCoverageError("");
+      fetch(`/api/practice/coverage?${params}`, { cache: "no-store", signal: controller.signal })
+        .then(async (response) => {
+          if (!response.ok) throw new Error("Cobertura no disponible.");
+          return response.json();
+        })
+        .then((body) => setCoverage(body as Coverage))
+        .catch(() => { if (!controller.signal.aborted) setCoverageError("No se pudo comprobar el banco de preguntas."); });
+    }, 0);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [selection.gradeId, selection.subjectId, topicId]);
 
   const restore = useCallback(async () => {
     if (!topicId) return;
@@ -113,10 +136,13 @@ export default function PracticeSession({ selection }: { selection: Selection })
   const question = questions[index];
   return <div className="practice-session" aria-labelledby="practice-session-title">
     <h4 id="practice-session-title">Práctica con seguimiento</h4>
-    <p>Dos preguntas de ejemplo sobre este tema. Con una cuenta de demostración, tus respuestas y el resultado quedan guardados para retomarlos.</p>
-    {!session && <button className="primary-button" type="button" onClick={start} disabled={busy}>{busy ? "Preparando…" : "Empezar práctica de dos preguntas"}</button>}
+    <p>Rondas de dos preguntas provisionales sobre este tema. Con una cuenta de demostración, tus respuestas y el resultado quedan guardados para retomarlos.</p>
+    {coverage && <p className="practice-coverage">Banco provisional: {coverage.total} preguntas; nivel 1: {coverage.byDifficulty[1]}; nivel 2: {coverage.byDifficulty[2]}. {coverage.sufficientForTwoDistinctRounds ? "Cobertura suficiente para dos rondas distintas." : "Cobertura insuficiente para nuevas rondas; requiere más preguntas."}</p>}
+    {coverageError && <p className="diagnostic-error" role="alert">{coverageError}</p>}
+    {!session && <button className="primary-button" type="button" onClick={start} disabled={busy || coverage?.sufficientForTwoDistinctRounds === false}>{busy ? "Preparando…" : "Empezar práctica de dos preguntas"}</button>}
     {session?.status === "open" && question && <div className="practice-question">
       <p className="question-progress">Pregunta {index + 1} de {session.total}</p>
+      <p>Nivel de esta pregunta: {question.difficulty}. {session.difficultyFallback ? "El banco no tenía dos preguntas nuevas del nivel objetivo; esta ronda usa las nuevas disponibles." : ""}</p>
       <progress value={index + 1} max={session.total} aria-label="Avance de la práctica" />
       <fieldset disabled={busy || feedback !== null}><legend>{question.prompt}</legend>
         {question.options.map((option) => <label className="answer-option" key={option.id}>
@@ -127,7 +153,7 @@ export default function PracticeSession({ selection }: { selection: Selection })
       {!feedback && <button className="primary-button" type="button" onClick={submit} disabled={busy || !optionId}>{busy ? "Revisando…" : "Revisar respuesta"}</button>}
       {feedback && <div className={`answer-feedback ${feedback.correct ? "correct" : "incorrect"}`} role="status">
         <strong>{feedback.correct ? "Respuesta correcta" : "Respuesta incorrecta"}</strong>
-        <p>{feedback.explanation}</p>
+        <p>{feedback.explanationStatus === "pending-review" ? "Explicación pendiente de revisión docente." : feedback.explanation}</p>
         {!feedback.correct && <p>Respuesta de referencia: {question.options.find((option) => option.id === feedback.correctOptionId)?.text}.</p>}
         <button className="primary-button" type="button" onClick={() => { setIndex(index + 1); setOptionId(""); setFeedback(null); }}>Siguiente pregunta</button>
       </div>}
@@ -135,7 +161,7 @@ export default function PracticeSession({ selection }: { selection: Selection })
     {session?.status === "open" && <button className="text-button" type="button" onClick={finish} disabled={busy}>Terminar práctica ahora</button>}
     {session?.status === "completed" && feedback && question && <div className={`answer-feedback ${feedback.correct ? "correct" : "incorrect"}`} role="status">
       <strong>{feedback.correct ? "Respuesta correcta" : "Respuesta incorrecta"}</strong>
-      <p>{feedback.explanation}</p>
+      <p>{feedback.explanationStatus === "pending-review" ? "Explicación pendiente de revisión docente." : feedback.explanation}</p>
       {!feedback.correct && <p>Respuesta de referencia: {question.options.find((option) => option.id === feedback.correctOptionId)?.text}.</p>}
       <button className="primary-button" type="button" onClick={() => setFeedback(null)}>Ver resultado</button>
     </div>}
@@ -143,7 +169,7 @@ export default function PracticeSession({ selection }: { selection: Selection })
       <strong>{session.answered === 0 ? "Práctica terminada sin respuestas." : `Práctica terminada: ${session.correctCount} de ${session.answered} respuestas correctas.`}</strong>
       <p>{session.answered === 0 ? "No hay un resultado que calcular todavía." : `${session.answered} de ${session.total} preguntas respondidas. ${session.total - session.answered} quedaron sin responder.`}</p>
       <p>Esta sesión quedó guardada en tu cuenta de demostración. Puedes consultar el historial arriba.</p>
-      <button className="text-button" type="button" onClick={start} disabled={busy}>Repetir práctica de demostración</button>
+      <button className="text-button" type="button" onClick={start} disabled={busy}>Iniciar otra ronda con preguntas nuevas</button>
     </div>}
     {error && <p className="diagnostic-error" role="alert">{error}</p>}
   </div>;

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { grades, subjects, topics } from "@/lib/catalog";
 import type { PracticeHistoryItem } from "@/lib/practice-history";
 import { getPracticeSkills } from "@/lib/practice-skills";
-import { MIN_SKILL_ANSWERS, MIN_COMPLETE_ATTEMPTS, skillInsight } from "@/lib/progress-insights";
+import { MIN_SKILL_ANSWERS, MIN_COMPLETE_ATTEMPTS, skillInsight, type SkillTotal } from "@/lib/progress-insights";
 
 function topicName(topicId: string) {
   const topic = topics.find((item) => item.id === topicId);
@@ -25,7 +25,10 @@ const levels = {
   high: "Alto",
 };
 
-export default function AccountProgressInsights({ items }: { items: readonly PracticeHistoryItem[] }) {
+export default function AccountProgressInsights({ items, totals }: {
+  items: readonly PracticeHistoryItem[];
+  totals: readonly SkillTotal[] | null;
+}) {
   const [selectedTopic, setSelectedTopic] = useState("");
   const [selectedSkill, setSelectedSkill] = useState("");
   const available = topics.filter((item) => item.active && item.pilotCandidate);
@@ -33,7 +36,7 @@ export default function AccountProgressInsights({ items }: { items: readonly Pra
   const topicId = available.some((item) => item.id === selectedTopic) ? selectedTopic : defaultTopic;
   const skills = getPracticeSkills(topicId);
   const skillId = skills.some((item) => item.id === selectedSkill) ? selectedSkill : skills[0]?.id ?? "";
-  const insight = skillInsight(items, topicId, skillId);
+  const insight = skillInsight(items, topicId, skillId, totals);
 
   return <section className="progress-insights" aria-labelledby="progress-insights-title">
     <h3 id="progress-insights-title">Dominio y evolución por subtema</h3>
@@ -45,7 +48,7 @@ export default function AccountProgressInsights({ items }: { items: readonly Pra
     </label>
     <p className="skill-overview-title">Estado de los subtemas de este tema:</p>
     <ul className="skill-overview">
-      {skills.map((skill) => <li key={skill.id}><span>{skill.label}</span><strong>{levels[skillInsight(items, topicId, skill.id).level]}</strong></li>)}
+      {skills.map((skill) => <li key={skill.id}><span>{skill.label}</span><strong>{levels[skillInsight(items, topicId, skill.id, totals).level]}</strong></li>)}
     </ul>
     <label className="comparison-label">Subtema para ver el detalle
       <select value={skillId} onChange={(event) => setSelectedSkill(event.target.value)}>
@@ -54,8 +57,10 @@ export default function AccountProgressInsights({ items }: { items: readonly Pra
     </label>
     <div className="domain-summary" role="status">
       <strong>Estado: {levels[insight.level]}</strong>
-      {insight.level === "indeterminate"
-        ? <p>Faltan datos: se requieren al menos {MIN_COMPLETE_ATTEMPTS} prácticas completas y {MIN_SKILL_ANSWERS} respuestas de este subtema. Prácticas completas con respuestas: {insight.completeAttempts}. Respuestas registradas: {insight.answered}.</p>
+      {!insight.historyAvailable
+        ? <p>No se pudo calcular el dominio con el historial completo. Actualiza el progreso e inténtalo de nuevo.</p>
+        : insight.level === "indeterminate"
+          ? <p>Faltan datos: se requieren al menos {MIN_COMPLETE_ATTEMPTS} prácticas completas y {MIN_SKILL_ANSWERS} respuestas de este subtema. Prácticas completas con respuestas: {insight.completeAttempts}. Respuestas registradas: {insight.answered}.</p>
         : <p>{insight.correct}/{insight.answered} respuestas correctas ({insight.observedPercent} %) en {insight.completeAttempts} prácticas completas. Regla orientativa: inicial &lt; 50 %, en progreso 50–79 %, alto ≥ 80 %.</p>}
     </div>
     <figure className="progress-figure" aria-labelledby="progress-chart-title">
@@ -73,6 +78,6 @@ export default function AccountProgressInsights({ items }: { items: readonly Pra
           <p>Las barras muestran únicamente respuestas registradas en prácticas terminadas. Los intentos parciales se ven en la gráfica, pero no cuentan para estimar dominio.</p>
         </>}
     </figure>
-    <p>Las preguntas y umbrales son provisionales; estos resultados no equivalen a una evaluación académica validada.</p>
+    <p>La gráfica muestra hasta los 200 intentos más recientes. El estado se calcula con todas las prácticas completas guardadas. Las preguntas y umbrales son provisionales; estos resultados no equivalen a una evaluación académica validada.</p>
   </section>;
 }

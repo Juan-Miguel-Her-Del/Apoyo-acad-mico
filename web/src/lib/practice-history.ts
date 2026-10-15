@@ -9,6 +9,7 @@ export type PracticeHistoryItem = {
   correctCount: number;
   startedAt: string;
   completedAt: string | null;
+  skills?: { skillId: string; answered: number; correctCount: number }[];
 };
 
 export function comparePracticeSessions(items: readonly PracticeHistoryItem[], topicId: string) {

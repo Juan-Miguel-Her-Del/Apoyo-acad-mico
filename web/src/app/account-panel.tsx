@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { grades, subjects, topics } from "@/lib/catalog";
 import { comparePracticeSessions, type PracticeHistoryItem } from "@/lib/practice-history";
+import type { SkillTotal } from "@/lib/progress-insights";
 import AccountProgressInsights from "./account-progress-insights";
 
 type Account = { id: string; email: string };
@@ -28,6 +29,7 @@ export default function AccountPanel() {
   const [account, setAccount] = useState<Account | null>(null);
   const [items, setItems] = useState<ProgressItem[]>([]);
   const [practiceItems, setPracticeItems] = useState<PracticeHistoryItem[]>([]);
+  const [skillTotals, setSkillTotals] = useState<SkillTotal[] | null>(null);
   const [selectedTopic, setSelectedTopic] = useState("");
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
@@ -48,6 +50,7 @@ export default function AccountPanel() {
       if (!progressResponse.ok || !practiceResponse.ok) {
         setItems([]);
         setPracticeItems([]);
+        setSkillTotals(null);
         setMessage("No se pudo cargar tu progreso. Inténtalo de nuevo.");
         return;
       }
@@ -55,9 +58,13 @@ export default function AccountPanel() {
       if (epoch !== authEpoch.current) return;
       setItems(Array.isArray(progressBody.items) ? progressBody.items : []);
       setPracticeItems(Array.isArray(practiceBody.items) ? practiceBody.items : []);
+      setSkillTotals(Array.isArray(practiceBody.skillTotals) ? practiceBody.skillTotals : null);
       setMessage((current) => current === "No se pudo cargar tu progreso. Inténtalo de nuevo." ? "" : current);
     } catch {
-      if (epoch === authEpoch.current) setMessage("No se pudo cargar tu progreso. Inténtalo de nuevo.");
+      if (epoch === authEpoch.current) {
+        setSkillTotals(null);
+        setMessage("No se pudo cargar tu progreso. Inténtalo de nuevo.");
+      }
     }
   }, []);
 
@@ -112,6 +119,7 @@ export default function AccountPanel() {
       setAccount(null);
       setItems([]);
       setPracticeItems([]);
+      setSkillTotals(null);
       setSelectedTopic("");
       setMessage("Sesión cerrada.");
       window.dispatchEvent(new Event("ap-auth-changed"));
@@ -140,7 +148,7 @@ export default function AccountPanel() {
       {practiceItems.length === 0 ? <p>Aún no has iniciado una práctica con seguimiento.</p> : <ul>{practiceItems.map((item) => <li key={item.id}>
         {topicLabel(item)} · {item.status === "completed" ? item.answered === 0 ? "terminada sin respuestas" : `${item.correctCount}/${item.answered} correctas; ${item.answered}/${item.total} respondidas` : `${item.answered}/${item.total} respondidas; pendiente`} · {dateLabel(item.completedAt ?? item.startedAt)}
       </li>)}</ul>}
-      <AccountProgressInsights items={practiceItems} />
+      <AccountProgressInsights items={practiceItems} totals={skillTotals} />
       <h3>Comparar intentos de un tema</h3>
       {completedTopics.length > 0 && <label className="comparison-label">Tema
         <select value={comparisonTopic} onChange={(event) => setSelectedTopic(event.target.value)}>

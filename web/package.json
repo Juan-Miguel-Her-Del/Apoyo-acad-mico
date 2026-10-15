@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "coverage:practice": "node --experimental-strip-types scripts/practice-coverage.mjs",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:browser": "node tests/browser-smoke.mjs"
   },
