@@ -1,6 +1,6 @@
 # Apoyo_academico
 
-Proyecto web de apoyo académico en desarrollo. La demostración cubre 1.º–11.º. El Sprint 3 restaurado añade fortalezas y confianza por subtema, historial diagnóstico y una integración de IA preparada; el Sprint 5 aporta rondas de práctica, seguimiento y gráfica. El alcance original de los sprints sigue vigente en Jira.
+Proyecto web de apoyo académico en desarrollo. La demostración cubre 1.º–11.º. El Sprint 3 restaurado añade fortalezas y confianza por subtema, historial diagnóstico y una integración de IA preparada; el Sprint 4 restaurado añade reglas de explicación por grado, ejemplos alternativos, valoración y pregunta breve de demostración; el Sprint 5 aporta rondas de práctica, seguimiento y gráfica. El alcance original de los sprints sigue vigente en Jira.
 
 ## Iniciar en Windows
 
@@ -19,7 +19,7 @@ Abre <http://localhost:3000>. Deja esa terminal abierta mientras usas la app. Pa
 1. En **Crear cuenta**, usa un correo de prueba que controles y una contraseña de al menos 12 caracteres. Confirma que eres adulto. La cuenta queda guardada en tu computador.
 2. Elige un grado de 1.º a 11.º, una materia y el tema propuesto. Matemáticas y Español están disponibles en todos los grados; Física y Química, en 10.º y 11.º.
 3. Pulsa **Empezar a estudiar (demo)**. Con la cuenta adulta se inicia un diagnóstico provisional de **cuatro preguntas**: el servidor guarda cada respuesta y cambia la dificultad entre los niveles 1 y 2. Puedes recargar la página y retomar el intento. Sin cuenta, la vista previa anónima tiene dos preguntas y no guarda un intento. Una sola respuesta por subtema se muestra como evidencia indeterminada.
-4. Pulsa **Continuar a estudiar**, lee la explicación y el ejemplo. Puedes probar una pregunta rápida sin cuenta. Para guardar resultados, pulsa **Empezar práctica de dos preguntas**. La segunda respuesta termina la sesión automáticamente; también puedes usar **Terminar práctica ahora**, incluso antes de responder.
+4. Pulsa **Continuar a estudiar**, lee la explicación y el ejemplo. Puedes indicar si te ayudó o sigues confundido; con cuenta adulta de demostración, esa valoración se guarda y se puede cambiar. La pregunta breve compara tu texto con una respuesta provisional de referencia y no es una calificación académica. Puedes probar una pregunta rápida sin cuenta. Para guardar resultados, pulsa **Empezar práctica de dos preguntas**. La segunda respuesta termina la sesión automáticamente; también puedes usar **Terminar práctica ahora**, incluso antes de responder.
 5. Inicia otra ronda del mismo tema: después de dos aciertos, las preguntas pasan al nivel 2; si no aciertas ambas, permanecen en nivel 1 con preguntas nuevas. Al agotar el nivel verás un aviso y el resumen anterior se conservará. Las explicaciones de corrección aparecerán como pendientes de revisión docente.
 6. En el resumen diagnóstico, consulta **fortalezas observadas** y **confianza en la señal**. Una respuesta aislada se mantiene indeterminada. Las explicaciones personales indican revisión pendiente. Vuelve al panel de cuenta para abrir un diagnóstico guardado, el **Historial de práctica**, **Comparar intentos de un tema** y **Dominio y evolución por subtema**. Cierra sesión y vuelve a entrar: los resultados deben permanecer.
 
@@ -52,10 +52,11 @@ La prueba de navegador usa la compilación de producción. En una terminal ejecu
 - [Regla adaptativa del diagnóstico](docs/24-regla-diagnostico-adaptativo.md): selección de dificultad, banco provisional y límites.
 - [Diagnóstico del Sprint 2 restaurado](docs/25-diagnostico-sprint-2-restaurado.md): intento guardado, API, pruebas y dependencias.
 - [Desarrollo del Sprint 3 restaurado](docs/26-desarrollo-sprint-3-restaurado.md): fortalezas, confianza, IA preparada y cuentas estudiantiles pendientes.
+- [Desarrollo del Sprint 4 restaurado](docs/27-desarrollo-sprint-4-restaurado.md): adaptación, ejemplos alternativos, valoración, pregunta breve, sesiones y evidencia de Jira.
 - [Correcciones de práctica](docs/21-retroalimentacion-practica.md): regla de revisión antes de mostrar explicaciones.
 - [Cuentas estudiantiles](docs/22-cuentas-estudiantes-consentimiento.md): base técnica y decisiones formales pendientes.
 - [Documentación completa](docs/README.md): planes y cierres anteriores.
 - [Aplicación web](web/README.md): API y detalles técnicos.
 - [Jira AP](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP): seguimiento del proyecto.
 
-El Sprint 1 conserva sus 12 incidencias terminadas. Los cierres anticipados de demostración de los Sprints 2–5 quedan como historial en Jira; sus alcances completos se restauraron en sprints futuros separados. El Sprint 3 restaurado tiene **20 incidencias principales: 11 Listo y 9 En curso**, según la [verificación actual](docs/26-desarrollo-sprint-3-restaurado.md). El Sprint 6 sigue futuro con sus 23 incidencias vigentes. No se fijaron fechas nuevas para los Sprints 2–4 porque sus fechas originales ya pasaron. La revisión curricular y el registro de menores conservan sus dependencias.
+El Sprint 1 conserva sus 12 incidencias terminadas. Los cierres anticipados de demostración de los Sprints 2–5 quedan como historial en Jira; sus alcances completos se restauraron en sprints futuros separados. El Sprint 3 restaurado tiene **20 incidencias principales: 11 Listo y 9 En curso**. El Sprint 4 restaurado tiene **25: 8 Listo y 17 En curso**, según la [verificación actual](docs/27-desarrollo-sprint-4-restaurado.md). El Sprint 6 sigue futuro con sus 23 incidencias vigentes. No se fijaron fechas nuevas para los Sprints 2–4 porque sus fechas originales ya pasaron. La revisión curricular y el registro de menores conservan sus dependencias.
