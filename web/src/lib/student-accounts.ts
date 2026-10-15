@@ -33,12 +33,20 @@ export type ReviewedConsentPolicy = {
 
 export type StudentProgress = {
   id: string;
+  sourceSessionId: string;
   topicId: string;
   kind: "diagnostic" | "practice";
   correctCount: number;
   answered: number;
   completedAt: string;
 };
+
+export type CompletedStudentSession = Omit<StudentProgress, "id" | "sourceSessionId"> & {
+  sessionId: string;
+  studentId: string;
+  status: "completed";
+};
+export type CompletedSessionResolver = (sessionId: string, studentId: string) => CompletedStudentSession | null;
 
 function hash(value: string) { return createHash("sha256").update(value).digest("hex"); }
 function validEmail(value: unknown) {
@@ -75,6 +83,7 @@ function policyMatches(grant: VerifiedAuthorization, policy: ReviewedConsentPoli
 export function openStudentAccountStore(
   dbPath = process.env.APOYO_STUDENT_DB_PATH || path.join(process.cwd(), "data", "apoyo-students.sqlite"),
   reviewedPolicy: ReviewedConsentPolicy | null = null,
+  resolveCompletedSession: CompletedSessionResolver | null = null,
 ) {
   mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
@@ -97,13 +106,18 @@ export function openStudentAccountStore(
     );
     CREATE TABLE IF NOT EXISTS student_progress (
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES student_users(id) ON DELETE CASCADE,
+      source_session_id TEXT NOT NULL UNIQUE,
       topic_id TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('diagnostic','practice')),
       correct_count INTEGER NOT NULL, answered INTEGER NOT NULL, completed_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS student_progress_owner ON student_progress(user_id,topic_id,completed_at);`);
 
   function requireReviewedPolicy() {
-    if (!reviewedPolicy) throw new StudentAccountError(503, "Las cuentas de estudiantes aún no están disponibles.");
+    // Formal approval has not arrived. A deployment cannot turn this on with an
+    // environment variable or an arbitrary policy object: release needs a code change.
+    if (process.env.NODE_ENV === "production" || !reviewedPolicy) {
+      throw new StudentAccountError(503, "Las cuentas de estudiantes aún no están disponibles.");
+    }
     return reviewedPolicy;
   }
   function issueAuthorization(grant: VerifiedAuthorization) {
@@ -196,24 +210,35 @@ export function openStudentAccountStore(
       db.exec("COMMIT");
     } catch (error) { db.exec("ROLLBACK"); throw error; }
   }
-  function saveProgress(token: string, item: Omit<StudentProgress, "id">) {
+  function recordCompletedSession(token: string, sessionId: string) {
+    if (typeof sessionId !== "string" || !/^[0-9a-f]{32}$/.test(sessionId)) {
+      throw new StudentAccountError(400, "Sesión no válida.");
+    }
+    if (!resolveCompletedSession) throw new StudentAccountError(503, "El seguimiento de estudiantes aún no está disponible.");
     db.exec("BEGIN IMMEDIATE");
     try {
       const user = currentStudent(token);
-      if (!item || typeof item.topicId !== "string" || !/^[A-Z0-9-]{3,30}$/.test(item.topicId) ||
+      const item = resolveCompletedSession(sessionId, user.id);
+      if (!item || item.studentId !== user.id || item.sessionId !== sessionId || item.status !== "completed" ||
+        typeof item.topicId !== "string" || !/^[A-Z0-9-]{3,30}$/.test(item.topicId) ||
         !["diagnostic", "practice"].includes(item.kind) || !Number.isSafeInteger(item.correctCount) ||
         !Number.isSafeInteger(item.answered) || item.answered < 1 || item.correctCount < 0 || item.correctCount > item.answered ||
-        !validUtc(item.completedAt)) throw new StudentAccountError(400, "Progreso no válido.");
+        !validUtc(item.completedAt)) throw new StudentAccountError(403, "Sesión no disponible.");
+      const existing = db.prepare(`SELECT id,source_session_id AS sourceSessionId,topic_id AS topicId,kind,
+        correct_count AS correctCount,answered,completed_at AS completedAt FROM student_progress
+        WHERE source_session_id=? AND user_id=?`).get(sessionId, user.id) as StudentProgress | undefined;
+      if (existing) { db.exec("COMMIT"); return { ...existing }; }
       const id = randomBytes(16).toString("hex");
-      db.prepare(`INSERT INTO student_progress(id,user_id,topic_id,kind,correct_count,answered,completed_at)
-        VALUES (?,?,?,?,?,?,?)`).run(id, user.id, item.topicId, item.kind, item.correctCount, item.answered, item.completedAt);
+      db.prepare(`INSERT INTO student_progress(id,user_id,source_session_id,topic_id,kind,correct_count,answered,completed_at)
+        VALUES (?,?,?,?,?,?,?,?)`).run(id, user.id, sessionId, item.topicId, item.kind, item.correctCount, item.answered, item.completedAt);
       db.exec("COMMIT");
-      return { id, ...item };
+      return { id, sourceSessionId: sessionId, topicId: item.topicId, kind: item.kind,
+        correctCount: item.correctCount, answered: item.answered, completedAt: item.completedAt };
     } catch (error) { db.exec("ROLLBACK"); throw error; }
   }
   function listProgress(token: string): StudentProgress[] {
     const user = currentStudent(token);
-    return (db.prepare(`SELECT id,topic_id AS topicId,kind,correct_count AS correctCount,answered,
+    return (db.prepare(`SELECT id,source_session_id AS sourceSessionId,topic_id AS topicId,kind,correct_count AS correctCount,answered,
       completed_at AS completedAt FROM student_progress WHERE user_id=? ORDER BY completed_at DESC,id DESC LIMIT 200`)
       .all(user.id)) as StudentProgress[];
   }
@@ -222,7 +247,7 @@ export function openStudentAccountStore(
     if (typeof topicId !== "string" || !/^[A-Z0-9-]{3,30}$/.test(topicId)) {
       throw new StudentAccountError(400, "Tema no válido.");
     }
-    const rows = db.prepare(`SELECT id,topic_id AS topicId,kind,correct_count AS correctCount,answered,
+    const rows = db.prepare(`SELECT id,source_session_id AS sourceSessionId,topic_id AS topicId,kind,correct_count AS correctCount,answered,
       completed_at AS completedAt FROM student_progress WHERE user_id=? AND topic_id=?
       ORDER BY completed_at DESC,id DESC LIMIT 2`).all(user.id, topicId) as StudentProgress[];
     if (rows.length < 2) return {
@@ -234,5 +259,6 @@ export function openStudentAccountStore(
     return { status: "ready" as const, current, previous,
       percentagePointChange: Math.round((current.correctCount / current.answered - previous.correctCount / previous.answered) * 100) };
   }
-  return { issueAuthorization, register, login, currentStudent, logout, revoke, saveProgress, listProgress, compareProgress, close: () => db.close() };
+  return { issueAuthorization, register, login, currentStudent, logout, revoke,
+    recordCompletedSession, listProgress, compareProgress, close: () => db.close() };
 }
