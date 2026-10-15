@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { analyzeDemoSkills } from "@/lib/diagnostic-analysis";
 import type { QuestionView } from "@/lib/diagnostic";
 import type { Selection } from "@/lib/selection";
+import DiagnosticAccountAttempt from "./diagnostic-account-attempt";
 import StudyDemo from "./study-demo";
 
 type Feedback =
@@ -12,7 +13,7 @@ type Feedback =
 type Answer = { questionId: string; optionId: string; correct: boolean };
 
 export default function DiagnosticDemo({ selection }: { selection: Selection }) {
-  const [stage, setStage] = useState<"idle" | "loading" | "intro" | "question" | "finished" | "study">("idle");
+  const [stage, setStage] = useState<"idle" | "loading" | "intro" | "question" | "finished" | "study" | "account">("idle");
   const [questions, setQuestions] = useState<QuestionView[]>([]);
   const [index, setIndex] = useState(0);
   const [optionId, setOptionId] = useState("");
@@ -20,8 +21,6 @@ export default function DiagnosticDemo({ selection }: { selection: Selection }) 
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState("");
   const request = useRef<AbortController | null>(null);
   const submitting = useRef(false);
   useEffect(() => () => request.current?.abort(), []);
@@ -39,6 +38,14 @@ export default function DiagnosticDemo({ selection }: { selection: Selection }) 
     setStage("loading");
     setError("");
     try {
+      const accountResponse = await fetch("/api/auth/me", { signal: controller.signal, cache: "no-store", credentials: "same-origin" });
+      if (accountResponse.ok) {
+        const accountBody = await accountResponse.json();
+        if (accountBody.user) {
+          if (!controller.signal.aborted) setStage("account");
+          return;
+        }
+      }
       const params = new URLSearchParams({ mode: "demo", grade: selection.gradeId!, subject: selection.subjectId!, topic: selection.topicId! });
       const response = await fetch(`/api/diagnostic?${params}`, { signal: controller.signal, cache: "no-store" });
       const body = await response.json();
@@ -88,29 +95,10 @@ export default function DiagnosticDemo({ selection }: { selection: Selection }) 
 
   function reset() {
     request.current?.abort();
-    setStage("idle"); setQuestions([]); setIndex(0); setOptionId(""); setAnswers([]); setFeedback(null); setError(""); setBusy(false); setSaveMessage("");
+    setStage("idle"); setQuestions([]); setIndex(0); setOptionId(""); setAnswers([]); setFeedback(null); setError(""); setBusy(false);
   }
 
-  async function saveDiagnostic() {
-    if (!ready || stage !== "finished" || saving) return;
-    setSaving(true);
-    setSaveMessage("");
-    try {
-      const response = await fetch("/api/progress", {
-        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin",
-        body: JSON.stringify({ gradeId: selection.gradeId, subjectId: selection.subjectId, topicId: selection.topicId, kind: "diagnostic", completed: true }),
-      });
-      const body = await response.json();
-      if (!response.ok) throw new Error(response.status === 401 ? "Inicia sesión arriba para guardar este recorrido." : body.error ?? "No se pudo guardar el recorrido.");
-      setSaveMessage("Diagnóstico de demostración guardado en tu cuenta.");
-      window.dispatchEvent(new Event("ap-progress-saved"));
-    } catch (cause) {
-      setSaveMessage(cause instanceof Error ? cause.message : "No se pudo guardar el recorrido.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
+  if (stage === "account") return <section className="diagnostic-card" aria-labelledby="diagnostic-title"><p className="eyebrow">Demostración · cuenta adulta</p><h2 id="diagnostic-title">Prueba un diagnóstico corto</h2><DiagnosticAccountAttempt selection={selection} onExit={reset} /></section>;
   if (stage === "study") return <>
     <StudyDemo selection={selection} />
     <button className="text-button" type="button" onClick={() => setStage("finished")}>Volver al resumen del diagnóstico</button>
@@ -119,10 +107,10 @@ export default function DiagnosticDemo({ selection }: { selection: Selection }) 
   return <section className="diagnostic-card" aria-labelledby="diagnostic-title">
     <p className="eyebrow">Demostración · diagnóstico y estudio</p>
     <h2 id="diagnostic-title">Prueba un diagnóstico corto</h2>
-    <p className="diagnostic-disclaimer">Las preguntas son ejemplos provisionales sin revisión docente. Esta experiencia no es una calificación ni se guarda en una cuenta. Al terminar podrás estudiar el tema y practicar con otro ejemplo.</p>
+    <p className="diagnostic-disclaimer">Las preguntas son ejemplos provisionales sin revisión docente. Con una cuenta adulta el intento se guarda en el servidor; sin cuenta puedes explorar una vista previa que no conserva respuestas. Ninguna opción es una calificación académica.</p>
     {stage === "idle" && <button className="primary-button" type="button" onClick={prepare} disabled={!ready}>Empezar a estudiar (demo)</button>}
     {stage === "loading" && <p role="status">Preparando preguntas de demostración…</p>}
-    {stage === "intro" && <div className="diagnostic-panel"><h3>Antes de comenzar</h3><p>Responde con calma. Verás {questions.length} {questions.length === 1 ? "pregunta de prueba" : "preguntas de prueba"} sobre el tema elegido. No recibirás una nota académica y podrás salir cuando quieras.</p><button className="primary-button" type="button" onClick={() => setStage("question")}>Comenzar preguntas</button></div>}
+    {stage === "intro" && <div className="diagnostic-panel"><h3>Antes de comenzar · vista previa sin cuenta</h3><p>Responde con calma. Verás {questions.length} {questions.length === 1 ? "pregunta de prueba" : "preguntas de prueba"} sobre el tema elegido. Esta vista previa no guarda respuestas ni puntaje, no recibirás una nota académica y podrás salir cuando quieras.</p><button className="primary-button" type="button" onClick={() => setStage("question")}>Comenzar preguntas</button></div>}
     {stage === "question" && question && <div className="diagnostic-panel">
       <p className="question-progress" aria-live="polite">Pregunta {index + 1} de {questions.length}</p>
       <progress value={index + 1} max={questions.length} aria-label="Avance del diagnóstico" />
@@ -143,7 +131,7 @@ export default function DiagnosticDemo({ selection }: { selection: Selection }) 
         <span> {result.correct}/{result.answered} aciertos; preguntas {result.questionIds.map((id) => questions.findIndex((item) => item.id === id) + 1).join(", ")}.</span>
       </li>)}</ul>}
       {analysis.unmappedQuestionIds.length > 0 && <p className="diagnostic-error">Resultado incompleto: {analysis.unmappedQuestionIds.length} {analysis.unmappedQuestionIds.length === 1 ? "pregunta no tiene" : "preguntas no tienen"} un subtema vinculado; no se les asignó dificultad.</p>}
-      <p>Este resumen es orientativo; no equivale a una evaluación validada. Puedes guardar que completaste el recorrido, pero no se guarda una calificación.</p><button className="primary-button" type="button" onClick={() => setStage("study")}>Continuar a estudiar</button><button className="text-button" type="button" onClick={saveDiagnostic} disabled={saving}>{saving ? "Guardando…" : "Guardar diagnóstico en mi cuenta"}</button><button className="text-button" type="button" onClick={reset}>Volver a empezar</button>{saveMessage && <p role="status">{saveMessage}</p>}</div>}
+      <p>Este resumen es orientativo y solo existe en esta vista previa; no equivale a una evaluación validada ni queda guardado.</p><button className="primary-button" type="button" onClick={() => setStage("study")}>Continuar a estudiar</button><button className="text-button" type="button" onClick={reset}>Volver a empezar</button></div>}
     {error && <p className="diagnostic-error" role="alert">{error}</p>}
     {stage !== "idle" && stage !== "finished" && <button className="text-button" type="button" onClick={reset}>Salir de la demostración</button>}
   </section>;

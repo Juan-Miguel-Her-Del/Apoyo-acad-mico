@@ -95,12 +95,6 @@ try {
   const testAccounts = process.env.BROWSER_TEST_ACCOUNTS === "true";
   const testEmail = `demo-${Date.now()}@example.test`;
   const testPassword = "DemoPassword-1234";
-  if (testAccounts) {
-    const status = await evaluate(`fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(testEmail)}, password: ${JSON.stringify(testPassword)}, adultConfirmed: true }) }).then((response) => response.status)`);
-    assert.equal(status, 201, "el registro adulto debe funcionar en este servidor de pruebas");
-    await navigate();
-    await waitText(".account-panel", testEmail);
-  }
   await waitText(".grade-groups", "10.º");
   assert.equal(await evaluate("document.querySelectorAll('.grade-choice:not(:disabled)').length"), 11);
   await click(".grade-choice", "1.º");
@@ -150,10 +144,6 @@ try {
   assert.equal(await evaluate("document.querySelector('.diagnostic-panel').textContent.includes('Respondiste 2 de 2')"), true);
   assert.equal(await evaluate("document.querySelectorAll('.skill-results li').length"), 2, "cada subtema de Química conserva su trazabilidad");
   assert.equal(await evaluate("[...document.querySelectorAll('.skill-results li')].every((item) => item.textContent.includes('indeterminado'))"), true, "una sola respuesta por subtema no permite inferir dificultad");
-  if (testAccounts) {
-    await click(".diagnostic-panel .text-button", "Guardar diagnóstico");
-    await waitText(".account-panel", "G10-QUI");
-  }
   console.log("OK: HTTP demo/publicado, respuestas válidas, doble clic, avance y resultado solo en memoria.");
   await click(".subject-choice", "Matemáticas");
   await waitText(".topic-list", "Razones y funciones");
@@ -176,13 +166,37 @@ try {
   await click(".diagnostic-panel .primary-button", "Continuar a estudiar");
   await waitText(".diagnostic-card", "Estudia un tema y ponlo en práctica");
   await waitText(".diagnostic-panel", "Explicación breve");
-  if (!testAccounts) {
-    await click(".quick-practice summary", "Prueba rápida sin cuenta");
-    await evaluate("document.querySelector('.quick-practice .answer-option input').click()");
-    await click(".quick-practice .primary-button", "Revisar respuesta");
-    await waitText(".quick-practice .answer-feedback", "¡Correcto!");
-  }
+  await click(".quick-practice summary", "Prueba rápida sin cuenta");
+  await evaluate("document.querySelector('.quick-practice .answer-option input').click()");
+  await click(".quick-practice .primary-button", "Revisar respuesta");
+  await waitText(".quick-practice .answer-feedback", "¡Correcto!");
   if (testAccounts) {
+    const registrationStatus = await evaluate(`fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(testEmail)}, password: ${JSON.stringify(testPassword)}, adultConfirmed: true }) }).then((response) => response.status)`);
+    assert.equal(registrationStatus, 201, "el registro adulto debe funcionar en este servidor de pruebas");
+    async function completeAccountDiagnostic(subject, topic) {
+      await navigate();
+      await waitText(".account-panel", testEmail);
+      await waitText(".grade-groups", "10.º");
+      await click(".grade-choice", "10.º");
+      await waitText(".subject-grid", subject);
+      await click(".subject-choice", subject);
+      await waitText(".topic-list", topic);
+      await click(".topic-choice", topic);
+      await click(".diagnostic-card .primary-button", "Empezar a estudiar");
+      for (let questionNumber = 1; questionNumber <= 4; questionNumber += 1) {
+        await waitText(".diagnostic-account-attempt .question-progress", `Pregunta ${questionNumber} de 4`);
+        await evaluate("document.querySelector('.diagnostic-account-attempt .answer-option input').click()");
+        await click(".diagnostic-account-attempt .primary-button", "Revisar respuesta");
+        await waitText(".diagnostic-account-attempt .answer-feedback", "Explicación pendiente de revisión docente");
+        await click(".diagnostic-account-attempt .answer-feedback .primary-button", questionNumber === 4 ? "Ver resumen" : "Siguiente pregunta");
+      }
+      await waitText(".diagnostic-account-attempt", "Terminaste la demostración");
+      await waitText(".account-panel", topic);
+    }
+    await completeAccountDiagnostic("Química", "Reacciones inorgánicas");
+    await completeAccountDiagnostic("Matemáticas", "Razones y funciones");
+    await click(".diagnostic-account-attempt .primary-button", "Continuar a estudiar");
+    await waitText(".diagnostic-panel", "Explicación breve");
     await click(".practice-session .primary-button", "Empezar práctica de dos preguntas");
     await waitText(".practice-session .question-progress", "Pregunta 1 de 2");
     await evaluate("document.querySelector('.practice-session .answer-option input').click()");
@@ -226,6 +240,8 @@ try {
     await waitText(".practice-result", "sin respuestas");
     await waitText(".account-panel", "terminada sin respuestas");
     await waitFor(() => evaluate("document.querySelector('.comparison-result') !== null"), "comparación de dos rondas respondidas");
+    const guestStatus = await evaluate("fetch('/api/auth/logout', { method: 'POST' }).then((response) => response.status)");
+    assert.equal(guestStatus, 200);
   }
   console.log("OK: dos respuestas del mismo subtema muestran señal demo con preguntas trazables.");
   await click(".grade-choice", "5.º");
@@ -277,7 +293,7 @@ try {
     await click(".diagnostic-card .text-button", "Salir de la demostración");
     assert.equal(await evaluate("document.querySelector('.diagnostic-panel') === null"), true);
     await click(".diagnostic-card .primary-button", "Empezar a estudiar");
-    await waitText(".diagnostic-panel", "No recibirás una nota académica");
+    await waitText(".diagnostic-panel", "no recibirás una nota académica");
     await click(".diagnostic-panel .primary-button", "Comenzar preguntas");
     await waitText(".question-progress", "Pregunta 1 de 1");
     assert.equal(await evaluate("document.querySelector('.diagnostic-panel progress').max"), 1);
@@ -293,16 +309,16 @@ try {
   });
   console.log("OK: aviso al reingresar, banco de una pregunta, progreso 1/1, evaluación pendiente sin acierto supuesto y reintento.");
 
-  await scenario(`(() => { const original = window.fetch.bind(window); let once = false;
+  await scenario(`(() => { const original = window.fetch.bind(window); window.__allowCatalogRetry = false;
       window.fetch = (url, options) => {
-        if (String(url).includes("resource=grades") && !once) {
-          once = true;
+        if (String(url).includes("resource=grades") && !window.__allowCatalogRetry) {
           return Promise.reject(new Error("Fallo simulado"));
         }
         return original(url, options);
       };
     })();`, async () => {
     await waitText('[role="alert"]', "No se pudo cargar el catálogo");
+    await evaluate("window.__allowCatalogRetry = true");
     await click(".retry-button", "Reintentar");
     await waitText(".grade-groups", "10.º");
   });
@@ -446,6 +462,8 @@ try {
   await completeStudyForGrade("6.º");
   console.log("OK: diagnóstico, explicación y práctica en primaria y secundaria; media verificada arriba.");
   if (testAccounts) {
+    const restoredLogin = await evaluate(`fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(testEmail)}, password: ${JSON.stringify(testPassword)} }) }).then((response) => response.status)`);
+    assert.equal(restoredLogin, 200);
     await navigate();
     await waitText(".account-panel", testEmail);
     await waitText(".account-panel", "G10-QUI");
