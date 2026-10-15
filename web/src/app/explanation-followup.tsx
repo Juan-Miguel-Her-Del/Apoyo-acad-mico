@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { evaluateShortCheck, prepareShortCheck, updateRating,
   type ExplanationRating, type RatingState, type ShortCheckSource } from "@/lib/explanation-followup";
 
-export default function ExplanationFollowup({ explanationId, question, mode }: {
+export default function ExplanationFollowup({ explanationId, topicId, question, mode }: {
   explanationId: string;
+  topicId?: string;
   question?: ShortCheckSource | null;
   mode: "demo" | "published";
 }) {
   const [rating, setRating] = useState<RatingState>(null);
+  const [accountAvailable, setAccountAvailable] = useState(false);
+  const [ratingMessage, setRatingMessage] = useState("");
+  const [ratingBusy, setRatingBusy] = useState(false);
+  const authEpoch = useRef(0);
   const [answer, setAnswer] = useState("");
   const [checkedAnswer, setCheckedAnswer] = useState("");
   const check = prepareShortCheck(question, explanationId);
@@ -17,18 +22,78 @@ export default function ExplanationFollowup({ explanationId, question, mode }: {
   const validQuestion = mode === "demo" || question?.validation === "approved";
   const result = checkedAnswer && validQuestion ? evaluateShortCheck(check, checkedAnswer) : null;
 
-  function selectRating(value: ExplanationRating) {
-    setRating((current) => updateRating(current, explanationId, value));
+  useEffect(() => {
+    if (mode !== "demo" || !topicId) return;
+    let mounted = true;
+    async function load() {
+      const epoch = ++authEpoch.current;
+      try {
+        const response = await fetch(`/api/explanation/demo-feedback?topicId=${encodeURIComponent(topicId!)}`,
+          { cache: "no-store", credentials: "same-origin" });
+        if (!mounted || epoch !== authEpoch.current) return;
+        if (response.status === 401) {
+          setAccountAvailable(false);
+          setRating(null);
+          setRatingMessage("");
+          return;
+        }
+        if (!response.ok) throw new Error("No se pudo cargar la valoración guardada.");
+        const body = await response.json() as { feedback?: { explanationId: string; value: ExplanationRating } | null };
+        if (!mounted || epoch !== authEpoch.current) return;
+        setAccountAvailable(true);
+        setRating(body.feedback?.explanationId === explanationId
+          ? { explanationId, value: body.feedback.value } : null);
+        setRatingMessage("");
+      } catch {
+        if (mounted && epoch === authEpoch.current) setRatingMessage("No se pudo cargar la valoración guardada.");
+      }
+    }
+    const changed = () => { setRating(null); setAccountAvailable(false); void load(); };
+    window.addEventListener("ap-auth-changed", changed);
+    void load();
+    return () => { mounted = false; window.removeEventListener("ap-auth-changed", changed); };
+  }, [explanationId, mode, topicId]);
+
+  async function selectRating(value: ExplanationRating) {
+    if (ratingBusy) return;
+    if (mode !== "demo" || !topicId || !accountAvailable) {
+      setRating((current) => updateRating(current, explanationId, value));
+      setRatingMessage("Valoración temporal; inicia sesión en una cuenta adulta de demostración para guardarla.");
+      return;
+    }
+    setRatingBusy(true);
+    setRatingMessage("");
+    const epoch = authEpoch.current;
+    try {
+      const response = await fetch("/api/explanation/demo-feedback", {
+        method: "POST", cache: "no-store", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topicId, explanationId, value }),
+      });
+      if (epoch !== authEpoch.current) return;
+      if (!response.ok) throw new Error("No se pudo guardar la valoración. Inténtalo de nuevo.");
+      const body = await response.json() as { feedback?: { explanationId: string; value: ExplanationRating } };
+      if (body.feedback?.explanationId !== explanationId || body.feedback.value !== value) {
+        throw new Error("No se pudo confirmar la valoración guardada.");
+      }
+      setRating({ explanationId, value });
+      setRatingMessage("Valoración guardada en tu cuenta adulta de demostración.");
+    } catch (error) {
+      if (epoch === authEpoch.current) setRatingMessage(error instanceof Error ? error.message : "No se pudo guardar la valoración.");
+    } finally { if (epoch === authEpoch.current) setRatingBusy(false); }
   }
 
-  return <section className="quick-practice" aria-label="Después de la explicación">
+  return <section className="explanation-followup" aria-label="Después de la explicación">
     <h4>¿Te ayudó esta explicación?</h4>
-    <p>Tu valoración se muestra en esta vista y aún no se guarda en una cuenta.</p>
+    <p>{mode === "demo" && accountAvailable
+      ? "La valoración de esta explicación se guarda en tu cuenta adulta de demostración."
+      : "Esta valoración es temporal y no se guarda en una cuenta."}</p>
     <div role="group" aria-label="Valorar explicación">
-      <button type="button" aria-pressed={currentRating === "helped"} onClick={() => selectRating("helped")}>Sí, me ayudó</button>{" "}
-      <button type="button" aria-pressed={currentRating === "confused"} onClick={() => selectRating("confused")}>Todavía estoy confundido</button>
+      <button type="button" disabled={ratingBusy} aria-pressed={currentRating === "helped"} onClick={() => void selectRating("helped")}>Sí, me ayudó</button>{" "}
+      <button type="button" disabled={ratingBusy} aria-pressed={currentRating === "confused"} onClick={() => void selectRating("confused")}>Todavía estoy confundido</button>
     </div>
     {currentRating && <p role="status">Valoración de esta explicación: {currentRating === "helped" ? "me ayudó" : "todavía estoy confundido"}. Puedes cambiarla.</p>}
+    {ratingMessage && <p role="status">{ratingMessage}</p>}
 
     <h4>Comprueba lo que entendiste</h4>
     {!validQuestion && <p>La pregunta de comprobación requiere revisión académica antes de publicarse.</p>}

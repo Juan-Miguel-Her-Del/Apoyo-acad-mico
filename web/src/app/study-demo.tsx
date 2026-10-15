@@ -29,6 +29,7 @@ export default function StudyDemo({ selection }: { selection: Selection }) {
       <p>{lesson.example}</p>
       <ExplanationFollowup key={`study-draft-v1:${lesson.topicId}`}
         explanationId={`study-draft-v1:${lesson.topicId}`}
+        topicId={lesson.topicId}
         mode="demo"
         question={{
           id: `study-draft-v1:${lesson.topicId}:short-check`,
