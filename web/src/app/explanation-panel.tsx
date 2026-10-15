@@ -15,9 +15,11 @@ export default function ExplanationPanel({ attemptId, subskillId, label, availab
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [retryable, setRetryable] = useState(false);
+  const [lastRequestedExampleIndex, setLastRequestedExampleIndex] = useState(0);
 
   async function requestExplanation(exampleIndex = 0) {
     if (busy) return;
+    setLastRequestedExampleIndex(exampleIndex);
     setBusy(true); setError(""); setRetryable(false);
     try {
       const response = await fetch("/api/explanation", {
@@ -46,7 +48,7 @@ export default function ExplanationPanel({ attemptId, subskillId, label, availab
     {!available && <p>La explicación de {label} está pendiente de revisión académica. Aún no está disponible.</p>}
     {available && !content && !error &&
       <button type="button" onClick={() => void requestExplanation(0)} disabled={busy}>{busy ? "Cargando explicación…" : `Solicitar explicación de ${label}`}</button>}
-    {error && <p role="alert">{error} {retryable && <button type="button" onClick={() => void requestExplanation(content?.exampleIndex ?? 0)} disabled={busy}>Reintentar</button>}</p>}
+    {error && <p role="alert">{error} {retryable && <button type="button" onClick={() => void requestExplanation(lastRequestedExampleIndex)} disabled={busy}>Reintentar</button>}</p>}
     {content && <div>
       <p>Explicación revisada para grado {Number(content.gradeId.slice(1))}.</p>
       <p>{content.explanation}</p><p>{content.exampleIndex === 0 ? "Ejemplo" : "Otro ejemplo"}: {content.example}</p>
