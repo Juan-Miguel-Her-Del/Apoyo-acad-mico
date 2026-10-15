@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { openStudentAccountStore, StudentAccountError } from "../src/lib/student-accounts.ts";
 
 const policy = { noticeVersion: "test-review-1", noticeDigest: "a".repeat(64), approvedMethod: "synthetic-verifier" };
@@ -29,7 +30,7 @@ function fixture(t) {
     completed.set(sessionId, { sessionId, studentId, status: "completed", topicId: "G05-MAT",
       kind: "practice", correctCount, answered: 2, completedAt });
   };
-  return { open, finish };
+  return { open, finish, dbPath };
 }
 const blocked = (status) => (error) => error instanceof StudentAccountError && error.status === status;
 
@@ -83,11 +84,48 @@ test("faltante, finalidades parciales, duplicado y aviso distinto bloquean activ
   assert.throws(() => store.issueAuthorization({ ...syntheticGrant(), purposes: ["educational_account"] }), blocked(403));
   assert.throws(() => store.issueAuthorization({ ...syntheticGrant(), noticeDigest: "b".repeat(64) }), blocked(403));
   const authorizationId = store.issueAuthorization(syntheticGrant());
-  assert.throws(() => store.issueAuthorization(syntheticGrant()), (error) => String(error).includes("UNIQUE constraint failed"));
+  assert.throws(() => store.issueAuthorization(syntheticGrant()), blocked(403));
   await assert.rejects(store.register({ email: "otro@example.test", password: "clave-segura-123", authorizationId: "0".repeat(32) }), blocked(403));
   await store.register({ email: "otro@example.test", password: "clave-segura-123", authorizationId });
-  await assert.rejects(store.register({ email: "otro@example.test", password: "clave-segura-123", authorizationId }), blocked(409));
+  await assert.rejects(store.register({ email: "otro@example.test", password: "clave-segura-123", authorizationId }),
+    (error) => error instanceof StudentAccountError && error.status === 400 && error.message === "Revisa los datos e inténtalo de nuevo.");
   await assert.rejects(store.login({ email: "otro@example.test", password: "equivocada-123" }), blocked(401));
+});
+
+test("dos registros simultáneos del mismo correo normalizado no revelan una cuenta existente", async (t) => {
+  const { open } = fixture(t);
+  const store = open();
+  const firstAuthorization = store.issueAuthorization(syntheticGrant("parallel-evidence-1"));
+  const secondAuthorization = store.issueAuthorization(syntheticGrant("parallel-evidence-2"));
+  const attempts = await Promise.allSettled([
+    store.register({ email: "DUPLICADO@example.test", password: "clave-segura-123", authorizationId: firstAuthorization }),
+    store.register({ email: "duplicado@example.test", password: "clave-segura-123", authorizationId: secondAuthorization }),
+  ]);
+  assert.equal(attempts.filter((item) => item.status === "fulfilled").length, 1);
+  const failure = attempts.find((item) => item.status === "rejected").reason;
+  assert.equal(failure.status, 400);
+  assert.equal(failure.message, "Revisa los datos e inténtalo de nuevo.");
+  const login = await store.login({ email: "duplicado@example.test", password: "clave-segura-123" });
+  assert.equal(store.currentStudent(login.token).email, "duplicado@example.test");
+});
+
+test("fallo de almacenamiento revierte el alta y permite reintento con la misma autorización", async (t) => {
+  const { open, dbPath } = fixture(t);
+  const store = open();
+  const authorizationId = store.issueAuthorization(syntheticGrant("storage-failure"));
+  const db = new DatabaseSync(dbPath);
+  try {
+    db.exec(`CREATE TRIGGER fail_student_insert BEFORE INSERT ON student_users
+      BEGIN SELECT RAISE(ABORT, 'synthetic storage failure'); END;`);
+    const input = { email: "reintento@example.test", password: "clave-segura-123", authorizationId };
+    await assert.rejects(store.register(input), /synthetic storage failure/);
+    db.exec("DROP TRIGGER fail_student_insert");
+    const created = await store.register(input);
+    assert.equal(created.email, "reintento@example.test");
+    await assert.rejects(store.register(input), blocked(400));
+  } finally {
+    db.close();
+  }
 });
 
 test("progreso y sesión quedan aislados; revocar corta lecturas y escrituras", async (t) => {

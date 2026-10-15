@@ -3,19 +3,19 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { grades, subjects, topics } from "@/lib/catalog";
 import { comparePracticeSessions, type PracticeHistoryItem } from "@/lib/practice-history";
+import { diagnosticSkillInsights } from "@/lib/diagnostic-analysis";
 import type { SkillTotal } from "@/lib/progress-insights";
 import AccountProgressInsights from "./account-progress-insights";
+import StudentRegistrationPreview from "./student-registration-preview";
 
 type Account = { id: string; email: string };
-type ProgressItem = {
-  gradeId: string;
-  subjectId: string;
-  topicId: string;
-  kind: "study" | "diagnostic";
-  completed: boolean;
-  updatedAt: string;
+type DiagnosticHistoryItem = {
+  id: string; gradeId: string; subjectId: string; topicId: string;
+  status: "open" | "completed"; answered: number; correctCount: number; total: number;
+  startedAt: string; completedAt: string | null; validation: "demo-unreviewed";
+  answers: { questionId: string; optionId: string; correct: boolean; skill: string; answeredAt: string }[];
 };
-function topicLabel(item: PracticeHistoryItem) {
+function topicLabel(item: Pick<PracticeHistoryItem, "gradeId" | "subjectId" | "topicId">) {
   const grade = grades.find((value) => value.id === item.gradeId)?.label ?? item.gradeId;
   const subject = subjects.find((value) => value.id === item.subjectId)?.name ?? item.subjectId;
   const topic = topics.find((value) => value.id === item.topicId)?.name ?? item.topicId;
@@ -27,7 +27,8 @@ function dateLabel(value: string | null) {
 
 export default function AccountPanel() {
   const [account, setAccount] = useState<Account | null>(null);
-  const [items, setItems] = useState<ProgressItem[]>([]);
+  const [diagnosticItems, setDiagnosticItems] = useState<DiagnosticHistoryItem[]>([]);
+  const [selectedDiagnosticId, setSelectedDiagnosticId] = useState("");
   const [practiceItems, setPracticeItems] = useState<PracticeHistoryItem[]>([]);
   const [skillTotals, setSkillTotals] = useState<SkillTotal[] | null>(null);
   const [selectedTopic, setSelectedTopic] = useState("");
@@ -42,21 +43,21 @@ export default function AccountPanel() {
   const refreshProgress = useCallback(async () => {
     const epoch = authEpoch.current;
     try {
-      const [progressResponse, practiceResponse] = await Promise.all([
-        fetch("/api/progress", { cache: "no-store", credentials: "same-origin" }),
+      const [diagnosticResponse, practiceResponse] = await Promise.all([
+        fetch("/api/diagnostic/attempts", { cache: "no-store", credentials: "same-origin" }),
         fetch("/api/practice/sessions", { cache: "no-store", credentials: "same-origin" }),
       ]);
       if (epoch !== authEpoch.current) return;
-      if (!progressResponse.ok || !practiceResponse.ok) {
-        setItems([]);
+      if (!diagnosticResponse.ok || !practiceResponse.ok) {
+        setDiagnosticItems([]);
         setPracticeItems([]);
         setSkillTotals(null);
         setMessage("No se pudo cargar tu progreso. Inténtalo de nuevo.");
         return;
       }
-      const [progressBody, practiceBody] = await Promise.all([progressResponse.json(), practiceResponse.json()]);
+      const [diagnosticBody, practiceBody] = await Promise.all([diagnosticResponse.json(), practiceResponse.json()]);
       if (epoch !== authEpoch.current) return;
-      setItems(Array.isArray(progressBody.items) ? progressBody.items : []);
+      setDiagnosticItems(Array.isArray(diagnosticBody.items) ? diagnosticBody.items : []);
       setPracticeItems(Array.isArray(practiceBody.items) ? practiceBody.items : []);
       setSkillTotals(Array.isArray(practiceBody.skillTotals) ? practiceBody.skillTotals : null);
       setMessage((current) => current === "No se pudo cargar tu progreso. Inténtalo de nuevo." ? "" : current);
@@ -117,7 +118,8 @@ export default function AccountPanel() {
       if (!response.ok) throw new Error("No se pudo cerrar la sesión.");
       authEpoch.current += 1;
       setAccount(null);
-      setItems([]);
+      setDiagnosticItems([]);
+      setSelectedDiagnosticId("");
       setPracticeItems([]);
       setSkillTotals(null);
       setSelectedTopic("");
@@ -133,6 +135,10 @@ export default function AccountPanel() {
   const completedTopics = [...new Set(practiceItems.filter((item) => item.status === "completed").map((item) => item.topicId))];
   const comparisonTopic = completedTopics.includes(selectedTopic) ? selectedTopic : completedTopics[0] ?? "";
   const comparison = comparisonTopic ? comparePracticeSessions(practiceItems, comparisonTopic) : null;
+  const selectedDiagnostic = diagnosticItems.find((item) => item.id === selectedDiagnosticId);
+  const diagnosticAnalysis = selectedDiagnostic?.status === "completed" && Array.isArray(selectedDiagnostic.answers)
+    ? diagnosticSkillInsights(selectedDiagnostic.answers.map((answer) => ({ id: answer.questionId, skill: answer.skill })), selectedDiagnostic.answers)
+    : null;
 
   return <section className="account-card" aria-labelledby="account-title">
     <div><p className="eyebrow">Cuenta para la demostración</p><h2 id="account-title">Guarda tu recorrido</h2>
@@ -140,10 +146,16 @@ export default function AccountPanel() {
     {account ? <div className="account-panel">
       <p>Sesión iniciada como <strong>{account.email}</strong>.</p>
       <button className="text-button" type="button" onClick={logout} disabled={busy}>Cerrar sesión</button>
-      <h3>Diagnósticos guardados</h3>
-      {items.filter((item) => item.kind === "diagnostic").length === 0 ? <p>Aún no has guardado un diagnóstico.</p> : <ul>{items.filter((item) => item.kind === "diagnostic").map((item) => <li key={`${item.topicId}-${item.kind}`}>
-        {item.topicId} · completado
+      <h3>Intentos diagnósticos guardados</h3>
+      {diagnosticItems.length === 0 ? <p>Aún no has guardado un intento diagnóstico en esta cuenta.</p> : <ul>{diagnosticItems.map((item) => <li key={item.id}>
+        {topicLabel(item)} · {item.status === "completed" ? `${item.correctCount}/${item.answered} correctas` : `${item.answered}/${item.total} respondidas; pendiente`} · {dateLabel(item.completedAt ?? item.startedAt)}. {item.status === "completed" && <button className="text-button" type="button" aria-expanded={selectedDiagnosticId === item.id} onClick={() => setSelectedDiagnosticId((current) => current === item.id ? "" : item.id)}>Ver resumen</button>}
       </li>)}</ul>}
+      {selectedDiagnostic?.status === "completed" && <div className="comparison-result" role="status">
+        <h4>Resumen de {topicLabel(selectedDiagnostic)}</h4>
+        <p>{selectedDiagnostic.correctCount} de {selectedDiagnostic.answered} respuestas correctas · {dateLabel(selectedDiagnostic.completedAt)}.</p>
+        {diagnosticAnalysis?.skills.length ? <ul>{diagnosticAnalysis.skills.map((skill) => <li key={skill.skill}>{skill.skill}: {skill.correct}/{skill.answered} correctas · {skill.strength ? "fortaleza observada" : skill.status === "dificultad-demo" ? "señal de dificultad" : "evidencia indeterminada"} · confianza {skill.confidence === null ? "insuficiente" : `${skill.confidence} %`}.</li>)}</ul> : <p>No hay suficientes respuestas por subtema para analizar.</p>}
+        <p>Resumen provisional basado en las respuestas guardadas de esta cuenta; no es una evaluación académica validada.</p>
+      </div>}
       <h3>Historial de práctica</h3>
       {practiceItems.length === 0 ? <p>Aún no has iniciado una práctica con seguimiento.</p> : <ul>{practiceItems.map((item) => <li key={item.id}>
         {topicLabel(item)} · {item.status === "completed" ? item.answered === 0 ? "terminada sin respuestas" : `${item.correctCount}/${item.answered} correctas; ${item.answered}/${item.total} respondidas` : `${item.answered}/${item.total} respondidas; pendiente`} · {dateLabel(item.completedAt ?? item.startedAt)}
@@ -176,5 +188,6 @@ export default function AccountPanel() {
       </form>
     </div>}
     {message && <p className="account-message" role="status">{message}</p>}
+    <StudentRegistrationPreview />
   </section>;
 }

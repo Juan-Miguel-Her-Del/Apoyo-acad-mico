@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 const scrypt = promisify(scryptCallback);
 const REQUIRED_PURPOSES = ["educational_account", "progress_storage"] as const;
 const SESSION_MS = 7 * 24 * 60 * 60 * 1000;
+const REGISTRATION_ERROR = "Revisa los datos e inténtalo de nuevo.";
 
 export class StudentAccountError extends Error {
   status: number;
@@ -67,6 +68,7 @@ function validUtc(value: string) {
   return /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/.test(value) && !Number.isNaN(Date.parse(value));
 }
 function policyMatches(grant: VerifiedAuthorization, policy: ReviewedConsentPolicy) {
+  if (!grant || typeof grant !== "object" || !Array.isArray(grant.purposes)) return false;
   return grant.noticeVersion === policy.noticeVersion && grant.noticeDigest === policy.noticeDigest &&
     grant.verificationMethod === policy.approvedMethod && grant.studentHeard === true &&
     /^[0-9a-f]{64}$/.test(grant.noticeDigest) &&
@@ -124,10 +126,15 @@ export function openStudentAccountStore(
     const policy = requireReviewedPolicy();
     if (!policyMatches(grant, policy)) throw new StudentAccountError(403, "Autorización requerida.");
     const id = randomBytes(16).toString("hex");
-    db.prepare(`INSERT INTO student_consents
-      (id,representative_ref,verification_method,evidence_ref,notice_version,notice_digest,purposes,student_heard,verified_at,status)
-      VALUES (?,?,?,?,?,?,?,?,?,'active')`).run(id, grant.representativeRef, grant.verificationMethod,
-      grant.evidenceRef, grant.noticeVersion, grant.noticeDigest, JSON.stringify([...new Set(grant.purposes)]), 1, grant.verifiedAt);
+    try {
+      db.prepare(`INSERT INTO student_consents
+        (id,representative_ref,verification_method,evidence_ref,notice_version,notice_digest,purposes,student_heard,verified_at,status)
+        VALUES (?,?,?,?,?,?,?,?,?,'active')`).run(id, grant.representativeRef, grant.verificationMethod,
+        grant.evidenceRef, grant.noticeVersion, grant.noticeDigest, JSON.stringify([...new Set(grant.purposes)]), 1, grant.verifiedAt);
+    } catch (error) {
+      if (String(error).includes("UNIQUE constraint failed")) throw new StudentAccountError(403, "Autorización requerida.");
+      throw error;
+    }
     return id;
   }
   function consentActive(consentId: string) {
@@ -161,7 +168,7 @@ export function openStudentAccountStore(
       db.exec("COMMIT");
     } catch (error) {
       db.exec("ROLLBACK");
-      if (String(error).includes("UNIQUE constraint failed")) throw new StudentAccountError(409, "No se pudo crear la cuenta. Revisa los datos e inténtalo de nuevo.");
+      if (String(error).includes("UNIQUE constraint failed")) throw new StudentAccountError(400, REGISTRATION_ERROR);
       throw error;
     }
     return { id, email };
