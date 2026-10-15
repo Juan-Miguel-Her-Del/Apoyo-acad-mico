@@ -1,0 +1,238 @@
+import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { promisify } from "node:util";
+
+const scrypt = promisify(scryptCallback);
+const REQUIRED_PURPOSES = ["educational_account", "progress_storage"] as const;
+const SESSION_MS = 7 * 24 * 60 * 60 * 1000;
+
+export class StudentAccountError extends Error {
+  status: number;
+  constructor(status: number, message: string) { super(message); this.status = status; }
+}
+
+/** Supplied only by a future, independently reviewed representative-verification service. */
+export type VerifiedAuthorization = {
+  representativeRef: string;
+  verificationMethod: string;
+  evidenceRef: string;
+  studentHeard: true;
+  noticeVersion: string;
+  noticeDigest: string;
+  purposes: readonly string[];
+  verifiedAt: string;
+};
+
+export type ReviewedConsentPolicy = {
+  noticeVersion: string;
+  noticeDigest: string;
+  approvedMethod: string;
+};
+
+export type StudentProgress = {
+  id: string;
+  topicId: string;
+  kind: "diagnostic" | "practice";
+  correctCount: number;
+  answered: number;
+  completedAt: string;
+};
+
+function hash(value: string) { return createHash("sha256").update(value).digest("hex"); }
+function validEmail(value: unknown) {
+  if (typeof value !== "string") throw new StudentAccountError(400, "Revisa los datos e inténtalo de nuevo.");
+  const normalized = value.trim().toLowerCase();
+  if (normalized.length < 5 || normalized.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    throw new StudentAccountError(400, "Revisa los datos e inténtalo de nuevo.");
+  }
+  return normalized;
+}
+function validPassword(value: unknown) {
+  if (typeof value !== "string" || value.length < 12 || value.length > 128) {
+    throw new StudentAccountError(400, "Revisa los datos e inténtalo de nuevo.");
+  }
+  return value;
+}
+function validUtc(value: string) {
+  return /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/.test(value) && !Number.isNaN(Date.parse(value));
+}
+function policyMatches(grant: VerifiedAuthorization, policy: ReviewedConsentPolicy) {
+  return grant.noticeVersion === policy.noticeVersion && grant.noticeDigest === policy.noticeDigest &&
+    grant.verificationMethod === policy.approvedMethod && grant.studentHeard === true &&
+    /^[0-9a-f]{64}$/.test(grant.noticeDigest) &&
+    [grant.representativeRef, grant.evidenceRef].every((value) => typeof value === "string" && value.length > 0 && value.length <= 200) &&
+    REQUIRED_PURPOSES.every((purpose) => grant.purposes.includes(purpose)) &&
+    validUtc(grant.verifiedAt) && Date.parse(grant.verifiedAt) <= Date.now();
+}
+
+/**
+ * Internal store. Public routes must not call issueAuthorization until legal review
+ * and representative verification have been integrated. The browser cannot
+ * create VerifiedAuthorization or select a ReviewedConsentPolicy.
+ */
+export function openStudentAccountStore(
+  dbPath = process.env.APOYO_STUDENT_DB_PATH || path.join(process.cwd(), "data", "apoyo-students.sqlite"),
+  reviewedPolicy: ReviewedConsentPolicy | null = null,
+) {
+  mkdirSync(path.dirname(dbPath), { recursive: true });
+  const db = new DatabaseSync(dbPath);
+  db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;
+    CREATE TABLE IF NOT EXISTS student_consents (
+      id TEXT PRIMARY KEY, representative_ref TEXT NOT NULL, verification_method TEXT NOT NULL,
+      evidence_ref TEXT NOT NULL UNIQUE, notice_version TEXT NOT NULL, notice_digest TEXT NOT NULL,
+      purposes TEXT NOT NULL, student_heard INTEGER NOT NULL CHECK(student_heard = 1),
+      verified_at TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('active','revoked')),
+      revoked_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS student_users (
+      id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, password_salt TEXT NOT NULL,
+      password_hash TEXT NOT NULL, consent_id TEXT NOT NULL UNIQUE REFERENCES student_consents(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS student_sessions (
+      token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES student_users(id) ON DELETE CASCADE,
+      expires_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS student_progress (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES student_users(id) ON DELETE CASCADE,
+      topic_id TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('diagnostic','practice')),
+      correct_count INTEGER NOT NULL, answered INTEGER NOT NULL, completed_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS student_progress_owner ON student_progress(user_id,topic_id,completed_at);`);
+
+  function requireReviewedPolicy() {
+    if (!reviewedPolicy) throw new StudentAccountError(503, "Las cuentas de estudiantes aún no están disponibles.");
+    return reviewedPolicy;
+  }
+  function issueAuthorization(grant: VerifiedAuthorization) {
+    const policy = requireReviewedPolicy();
+    if (!policyMatches(grant, policy)) throw new StudentAccountError(403, "Autorización requerida.");
+    const id = randomBytes(16).toString("hex");
+    db.prepare(`INSERT INTO student_consents
+      (id,representative_ref,verification_method,evidence_ref,notice_version,notice_digest,purposes,student_heard,verified_at,status)
+      VALUES (?,?,?,?,?,?,?,?,?,'active')`).run(id, grant.representativeRef, grant.verificationMethod,
+      grant.evidenceRef, grant.noticeVersion, grant.noticeDigest, JSON.stringify([...new Set(grant.purposes)]), 1, grant.verifiedAt);
+    return id;
+  }
+  function consentActive(consentId: string) {
+    const row = db.prepare("SELECT status,notice_version,notice_digest,verification_method,purposes FROM student_consents WHERE id=?")
+      .get(consentId) as { status: string; notice_version: string; notice_digest: string; verification_method: string; purposes: string } | undefined;
+    const policy = requireReviewedPolicy();
+    if (!row || row.status !== "active" || row.notice_version !== policy.noticeVersion ||
+      row.notice_digest !== policy.noticeDigest || row.verification_method !== policy.approvedMethod ||
+      !REQUIRED_PURPOSES.every((purpose) => (JSON.parse(row.purposes) as string[]).includes(purpose))) {
+      throw new StudentAccountError(403, "Autorización requerida.");
+    }
+  }
+  async function register(body: unknown) {
+    requireReviewedPolicy();
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new StudentAccountError(400, "Revisa los datos e inténtalo de nuevo.");
+    const data = body as Record<string, unknown>;
+    if (Object.keys(data).some((key) => !["email", "password", "authorizationId"].includes(key)) ||
+      typeof data.authorizationId !== "string" || !/^[0-9a-f]{32}$/.test(data.authorizationId)) {
+      throw new StudentAccountError(400, "Revisa los datos e inténtalo de nuevo.");
+    }
+    const email = validEmail(data.email);
+    const password = validPassword(data.password);
+    const salt = randomBytes(16).toString("hex");
+    const passwordHash = (await scrypt(password, salt, 64) as Buffer).toString("hex");
+    const id = randomBytes(16).toString("hex");
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      consentActive(data.authorizationId);
+      db.prepare(`INSERT INTO student_users(id,email,password_salt,password_hash,consent_id,created_at)
+        VALUES (?,?,?,?,?,?)`).run(id, email, salt, passwordHash, data.authorizationId, new Date().toISOString());
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      if (String(error).includes("UNIQUE constraint failed")) throw new StudentAccountError(409, "No se pudo crear la cuenta. Revisa los datos e inténtalo de nuevo.");
+      throw error;
+    }
+    return { id, email };
+  }
+  async function login(body: unknown) {
+    requireReviewedPolicy();
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new StudentAccountError(401, "No pudimos iniciar sesión. Revisa tus datos e inténtalo de nuevo.");
+    const data = body as Record<string, unknown>;
+    let email: string;
+    try { email = validEmail(data.email); }
+    catch { throw new StudentAccountError(401, "No pudimos iniciar sesión. Revisa tus datos e inténtalo de nuevo."); }
+    if (typeof data.password !== "string" || data.password.length > 128) throw new StudentAccountError(401, "No pudimos iniciar sesión. Revisa tus datos e inténtalo de nuevo.");
+    const row = db.prepare(`SELECT u.id,u.email,u.password_salt,u.password_hash,u.consent_id
+      FROM student_users u WHERE u.email=?`).get(email) as {
+      id: string; email: string; password_salt: string; password_hash: string; consent_id: string
+    } | undefined;
+    const candidate = (await scrypt(data.password, row?.password_salt ?? "00000000000000000000000000000000", 64)) as Buffer;
+    const expected = Buffer.from(row?.password_hash ?? "00".repeat(64), "hex");
+    if (!row || !timingSafeEqual(candidate, expected)) throw new StudentAccountError(401, "No pudimos iniciar sesión. Revisa tus datos e inténtalo de nuevo.");
+    consentActive(row.consent_id);
+    const token = randomBytes(32).toString("hex");
+    db.prepare("INSERT INTO student_sessions(token_hash,user_id,expires_at) VALUES (?,?,?)")
+      .run(hash(token), row.id, Date.now() + SESSION_MS);
+    return { user: { id: row.id, email: row.email }, token };
+  }
+  function currentStudent(token: string | null) {
+    requireReviewedPolicy();
+    if (!token || !/^[0-9a-f]{64}$/.test(token)) throw new StudentAccountError(401, "Sesión requerida.");
+    const row = db.prepare(`SELECT u.id,u.email,u.consent_id FROM student_sessions s
+      JOIN student_users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?`)
+      .get(hash(token), Date.now()) as { id: string; email: string; consent_id: string } | undefined;
+    if (!row) throw new StudentAccountError(401, "Sesión requerida.");
+    consentActive(row.consent_id);
+    return { id: row.id, email: row.email };
+  }
+  function logout(token: string | null) {
+    if (token && /^[0-9a-f]{64}$/.test(token)) db.prepare("DELETE FROM student_sessions WHERE token_hash=?").run(hash(token));
+  }
+  function revoke(authorizationId: string) {
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare("UPDATE student_consents SET status='revoked',revoked_at=? WHERE id=? AND status='active'")
+        .run(new Date().toISOString(), authorizationId);
+      db.prepare("DELETE FROM student_sessions WHERE user_id IN (SELECT id FROM student_users WHERE consent_id=?)")
+        .run(authorizationId);
+      db.exec("COMMIT");
+    } catch (error) { db.exec("ROLLBACK"); throw error; }
+  }
+  function saveProgress(token: string, item: Omit<StudentProgress, "id">) {
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      const user = currentStudent(token);
+      if (!item || typeof item.topicId !== "string" || !/^[A-Z0-9-]{3,30}$/.test(item.topicId) ||
+        !["diagnostic", "practice"].includes(item.kind) || !Number.isSafeInteger(item.correctCount) ||
+        !Number.isSafeInteger(item.answered) || item.answered < 1 || item.correctCount < 0 || item.correctCount > item.answered ||
+        !validUtc(item.completedAt)) throw new StudentAccountError(400, "Progreso no válido.");
+      const id = randomBytes(16).toString("hex");
+      db.prepare(`INSERT INTO student_progress(id,user_id,topic_id,kind,correct_count,answered,completed_at)
+        VALUES (?,?,?,?,?,?,?)`).run(id, user.id, item.topicId, item.kind, item.correctCount, item.answered, item.completedAt);
+      db.exec("COMMIT");
+      return { id, ...item };
+    } catch (error) { db.exec("ROLLBACK"); throw error; }
+  }
+  function listProgress(token: string): StudentProgress[] {
+    const user = currentStudent(token);
+    return (db.prepare(`SELECT id,topic_id AS topicId,kind,correct_count AS correctCount,answered,
+      completed_at AS completedAt FROM student_progress WHERE user_id=? ORDER BY completed_at DESC,id DESC LIMIT 200`)
+      .all(user.id)) as StudentProgress[];
+  }
+  function compareProgress(token: string, topicId: string) {
+    const user = currentStudent(token);
+    if (typeof topicId !== "string" || !/^[A-Z0-9-]{3,30}$/.test(topicId)) {
+      throw new StudentAccountError(400, "Tema no válido.");
+    }
+    const rows = db.prepare(`SELECT id,topic_id AS topicId,kind,correct_count AS correctCount,answered,
+      completed_at AS completedAt FROM student_progress WHERE user_id=? AND topic_id=?
+      ORDER BY completed_at DESC,id DESC LIMIT 2`).all(user.id, topicId) as StudentProgress[];
+    if (rows.length < 2) return {
+      status: "insufficient" as const,
+      message: "Aún no hay sesiones suficientes para comparar tu progreso",
+      current: rows[0] ?? null,
+    };
+    const [current, previous] = rows;
+    return { status: "ready" as const, current, previous,
+      percentagePointChange: Math.round((current.correctCount / current.answered - previous.correctCount / previous.answered) * 100) };
+  }
+  return { issueAuthorization, register, login, currentStudent, logout, revoke, saveProgress, listProgress, compareProgress, close: () => db.close() };
+}
