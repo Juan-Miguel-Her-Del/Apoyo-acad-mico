@@ -466,7 +466,7 @@ try {
     assert.equal(restoredLogin, 200);
     await navigate();
     await waitText(".account-panel", testEmail);
-    await waitText(".account-panel", "G10-QUI");
+    await waitText(".account-panel", "10.º · Química");
     await waitText(".account-panel", "Razones y funciones trigonométricas");
     const logoutStatus = await evaluate("fetch('/api/auth/logout', { method: 'POST' }).then((response) => response.status)");
     assert.equal(logoutStatus, 200);
