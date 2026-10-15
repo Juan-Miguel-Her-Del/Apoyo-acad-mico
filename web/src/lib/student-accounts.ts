@@ -173,6 +173,37 @@ export function openStudentAccountStore(
     }
     return { id, email };
   }
+  async function registerAuthorized(body: unknown, grant: VerifiedAuthorization) {
+    const policy = requireReviewedPolicy();
+    if (!policyMatches(grant, policy)) throw new StudentAccountError(403, "Autorización requerida.");
+    if (!body || typeof body !== "object" || Array.isArray(body) ||
+        Object.keys(body).some((key) => !["email", "password"].includes(key))) {
+      throw new StudentAccountError(400, REGISTRATION_ERROR);
+    }
+    const data = body as Record<string, unknown>;
+    const email = validEmail(data.email);
+    const password = validPassword(data.password);
+    const salt = randomBytes(16).toString("hex");
+    const passwordHash = (await scrypt(password, salt, 64) as Buffer).toString("hex");
+    const consentId = randomBytes(16).toString("hex");
+    const id = randomBytes(16).toString("hex");
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare(`INSERT INTO student_consents
+        (id,representative_ref,verification_method,evidence_ref,notice_version,notice_digest,purposes,student_heard,verified_at,status)
+        VALUES (?,?,?,?,?,?,?,?,?,'active')`).run(consentId, grant.representativeRef, grant.verificationMethod,
+        grant.evidenceRef, grant.noticeVersion, grant.noticeDigest,
+        JSON.stringify([...new Set(grant.purposes)]), 1, grant.verifiedAt);
+      db.prepare(`INSERT INTO student_users(id,email,password_salt,password_hash,consent_id,created_at)
+        VALUES (?,?,?,?,?,?)`).run(id, email, salt, passwordHash, consentId, new Date().toISOString());
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      if (String(error).includes("UNIQUE constraint failed")) throw new StudentAccountError(400, REGISTRATION_ERROR);
+      throw error;
+    }
+    return { id, email };
+  }
   async function login(body: unknown) {
     requireReviewedPolicy();
     if (!body || typeof body !== "object" || Array.isArray(body)) throw new StudentAccountError(401, "No pudimos iniciar sesión. Revisa tus datos e inténtalo de nuevo.");
@@ -266,6 +297,6 @@ export function openStudentAccountStore(
     return { status: "ready" as const, current, previous,
       percentagePointChange: Math.round((current.correctCount / current.answered - previous.correctCount / previous.answered) * 100) };
   }
-  return { issueAuthorization, register, login, currentStudent, logout, revoke,
+  return { issueAuthorization, register, registerAuthorized, login, currentStudent, logout, revoke,
     recordCompletedSession, listProgress, compareProgress, close: () => db.close() };
 }
