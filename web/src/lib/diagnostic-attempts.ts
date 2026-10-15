@@ -126,6 +126,15 @@ export function openDiagnosticAttemptStore(
     return view(ownedRow(userId, id));
   }
   function get(userId: string, attemptId: unknown) { return view(ownedRow(userId, attemptId)); }
+  function list(userId: string) {
+    activeUser(userId);
+    const rows = db.prepare(`SELECT * FROM diagnostic_attempts WHERE user_id=?
+      ORDER BY started_at DESC,id DESC LIMIT 100`).all(userId) as AttemptRow[];
+    return rows.map((row) => {
+      const { attempt, answers: saved } = view(row);
+      return { ...attempt, answers: saved };
+    });
+  }
   function latestOpen(userId: string, gradeId: unknown, subjectId: unknown, topicId: unknown) {
     activeUser(userId);
     if (![gradeId, subjectId, topicId].every((value) => typeof value === "string" && value.length > 0)) {
@@ -179,7 +188,7 @@ export function openDiagnosticAttemptStore(
       return { ...view(ownedRow(userId, row.id)), feedback };
     } catch (error) { db.exec("ROLLBACK"); throw error; }
   }
-  return { start, get, latestOpen, answer, close: () => db.close() };
+  return { start, get, list, latestOpen, answer, close: () => db.close() };
 }
 
 let singleton: ReturnType<typeof openDiagnosticAttemptStore> | undefined;

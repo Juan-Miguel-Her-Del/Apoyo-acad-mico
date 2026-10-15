@@ -86,6 +86,8 @@ try {
   assert.equal(registration.status, 201, `registro adulto: ${JSON.stringify(registration.body)}`);
   const anonymous = await fetch(`${baseUrl}/api/diagnostic/attempt?gradeId=G10&subjectId=MAT&topicId=G10-MAT`);
   assert.equal(anonymous.status, 401, "sin cookie no se accede a intentos");
+  assert.equal((await fetch(`${baseUrl}/api/diagnostic/attempts`)).status, 401,
+    "sin cookie no se accede al historial diagnóstico");
   await navigate();
   await selectTopic();
   await text(".diagnostic-account-attempt", "Pregunta 1 de 4");
@@ -134,6 +136,11 @@ try {
   assert.equal(final.attempt.answered, 4);
   assert.equal(final.answers.length, 4);
   assert.equal(new Set(final.answers.map((answer) => answer.questionId)).size, 4);
+  const history = await evaluate("fetch('/api/diagnostic/attempts').then((response) => response.json())");
+  assert.equal(history.items.find((item) => item.id === attemptId)?.answered, 4,
+    "el historial incluye el intento propio completado");
+  assert.equal("question" in history.items.find((item) => item.id === attemptId), false,
+    "el historial no adelanta preguntas");
   assert.equal(await evaluate(`document.querySelector('.diagnostic-account-attempt .diagnostic-panel').textContent.includes('acertaste ${final.attempt.correctCount}')`), true);
   await navigate();
   await selectTopic();

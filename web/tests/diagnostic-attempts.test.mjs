@@ -74,6 +74,32 @@ test("propiedad, orden, formato y doble respuesta se validan en servidor", async
   assert.deepEqual(auth.listProgress(alice.id), []);
 });
 
+test("historial diagnóstico lista solo intentos propios y conserva resultados tras recarga", async (t) => {
+  const { auth, store, dbPath } = fixture(t);
+  const alice = await account(auth, "historial-alice");
+  const bob = await account(auth, "historial-bob");
+  let current = store.start(alice.id, selection);
+  assert.equal(store.list(bob.id).length, 0);
+  assert.equal(store.list(alice.id)[0].status, "open");
+  for (let i = 0; i < 4; i++) {
+    current = store.answer(alice.id, { attemptId: current.attempt.id,
+      questionId: current.question.id, optionId: current.question.options[0].id });
+  }
+  const reopened = openDiagnosticAttemptStore(dbPath);
+  try {
+    const own = reopened.list(alice.id);
+    assert.equal(own.length, 1);
+    assert.equal(own[0].id, current.attempt.id);
+    assert.equal(own[0].status, "completed");
+    assert.equal(own[0].answered, 4);
+    assert.equal(own[0].answers.length, 4);
+    assert.equal(own[0].correctCount, current.attempt.correctCount);
+    assert.equal("question" in own[0], false);
+    assert.equal("correctOptionId" in own[0].answers[0], false);
+    assert.deepEqual(reopened.list(bob.id), []);
+  } finally { reopened.close(); }
+});
+
 test("rechaza modo publicado, selección ajena al catálogo y banco insuficiente sin crear resultado", async (t) => {
   const { auth, store } = fixture(t);
   const user = await account(auth, "uno");
