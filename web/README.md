@@ -1,26 +1,35 @@
-# Apoyo académico — aplicación web
+# Aplicación web de Apoyo_academico
 
-## Diagnóstico de demostración (Sprint 2)
+## Ejecutar
 
-Selecciona 5.º o 10.º, una materia y un tema del piloto. Pulsa **Empezar a estudiar (demo)**, lee el aviso y responde dos preguntas. Verás tu avance, una explicación por respuesta y un resumen al terminar. Puedes salir o cambiar de grado, materia o tema; el intento se reinicia. Una respuesta vacía o ajena al tema se rechaza. El cliente evita enviar dos veces la misma respuesta por doble clic.
-
-Las 12 preguntas están en `src/lib/diagnostic.ts` y son **ejemplos sin revisión docente**. `GET /api/diagnostic?mode=demo&grade=G05&subject=MAT&topic=G05-MAT` devuelve preguntas sin soluciones; `POST /api/diagnostic` evalúa una respuesta de demostración. El modo publicado sigue cerrado con HTTP 409, ya que los temas y preguntas no han sido aprobados. No se cambiaron las banderas curriculares del catálogo.
-
-El resultado existe solo en el estado de la página: recargar o cerrar la pestaña lo borra. El servidor no guarda intentos ni identifica estudiantes. Como el endpoint POST no mantiene estado de intentos, una llamada HTTP directa repetida recibe la misma evaluación; la prevención de duplicados y el registro persistente quedan pendientes de cuentas, consentimiento y diseño del servicio. Tampoco hay dificultad adaptativa ni contenido de estudio aprobado todavía.
-
-Verificación: `npm.cmd test`, `npm.cmd run lint`, `npm.cmd run build` y, con `npm.cmd run start -- -p 3100` en otra terminal, `npm.cmd run test:browser`. Usa el servidor de producción compilado para esta prueba: el modo de desarrollo ejecuta efectos adicionales de React y altera las simulaciones de errores de red. Las pruebas cubren validación de combinaciones, bloqueo de publicación, opciones inválidas, doble clic, cambio de selección durante la carga y secuencia completa.
-
-## Ejecutar en tu computador
-
-### Primer avance del Sprint 3
-
-Al terminar la demo, el resumen muestra resultados por subtema con una regla provisional y las preguntas que sustentan cada estado. Una sola respuesta por subtema se muestra como **indeterminada**. En **10.º → Matemáticas**, dos errores en el mismo subtema producen una *señal de dificultad (demo)*. No es un diagnóstico curricular ni se guarda. El preparador interno de explicaciones (`src/lib/explanation-context.ts`) rechaza el catálogo actual porque no hay fuentes aprobadas; no hay servicio de IA ni registro de cuentas. Consulta el [avance documentado](../docs/17-desarrollo-sprint-3.md).
-
-Desde esta carpeta en PowerShell:
+Necesitas Node.js 24. Desde esta carpeta:
 
 ```powershell
 npm.cmd install
 npm.cmd run dev
 ```
 
-Abre [http://localhost:3000](http://localhost:3000). Detén el servidor con `Ctrl+C`. Para la estructura del proyecto y el estado de Jira, lee el [README principal](../README.md) y el [registro del Sprint 2](../docs/11-desarrollo-sprint-2.md).
+Abre <http://localhost:3000> y detén el servidor con `Ctrl+C`. El [README principal](../README.md) contiene el recorrido de la sustentación.
+
+## Qué incluye la demostración
+
+- Selector de 1.º–11.º: Matemáticas y Español en todos; Física y Química en 10.º–11.º.
+- Un tema, dos preguntas de diagnóstico y una experiencia de estudio y práctica por cada una de las 26 combinaciones.
+- Resumen provisional por subtema: una sola respuesta no basta para concluir dominio o dificultad.
+- Cuenta local de adulto/evaluador con registro, inicio y cierre de sesión y finalización persistente de diagnóstico/práctica.
+
+Todos los temas y las preguntas mantienen los indicadores de publicación desactivados. `GET /api/diagnostic?mode=demo&grade=G05&subject=MAT&topic=G05-MAT` entrega preguntas sin respuestas; el modo publicado sigue bloqueado. La base `data/apoyo.sqlite` se crea al registrar una cuenta y se ignora en Git. `APOYO_DB_PATH` permite elegir una base distinta. El registro solo se habilita automáticamente en desarrollo local; producción requiere `APOYO_ENABLE_ADULT_ACCOUNTS=true` de forma explícita y no está preparada para usuarios menores reales.
+
+Las rutas `/api/auth/register`, `/api/auth/login`, `/api/auth/logout` y `/api/auth/me` manejan sesiones en cookie HttpOnly. `/api/progress` consulta y registra finalización, separada por cuenta. No guarda la puntuación ni respuestas individuales. El registro rechaza campos de fecha de nacimiento, documento y foto.
+
+## Comprobar
+
+```powershell
+npm.cmd test
+npm.cmd run lint
+npm.cmd run build
+```
+
+Para `npm.cmd run test:browser`, inicia primero `npm.cmd run start -- -p 3100` en otra terminal. La prueba de navegador usa Chrome instalado localmente; puedes definir `CHROME_PATH` si hace falta. Para verificar cuentas en un servidor de producción local, habilítalas solo en esa terminal con `$env:APOYO_ENABLE_ADULT_ACCOUNTS='true'` antes de arrancar y ejecuta `$env:BROWSER_TEST_ACCOUNTS='true'; npm.cmd run test:browser` en la segunda terminal.
+
+Consulta [el alcance de la entrega](../docs/18-entrega-academica-octubre.md) y [la documentación del proyecto](../docs/README.md).

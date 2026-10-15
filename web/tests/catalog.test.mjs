@@ -26,16 +26,16 @@ test("catálogo colombiano: 11 grados y 26 combinaciones válidas", () => {
   }
 });
 
-test("piloto: solo 5.º y 10.º; Física y Química solo desde 10.º", () => {
-  assert.deepEqual(grades.filter((grade) => isDemoGrade(grade.id)).map((grade) => grade.id), ["G05", "G10"]);
-  assert.equal(isDemoGrade("G01"), false);
-  assert.equal(isDemoGrade("G11"), false);
+test("demo: grados 1.º a 11.º; Física y Química solo desde 10.º", () => {
+  assert.deepEqual(grades.filter((grade) => isDemoGrade(grade.id)).map((grade) => grade.id), grades.map((grade) => grade.id));
   assert.deepEqual(getDemoSubjects("G05").map((subject) => subject.id), ["MAT", "ESP"]);
   assert.deepEqual(getDemoSubjects("G10").map((subject) => subject.id), ["MAT", "ESP", "FIS", "QUI"]);
-  assert.equal(getDemoSubjects("G03").length, 0);
+  assert.deepEqual(getDemoSubjects("G03").map((subject) => subject.id), ["MAT", "ESP"]);
+  assert.deepEqual(getDemoSubjects("G11").map((subject) => subject.id), ["MAT", "ESP", "FIS", "QUI"]);
   assert.equal(getDemoTopics("G05", "FIS").length, 0);
-  assert.equal(getDemoTopics("G11", "QUI").length, 0);
-  assert.equal(topics.filter((topic) => topic.pilotCandidate).length, 6);
+  assert.equal(getDemoTopics("G09", "QUI").length, 0);
+  assert.equal(getDemoTopics("G11", "QUI").length, 1);
+  assert.equal(topics.filter((topic) => topic.pilotCandidate).length, 26);
   assert.equal(getDemoTopics("G05", "ESP")[0].name, "Planear y producir un texto informativo");
   assert.equal(getDemoTopics("G10", "ESP")[0].name, "Comprensión crítica y argumentación sobre textos");
 });
@@ -47,7 +47,7 @@ test("ningún contenido de prueba puede considerarse publicado", () => {
     assert.equal(topic.validatedQuestionCount, 0);
     assert.deepEqual(getPublishedTopics(topic.gradeId, topic.subjectId), []);
   }
-  assert.ok(topics.filter((topic) => !topic.pilotCandidate).every((topic) => !topic.active));
+  assert.ok(topics.every((topic) => topic.active));
 });
 
 test("la publicación exige tema activo, revisión, explicación y preguntas validadas", () => {

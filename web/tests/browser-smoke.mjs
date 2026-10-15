@@ -92,8 +92,23 @@ try {
   await send("Page.enable");
   await send("Runtime.enable");
   await navigate();
+  const testAccounts = process.env.BROWSER_TEST_ACCOUNTS === "true";
+  const testEmail = `demo-${Date.now()}@example.test`;
+  const testPassword = "DemoPassword-1234";
+  if (testAccounts) {
+    const status = await evaluate(`fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(testEmail)}, password: ${JSON.stringify(testPassword)}, adultConfirmed: true }) }).then((response) => response.status)`);
+    assert.equal(status, 201, "el registro adulto debe funcionar en este servidor de pruebas");
+    await navigate();
+    await waitText(".account-panel", testEmail);
+  }
   await waitText(".grade-groups", "10.º");
-  assert.equal(await evaluate("document.querySelectorAll('.grade-choice:not(:disabled)').length"), 2);
+  assert.equal(await evaluate("document.querySelectorAll('.grade-choice:not(:disabled)').length"), 11);
+  await click(".grade-choice", "1.º");
+  await waitText(".subject-grid", "Matemáticas");
+  await click(".subject-choice", "Matemáticas");
+  await waitText(".topic-list", "Contar, comparar");
+  await click(".topic-choice", "Contar, comparar");
+  assert.equal(await evaluate("document.querySelector('.diagnostic-card .primary-button')?.disabled"), false);
   await click(".grade-choice", "10.º");
   await waitText(".subject-grid", "Química");
   assert.equal(await evaluate("document.querySelectorAll('.subject-choice').length"), 4);
@@ -135,6 +150,10 @@ try {
   assert.equal(await evaluate("document.querySelector('.diagnostic-panel').textContent.includes('Respondiste 2 de 2')"), true);
   assert.equal(await evaluate("document.querySelectorAll('.skill-results li').length"), 2, "cada subtema de Química conserva su trazabilidad");
   assert.equal(await evaluate("[...document.querySelectorAll('.skill-results li')].every((item) => item.textContent.includes('indeterminado'))"), true, "una sola respuesta por subtema no permite inferir dificultad");
+  if (testAccounts) {
+    await click(".diagnostic-panel .text-button", "Guardar diagnóstico");
+    await waitText(".account-panel", "G10-QUI");
+  }
   console.log("OK: HTTP demo/publicado, respuestas válidas, doble clic, avance y resultado solo en memoria.");
   await click(".subject-choice", "Matemáticas");
   await waitText(".topic-list", "Razones y funciones");
@@ -154,6 +173,16 @@ try {
   await click(".answer-feedback .primary-button", "Ver resumen");
   await waitText(".skill-results", "señal de dificultad (demo)");
   assert.equal(await evaluate("document.querySelector('.skill-results li').textContent.includes('0/2 aciertos; preguntas 1, 2')"), true);
+  await click(".diagnostic-panel .primary-button", "Continuar a estudiar");
+  await waitText(".diagnostic-card", "Estudia un tema y ponlo en práctica");
+  await waitText(".diagnostic-panel", "Explicación breve");
+  await evaluate("document.querySelector('.diagnostic-panel .answer-option input').click()");
+  await click(".diagnostic-panel .primary-button", "Revisar respuesta");
+  await waitText(".answer-feedback", "¡Correcto!");
+  if (testAccounts) {
+    await click(".diagnostic-panel .primary-button", "Guardar práctica");
+    await waitText(".account-panel", "G10-MAT");
+  }
   console.log("OK: dos respuestas del mismo subtema muestran señal demo con preguntas trazables.");
   await click(".grade-choice", "5.º");
   await waitText(".subject-grid", "Español");
@@ -253,7 +282,7 @@ try {
   })();`, async () => {
     await waitText(".grade-groups", "5.º");
     await click(".grade-choice", "5.º");
-    await waitText(".step-card:nth-of-type(3) .empty-state", "No hay materias disponibles");
+    await waitText('.step-card[aria-labelledby="subject-title"] .empty-state', "No hay materias disponibles");
     assert.equal(await evaluate("document.querySelectorAll('.subject-choice').length"), 0);
   });
   console.log("OK: grado sin materias.");
@@ -267,7 +296,7 @@ try {
     await click(".grade-choice", "10.º");
     await waitText(".subject-grid", "Química");
     await click(".subject-choice", "Química");
-    await waitText(".step-card:nth-of-type(4) .empty-state", "No hay temas disponibles");
+    await waitText('.step-card[aria-labelledby="topic-title"] .empty-state', "No hay temas disponibles");
     assert.equal(await evaluate("document.querySelectorAll('.topic-choice').length"), 0);
     assert.equal(await evaluate("document.querySelector('.selection-summary').textContent.includes('Tu ruta está preparada')"), false);
   });
@@ -343,6 +372,49 @@ try {
     assert.equal(await evaluate("document.querySelector('.selection-summary').textContent.includes('Reacciones inorgánicas')"), false);
   });
   console.log("OK: respuesta tardía de temas descartada tras cambiar el grado.");
+  async function completeStudyForGrade(grade) {
+    await navigate();
+    await waitText(".grade-groups", grade);
+    await click(".grade-choice", grade);
+    await waitText(".subject-grid", "Matemáticas");
+    await click(".subject-choice", "Matemáticas");
+    await waitFor(() => evaluate("document.querySelector('.topic-choice') !== null"), "tema de " + grade);
+    await evaluate("document.querySelector('.topic-choice').click()");
+    await click(".diagnostic-card .primary-button", "Empezar a estudiar");
+    await waitText(".diagnostic-panel", "Antes de comenzar");
+    await click(".diagnostic-panel .primary-button", "Comenzar preguntas");
+    for (let index = 0; index < 2; index++) {
+      await waitText(".question-progress", `Pregunta ${index + 1} de 2`);
+      await evaluate("document.querySelector('.diagnostic-panel .answer-option input').click()");
+      await click(".diagnostic-panel .primary-button", "Revisar respuesta");
+      await waitText(".answer-feedback", "Respuesta de referencia");
+      await click(".answer-feedback .primary-button", index === 0 ? "Siguiente pregunta" : "Ver resumen");
+    }
+    await waitText(".diagnostic-panel", "Terminaste la demostración");
+    await click(".diagnostic-panel .primary-button", "Continuar a estudiar");
+    await waitText(".diagnostic-panel", "Explicación breve");
+    await evaluate("document.querySelector('.diagnostic-panel .answer-option input').click()");
+    await click(".diagnostic-panel .primary-button", "Revisar respuesta");
+    await waitFor(() => evaluate("document.querySelector('.diagnostic-panel .answer-feedback') !== null"), "retroalimentación de práctica");
+  }
+  await completeStudyForGrade("1.º");
+  await completeStudyForGrade("6.º");
+  console.log("OK: diagnóstico, explicación y práctica en primaria y secundaria; media verificada arriba.");
+  if (testAccounts) {
+    await navigate();
+    await waitText(".account-panel", testEmail);
+    await waitText(".account-panel", "G10-QUI");
+    await waitText(".account-panel", "G10-MAT");
+    const logoutStatus = await evaluate("fetch('/api/auth/logout', { method: 'POST' }).then((response) => response.status)");
+    assert.equal(logoutStatus, 200);
+    await navigate();
+    assert.equal(await evaluate(`document.querySelector('.account-panel')?.textContent?.includes(${JSON.stringify(testEmail)})`), false);
+    const loginStatus = await evaluate(`fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(testEmail)}, password: ${JSON.stringify(testPassword)} }) }).then((response) => response.status)`);
+    assert.equal(loginStatus, 200);
+    await navigate();
+    await waitText(".account-panel", "G10-MAT");
+    console.log("OK: cuenta adulta, progreso persistente, cierre e inicio de sesión en navegador.");
+  }
 } finally {
   socket?.close();
   chrome.kill();

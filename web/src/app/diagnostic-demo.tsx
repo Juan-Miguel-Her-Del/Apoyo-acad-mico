@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { analyzeDemoSkills } from "@/lib/diagnostic-analysis";
 import type { QuestionView } from "@/lib/diagnostic";
 import type { Selection } from "@/lib/selection";
+import StudyDemo from "./study-demo";
 
 type Feedback =
   | { state: "evaluated"; correct: boolean; correctOptionId: string; explanation: string }
@@ -11,7 +12,7 @@ type Feedback =
 type Answer = { questionId: string; optionId: string; correct: boolean };
 
 export default function DiagnosticDemo({ selection }: { selection: Selection }) {
-  const [stage, setStage] = useState<"idle" | "loading" | "intro" | "question" | "finished">("idle");
+  const [stage, setStage] = useState<"idle" | "loading" | "intro" | "question" | "finished" | "study">("idle");
   const [questions, setQuestions] = useState<QuestionView[]>([]);
   const [index, setIndex] = useState(0);
   const [optionId, setOptionId] = useState("");
@@ -19,6 +20,8 @@ export default function DiagnosticDemo({ selection }: { selection: Selection }) 
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
   const request = useRef<AbortController | null>(null);
   const submitting = useRef(false);
   useEffect(() => () => request.current?.abort(), []);
@@ -85,13 +88,38 @@ export default function DiagnosticDemo({ selection }: { selection: Selection }) 
 
   function reset() {
     request.current?.abort();
-    setStage("idle"); setQuestions([]); setIndex(0); setOptionId(""); setAnswers([]); setFeedback(null); setError(""); setBusy(false);
+    setStage("idle"); setQuestions([]); setIndex(0); setOptionId(""); setAnswers([]); setFeedback(null); setError(""); setBusy(false); setSaveMessage("");
   }
 
+  async function saveDiagnostic() {
+    if (!ready || stage !== "finished" || saving) return;
+    setSaving(true);
+    setSaveMessage("");
+    try {
+      const response = await fetch("/api/progress", {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin",
+        body: JSON.stringify({ gradeId: selection.gradeId, subjectId: selection.subjectId, topicId: selection.topicId, kind: "diagnostic", completed: true }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(response.status === 401 ? "Inicia sesión arriba para guardar este recorrido." : body.error ?? "No se pudo guardar el recorrido.");
+      setSaveMessage("Diagnóstico de demostración guardado en tu cuenta.");
+      window.dispatchEvent(new Event("ap-progress-saved"));
+    } catch (cause) {
+      setSaveMessage(cause instanceof Error ? cause.message : "No se pudo guardar el recorrido.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (stage === "study") return <>
+    <StudyDemo selection={selection} />
+    <button className="text-button" type="button" onClick={() => setStage("finished")}>Volver al resumen del diagnóstico</button>
+  </>;
+
   return <section className="diagnostic-card" aria-labelledby="diagnostic-title">
-    <p className="eyebrow">Demostración · Sprint 2</p>
+    <p className="eyebrow">Demostración · diagnóstico y estudio</p>
     <h2 id="diagnostic-title">Prueba un diagnóstico corto</h2>
-    <p className="diagnostic-disclaimer">Las preguntas son ejemplos sin revisión docente. Esta experiencia no es una calificación ni se guarda en una cuenta. El contenido para estudiantes sigue pendiente de aprobación.</p>
+    <p className="diagnostic-disclaimer">Las preguntas son ejemplos provisionales sin revisión docente. Esta experiencia no es una calificación ni se guarda en una cuenta. Al terminar podrás estudiar el tema y practicar con otro ejemplo.</p>
     {stage === "idle" && <button className="primary-button" type="button" onClick={prepare} disabled={!ready}>Empezar a estudiar (demo)</button>}
     {stage === "loading" && <p role="status">Preparando preguntas de demostración…</p>}
     {stage === "intro" && <div className="diagnostic-panel"><h3>Antes de comenzar</h3><p>Responde con calma. Verás {questions.length} {questions.length === 1 ? "pregunta de prueba" : "preguntas de prueba"} sobre el tema elegido. No recibirás una nota académica y podrás salir cuando quieras.</p><button className="primary-button" type="button" onClick={() => setStage("question")}>Comenzar preguntas</button></div>}
@@ -115,7 +143,7 @@ export default function DiagnosticDemo({ selection }: { selection: Selection }) 
         <span> {result.correct}/{result.answered} aciertos; preguntas {result.questionIds.map((id) => questions.findIndex((item) => item.id === id) + 1).join(", ")}.</span>
       </li>)}</ul>}
       {analysis.unmappedQuestionIds.length > 0 && <p className="diagnostic-error">Resultado incompleto: {analysis.unmappedQuestionIds.length} {analysis.unmappedQuestionIds.length === 1 ? "pregunta no tiene" : "preguntas no tienen"} un subtema vinculado; no se les asignó dificultad.</p>}
-      <p>Este resumen es orientativo; no equivale a una evaluación validada y se perderá al cerrar o recargar la página.</p><button className="primary-button" type="button" onClick={reset}>Volver a empezar</button></div>}
+      <p>Este resumen es orientativo; no equivale a una evaluación validada. Puedes guardar que completaste el recorrido, pero no se guarda una calificación.</p><button className="primary-button" type="button" onClick={() => setStage("study")}>Continuar a estudiar</button><button className="text-button" type="button" onClick={saveDiagnostic} disabled={saving}>{saving ? "Guardando…" : "Guardar diagnóstico en mi cuenta"}</button><button className="text-button" type="button" onClick={reset}>Volver a empezar</button>{saveMessage && <p role="status">{saveMessage}</p>}</div>}
     {error && <p className="diagnostic-error" role="alert">{error}</p>}
     {stage !== "idle" && stage !== "finished" && <button className="text-button" type="button" onClick={reset}>Salir de la demostración</button>}
   </section>;

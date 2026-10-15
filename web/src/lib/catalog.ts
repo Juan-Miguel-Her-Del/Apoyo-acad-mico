@@ -58,8 +58,8 @@ export const subjects: readonly Subject[] = [
   { id: "QUI", name: "Química", alias: "Ciencias Naturales: Química", grades: [10, 11], active: true, order: 4 },
 ];
 
-// El catálogo propone 26 temas. Solo seis se usan como datos de demostración
-// del Sprint 1; ninguno está aprobado para publicarse a estudiantes.
+// El catálogo propone 26 temas de demostración. Ninguno está aprobado
+// para publicarse a estudiantes; pilotCandidate indica disponibilidad demo.
 const mathTopics = [
   "Contar, comparar y representar números hasta 100",
   "Valor posicional; sumas y restas en problemas",
@@ -99,7 +99,7 @@ const baseTopics: TopicDraft[] = gradeNumbers.flatMap((number) => {
       subjectId: "MAT" as const,
       name: mathTopics[number - 1],
       dba: number === 5 ? "Matemáticas 5.º, DBA 1 (v.2)" : number === 10 ? "Matemáticas 10.º, DBA 4 (v.2)" : null,
-      pilotCandidate: number === 5 || number === 10,
+      pilotCandidate: true,
     },
     {
       id: `${gradeId}-ESP`,
@@ -107,7 +107,7 @@ const baseTopics: TopicDraft[] = gradeNumbers.flatMap((number) => {
       subjectId: "ESP" as const,
       name: spanishTopics[number - 1],
       dba: number === 5 ? "Lenguaje 5.º, DBA 8 (v.2)" : number === 10 ? "Lenguaje 10.º, DBA 6 (v.2)" : null,
-      pilotCandidate: number === 5 || number === 10,
+      pilotCandidate: true,
     },
   ];
 });
@@ -128,7 +128,7 @@ const topicDrafts: readonly TopicDraft[] = [
     subjectId: "FIS",
     name: "Ondas de luz y sonido; circuitos resistivos sencillos",
     dba: null,
-    pilotCandidate: false,
+    pilotCandidate: true,
   },
   {
     id: "G10-QUI",
@@ -144,13 +144,13 @@ const topicDrafts: readonly TopicDraft[] = [
     subjectId: "QUI",
     name: "Compuestos orgánicos y sus reacciones",
     dba: null,
-    pilotCandidate: false,
+    pilotCandidate: true,
   },
 ];
 
 export const topics: readonly Topic[] = topicDrafts.map((topic, index) => ({
   ...topic,
-  active: topic.pilotCandidate,
+  active: true,
   approvedForPublication: false,
   explanationApproved: false,
   order: index + 1,

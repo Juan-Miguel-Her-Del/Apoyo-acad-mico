@@ -1,22 +1,35 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createDiagnosticReader, evaluateDemoAnswer, getDiagnostic } from "../src/lib/diagnostic.ts";
+import { topics } from "../src/lib/catalog.ts";
 
-test("las seis combinaciones piloto ofrecen preguntas demo finitas, únicas y sin soluciones en GET", () => {
-  for (const [grade, subject] of [["G05", "MAT"], ["G05", "ESP"], ["G10", "MAT"], ["G10", "ESP"], ["G10", "FIS"], ["G10", "QUI"]]) {
-    const result = getDiagnostic(grade, subject, `${grade}-${subject}`, "demo");
+test("las 26 combinaciones ofrecen dos preguntas demo únicas y sin soluciones en GET", () => {
+  const allQuestionIds = new Set();
+  for (const topic of topics) {
+    const result = getDiagnostic(topic.gradeId, topic.subjectId, topic.id, "demo");
     assert.equal(result.status, 200);
-    assert.equal(result.questions.length, 2);
+    assert.equal(result.questions.length, 2, topic.id);
     assert.equal(new Set(result.questions.map((question) => question.id)).size, 2);
     assert.ok(result.questions.every((question) => question.options.length === 3));
     assert.ok(result.questions.every((question) => typeof question.skill === "string" && question.skill.length > 0));
     assert.ok(result.questions.every((question) => !("correctOptionId" in question) && !("explanation" in question)));
+    for (const question of result.questions) {
+      assert.equal(allQuestionIds.has(question.id), false, question.id);
+      allQuestionIds.add(question.id);
+      for (const option of question.options) {
+        const evaluated = evaluateDemoAnswer(topic.gradeId, topic.subjectId, topic.id, question.id, option.id);
+        assert.equal(evaluated.status, 200);
+        assert.ok(evaluated.explanation.length > 0);
+        assert.ok(question.options.some((candidate) => candidate.id === evaluated.correctOptionId));
+      }
+    }
   }
+  assert.equal(allQuestionIds.size, 52);
 });
 
-test("no permite combinaciones cruzadas, grados sin piloto ni modo desconocido", () => {
+test("no permite combinaciones cruzadas, grado desconocido ni modo desconocido", () => {
   assert.equal(getDiagnostic("G05", "FIS", "G10-FIS", "demo").status, 400);
-  assert.equal(getDiagnostic("G11", "MAT", "G11-MAT", "demo").status, 400);
+  assert.equal(getDiagnostic("G12", "MAT", "G12-MAT", "demo").status, 400);
   assert.equal(getDiagnostic("G05", "MAT", "G05-ESP", "demo").status, 400);
   assert.equal(getDiagnostic("G05", "MAT", "G05-MAT", "other").status, 400);
 });

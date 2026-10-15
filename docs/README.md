@@ -21,6 +21,7 @@ La fuente funcional vigente es el [backlog AP de Jira](https://juanmiguelsworksp
 | [Plan del Sprint 3](15-plan-sprint-3.md) | Alcance vigente, dependencias y orden de trabajo antes del inicio formal |
 | [Contexto de explicaciones](16-contexto-explicaciones.md) | Contrato AP-132, caso válido, límite y decisiones pendientes |
 | [Avance del Sprint 3](17-desarrollo-sprint-3.md) | Análisis demo por subtema, evidencia de pruebas y trabajo restante |
+| [Entrega académica de octubre](18-entrega-academica-octubre.md) | Alcance de prototipo 1.º–11.º, recorrido de presentación y puertas posteriores |
 | [Criterios de aceptación](criterios-aceptacion.md) | Escenarios comprobables para las historias |
 | [Estimaciones](estimaciones.md) | Esfuerzo preliminar y capacidad |
 | [Pruebas](pruebas.md) | Estrategia y resultados disponibles |
