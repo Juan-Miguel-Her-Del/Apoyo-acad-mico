@@ -176,11 +176,31 @@ try {
   await click(".diagnostic-panel .primary-button", "Continuar a estudiar");
   await waitText(".diagnostic-card", "Estudia un tema y ponlo en práctica");
   await waitText(".diagnostic-panel", "Explicación breve");
-  await evaluate("document.querySelector('.diagnostic-panel .answer-option input').click()");
-  await click(".diagnostic-panel .primary-button", "Revisar respuesta");
-  await waitText(".answer-feedback", "¡Correcto!");
+  if (!testAccounts) {
+    await click(".quick-practice summary", "Prueba rápida sin cuenta");
+    await evaluate("document.querySelector('.quick-practice .answer-option input').click()");
+    await click(".quick-practice .primary-button", "Revisar respuesta");
+    await waitText(".quick-practice .answer-feedback", "¡Correcto!");
+  }
   if (testAccounts) {
-    await click(".diagnostic-panel .primary-button", "Guardar práctica");
+    await click(".practice-session .primary-button", "Empezar práctica de dos preguntas");
+    await waitText(".practice-session .question-progress", "Pregunta 1 de 2");
+    await evaluate("document.querySelector('.practice-session .answer-option input').click()");
+    await click(".practice-session .primary-button", "Revisar respuesta");
+    await waitFor(() => evaluate("document.querySelector('.practice-session .answer-feedback') !== null"), "respuesta de práctica 1");
+    await click(".practice-session .answer-feedback .primary-button", "Siguiente pregunta");
+    await waitText(".practice-session .question-progress", "Pregunta 2 de 2");
+    const invalidPractice = await evaluate("fetch('/api/practice/answer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: localStorage.getItem('apoyo-practice:G10-MAT'), questionId: document.querySelector('.practice-session .answer-option input').name, optionId: 'z' }) }).then((response) => response.status)");
+    assert.equal(invalidPractice, 400, "opción inválida no debe registrar una respuesta");
+    await evaluate("document.querySelector('.practice-session .answer-option input').click()");
+    await click(".practice-session .primary-button", "Revisar respuesta");
+    await waitFor(() => evaluate("document.querySelector('.practice-session .answer-feedback') !== null"), "respuesta de práctica 2");
+    await click(".practice-session .answer-feedback .primary-button", "Ver resultado");
+    await waitText(".practice-result", "Práctica completada");
+    const closedPractice = await evaluate("fetch('/api/practice/answer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: localStorage.getItem('apoyo-practice:G10-MAT'), questionId: 'practice-g10-mat-02', optionId: 'a' }) }).then((response) => response.status)");
+    assert.equal(closedPractice, 409, "una sesión terminada no debe cambiar de resultado");
+    const forgedStudy = await evaluate("fetch('/api/progress', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gradeId: 'G10', subjectId: 'MAT', topicId: 'G10-MAT', kind: 'study', completed: true }) }).then((response) => response.status)");
+    assert.equal(forgedStudy, 400, "el avance de práctica no puede declararse desde el cliente");
     await waitText(".account-panel", "G10-MAT");
   }
   console.log("OK: dos respuestas del mismo subtema muestran señal demo con preguntas trazables.");
@@ -393,9 +413,10 @@ try {
     await waitText(".diagnostic-panel", "Terminaste la demostración");
     await click(".diagnostic-panel .primary-button", "Continuar a estudiar");
     await waitText(".diagnostic-panel", "Explicación breve");
-    await evaluate("document.querySelector('.diagnostic-panel .answer-option input').click()");
-    await click(".diagnostic-panel .primary-button", "Revisar respuesta");
-    await waitFor(() => evaluate("document.querySelector('.diagnostic-panel .answer-feedback') !== null"), "retroalimentación de práctica");
+    await click(".quick-practice summary", "Prueba rápida sin cuenta");
+    await evaluate("document.querySelector('.quick-practice .answer-option input').click()");
+    await click(".quick-practice .primary-button", "Revisar respuesta");
+    await waitFor(() => evaluate("document.querySelector('.quick-practice .answer-feedback') !== null"), "retroalimentación de práctica");
   }
   await completeStudyForGrade("1.º");
   await completeStudyForGrade("6.º");
@@ -409,6 +430,13 @@ try {
     assert.equal(logoutStatus, 200);
     await navigate();
     assert.equal(await evaluate(`document.querySelector('.account-panel')?.textContent?.includes(${JSON.stringify(testEmail)})`), false);
+    const secondEmail = `other-${Date.now()}@example.test`;
+    const secondStatus = await evaluate(`fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(secondEmail)}, password: ${JSON.stringify(testPassword)}, adultConfirmed: true }) }).then((response) => response.status)`);
+    assert.equal(secondStatus, 201);
+    const privateSession = await evaluate("fetch('/api/practice/session?sessionId=' + localStorage.getItem('apoyo-practice:G10-MAT')).then((response) => response.status)");
+    assert.equal(privateSession, 404, "otra cuenta no puede leer el intento");
+    const secondLogout = await evaluate("fetch('/api/auth/logout', { method: 'POST' }).then((response) => response.status)");
+    assert.equal(secondLogout, 200);
     const loginStatus = await evaluate(`fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(testEmail)}, password: ${JSON.stringify(testPassword)} }) }).then((response) => response.status)`);
     assert.equal(loginStatus, 200);
     await navigate();

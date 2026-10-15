@@ -65,7 +65,7 @@ test("progreso aislado por usuario, combinación válida y revocación de sesió
   assert.deepEqual(store.sessionUser(b.token), b.user);
   store.disableUser(b.user.id);
   assert.equal(store.sessionUser(b.token), null);
-  assert.throws(() => store.saveProgress(b.user.id, { gradeId: "G05", subjectId: "MAT", topicId: "G05-MAT", kind: "study", completed: true }),
+  assert.throws(() => store.saveProgress(b.user.id, { gradeId: "G05", subjectId: "MAT", topicId: "G05-MAT", kind: "diagnostic", completed: true }),
     (error) => error instanceof AuthError && error.status === 401);
 });
 

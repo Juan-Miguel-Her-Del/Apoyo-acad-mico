@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
 type Account = { id: string; email: string };
 type ProgressItem = {
@@ -11,34 +11,49 @@ type ProgressItem = {
   completed: boolean;
   updatedAt: string;
 };
+type PracticeItem = {
+  id: string; topicId: string; status: "open" | "completed";
+  total: number; answered: number; correctCount: number;
+  completedAt: string | null;
+};
 
 export default function AccountPanel() {
   const [account, setAccount] = useState<Account | null>(null);
   const [items, setItems] = useState<ProgressItem[]>([]);
+  const [practiceItems, setPracticeItems] = useState<PracticeItem[]>([]);
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [adultConfirmed, setAdultConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const authEpoch = useRef(0);
 
   const refreshProgress = useCallback(async () => {
+    const epoch = authEpoch.current;
     try {
-      const response = await fetch("/api/progress", { cache: "no-store", credentials: "same-origin" });
-      if (!response.ok) { setItems([]); return; }
-      const body = await response.json();
-      setItems(Array.isArray(body.items) ? body.items : []);
+      const [progressResponse, practiceResponse] = await Promise.all([
+        fetch("/api/progress", { cache: "no-store", credentials: "same-origin" }),
+        fetch("/api/practice/sessions", { cache: "no-store", credentials: "same-origin" }),
+      ]);
+      if (epoch !== authEpoch.current) return;
+      if (!progressResponse.ok || !practiceResponse.ok) { setItems([]); setPracticeItems([]); return; }
+      const [progressBody, practiceBody] = await Promise.all([progressResponse.json(), practiceResponse.json()]);
+      if (epoch !== authEpoch.current) return;
+      setItems(Array.isArray(progressBody.items) ? progressBody.items : []);
+      setPracticeItems(Array.isArray(practiceBody.items) ? practiceBody.items : []);
     } catch {
-      setMessage("No se pudo cargar tu progreso. Inténtalo de nuevo.");
+      if (epoch === authEpoch.current) setMessage("No se pudo cargar tu progreso. Inténtalo de nuevo.");
     }
   }, []);
 
   useEffect(() => {
     let mounted = true;
+    const epoch = authEpoch.current;
     fetch("/api/auth/me", { cache: "no-store", credentials: "same-origin" })
       .then(async (response) => response.ok ? response.json() : null)
       .then((body) => {
-        if (!mounted || !body?.user) return;
+        if (!mounted || epoch !== authEpoch.current || !body?.user) return;
         setAccount(body.user);
         void refreshProgress();
       })
@@ -60,9 +75,11 @@ export default function AccountPanel() {
       });
       const body = await response.json();
       if (!response.ok || !body.user) throw new Error(typeof body.error === "string" ? body.error : "No se pudo abrir la cuenta.");
+      authEpoch.current += 1;
       setAccount(body.user);
       setPassword("");
       setMessage(mode === "register" ? "Cuenta creada. Ya puedes guardar tu avance de prueba." : "Sesión iniciada.");
+      window.dispatchEvent(new Event("ap-auth-changed"));
       await refreshProgress();
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "No se pudo abrir la cuenta.");
@@ -77,9 +94,12 @@ export default function AccountPanel() {
     try {
       const response = await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
       if (!response.ok) throw new Error("No se pudo cerrar la sesión.");
+      authEpoch.current += 1;
       setAccount(null);
       setItems([]);
+      setPracticeItems([]);
       setMessage("Sesión cerrada.");
+      window.dispatchEvent(new Event("ap-auth-changed"));
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "No se pudo cerrar la sesión.");
     } finally {
@@ -93,9 +113,13 @@ export default function AccountPanel() {
     {account ? <div className="account-panel">
       <p>Sesión iniciada como <strong>{account.email}</strong>.</p>
       <button className="text-button" type="button" onClick={logout} disabled={busy}>Cerrar sesión</button>
-      <h3>Progreso guardado</h3>
-      {items.length === 0 ? <p>Aún no has guardado un diagnóstico o una práctica.</p> : <ul>{items.map((item) => <li key={`${item.topicId}-${item.kind}`}>
-        {item.kind === "study" ? "Práctica" : "Diagnóstico"} · {item.topicId} · completado
+      <h3>Diagnósticos guardados</h3>
+      {items.filter((item) => item.kind === "diagnostic").length === 0 ? <p>Aún no has guardado un diagnóstico.</p> : <ul>{items.filter((item) => item.kind === "diagnostic").map((item) => <li key={`${item.topicId}-${item.kind}`}>
+        {item.topicId} · completado
+      </li>)}</ul>}
+      <h3>Historial de práctica</h3>
+      {practiceItems.length === 0 ? <p>Aún no has iniciado una práctica con seguimiento.</p> : <ul>{practiceItems.map((item) => <li key={item.id}>
+        {item.topicId} · {item.status === "completed" ? `${item.correctCount}/${item.total} correctas` : `${item.answered}/${item.total} respondidas; pendiente`}
       </li>)}</ul>}
       <button className="text-button" type="button" onClick={() => void refreshProgress()}>Actualizar progreso</button>
     </div> : <div className="account-panel">
