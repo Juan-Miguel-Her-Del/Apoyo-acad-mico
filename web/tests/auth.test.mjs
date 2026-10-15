@@ -54,9 +54,9 @@ test("progreso aislado por usuario, combinación válida y revocación de sesió
   const a = await store.register({ email: "a@example.test", password: "clave-segura-123", adultConfirmed: true });
   const b = await store.register({ email: "b@example.test", password: "clave-segura-123", adultConfirmed: true });
   assert.deepEqual(store.listProgress(b.user.id), []);
-  const item = store.saveProgress(a.user.id, { gradeId: "G05", subjectId: "MAT", topicId: "G05-MAT", kind: "diagnostic", completed: true });
-  assert.equal(item.topicId, "G05-MAT");
-  assert.equal(store.listProgress(a.user.id).length, 1);
+  assert.throws(() => store.saveProgress(a.user.id, { gradeId: "G05", subjectId: "MAT", topicId: "G05-MAT", kind: "diagnostic", completed: true }),
+    (error) => error instanceof AuthError && error.status === 409);
+  assert.equal(store.listProgress(a.user.id).length, 0);
   assert.deepEqual(store.listProgress(b.user.id), []);
   await assert.rejects(async () => store.saveProgress(b.user.id, { gradeId: "G05", subjectId: "FIS", topicId: "G05-MAT", kind: "study", completed: true }),
     (error) => error instanceof AuthError && error.status === 400);

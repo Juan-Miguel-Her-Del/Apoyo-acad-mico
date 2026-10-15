@@ -197,11 +197,9 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
     }
     const active = db.prepare("SELECT id FROM users WHERE id=? AND status='active'").get(userId);
     if (!active) throw new AuthError(401, "Sesión no válida.");
-    const updatedAt = new Date().toISOString();
-    db.prepare(`INSERT INTO progress(user_id,grade_id,subject_id,topic_id,kind,completed,updated_at)
-      VALUES (?,?,?,?,?,1,?) ON CONFLICT(user_id,topic_id,kind) DO UPDATE SET completed=1,updated_at=excluded.updated_at`)
-      .run(userId, gradeId, subjectId, topicId, kind, updatedAt);
-    return { gradeId, subjectId, topicId, kind, completed: true, updatedAt };
+    // El progreso diagnóstico se registra desde el servidor tras cerrar un
+    // intento; el cliente no puede declararlo completado mediante /api/progress.
+    throw new AuthError(409, "Completa un intento diagnóstico para registrar el resultado.");
   }
   function listProgress(userId: string): ProgressItem[] {
     const active = db.prepare("SELECT id FROM users WHERE id=? AND status='active'").get(userId);
