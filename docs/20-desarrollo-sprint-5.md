@@ -2,7 +2,7 @@
 
 **Avance técnico:** 15 de octubre de 2026. El alcance original de 24 incidencias se conserva en Jira. La práctica y el seguimiento funcionan en el prototipo local con cuentas de adultos/evaluadores y datos sintéticos; la publicación para estudiantes requiere las revisiones indicadas abajo.
 
-**Estado Jira corregido:** el sprint de demostración id 9 se cerró anticipadamente el 15 de octubre con AP-201, AP-202, AP-205 y AP-319 en Listo. Esa reducción fue una decisión equivocada. Jira no permite reabrir el sprint cerrado, así que se creó **AP Sprint 5 — alcance original (id 39)** con las fechas iniciales **27 de octubre–2 de noviembre de 2026** y las **24 incidencias originales**. AP-201/AP-202/AP-205 están Listo; las otras 21 siguen abiertas, incluidas las historias AP-187/AP-194/AP-208/AP-215/AP-222/AP-229/AP-236 en curso. AP-319 se conserva solo en el historial del id 9. AP-236 conserva la dependencia de consentimiento y cuenta estudiantil.
+**Estado Jira corregido:** el sprint de demostración id 9 se cerró anticipadamente el 15 de octubre con AP-201, AP-202, AP-205 y AP-319 en Listo. Esa reducción fue una decisión equivocada. Jira no permite reabrir el sprint cerrado, así que se creó **AP Sprint 5 — alcance original (id 39)** con las fechas iniciales **27 de octubre–2 de noviembre de 2026** y las **24 incidencias originales**. Tras verificar las nuevas funciones, **19 están Listo y 5 En curso**: AP-187, AP-191, AP-236, AP-237 y AP-240. AP-319 se conserva solo en el historial del id 9. AP-236 conserva la dependencia de consentimiento y cuenta estudiantil.
 
 ## Alcance verificable
 
@@ -19,14 +19,14 @@ La comparación de cuentas adultas solo sirve para la demostración: [AP-236](ht
 
 ## Avance del alcance original
 
-| Historia | Implementación verificable | Condición para marcar Listo |
+| Historia | Implementación verificable | Estado y límite |
 | --- | --- | --- |
 | AP-187, corrección explicada | Respuesta y opción de referencia; estado `pending-review` sin justificación no aprobada. Contrato de explicación revisada en [21-retroalimentacion-practica.md](21-retroalimentacion-practica.md). | Explicaciones de preguntas reales aprobadas y caso integrado verificado. |
-| AP-194, dificultad gradual | Dos niveles; una ronda de 2/2 aciertos lleva al nivel 2; el máximo no se supera. | Revisar criterio y evidencia Jira de regla/casos límite. |
-| AP-208, nuevas rondas | Sesión nueva con snapshot propio; no reabre resumen anterior ni repite preguntas de la ronda inmediata; agotamiento con HTTP 409. | Revisar evidencia Jira y subtareas. |
-| AP-215, variedad del banco | 6 preguntas provisionales por cada uno de 26 temas: 4 de nivel 1 y 2 de nivel 2. `cd web; npm.cmd run coverage:practice` informa cobertura y falla si un tema es insuficiente. | Revisar objetivo de variedad y validación del banco para uso educativo. Se garantizan dos rondas distintas, no variedad ilimitada. |
-| AP-222, dominio por subtema | Dos subtemas por tema; agregados por cuenta sobre todas las prácticas completas, indeterminado sin dos prácticas y dos respuestas del subtema. | Revisar la regla de dominio y la evidencia; el umbral actual es orientativo. |
-| AP-229, gráfica | Barras accesibles con fecha, aciertos y porcentaje de hasta 200 intentos; una sola medición no muestra tendencia. | Revisar caso principal/límite y evidencias de accesibilidad. |
+| AP-194, dificultad gradual | Dos niveles; una ronda de 2/2 aciertos lleva al nivel 2; el máximo no se supera. | Listo: regla funcional de demostración probada. |
+| AP-208, nuevas rondas | Sesión nueva con snapshot propio; no reabre resumen anterior ni repite preguntas de la ronda inmediata; agotamiento con HTTP 409. | Listo: caso principal y límite probados. |
+| AP-215, variedad del banco | 6 preguntas provisionales por cada uno de 26 temas: 4 de nivel 1 y 2 de nivel 2. `cd web; npm.cmd run coverage:practice` informa cobertura y falla si un tema es insuficiente. | Listo para el mínimo explícito de dos rondas distintas; la revisión curricular del contenido sigue en AP-314/AP-316. |
+| AP-222, dominio por subtema | Dos subtemas por tema; agregados por cuenta sobre todas las prácticas completas, indeterminado sin dos prácticas y dos respuestas del subtema. | Listo como estimación orientativa; no es validación académica. |
+| AP-229, gráfica | Barras accesibles con fecha, aciertos y porcentaje de hasta 200 intentos; una sola medición no muestra tendencia. | Listo: cálculo, acceso textual y Chrome probados. |
 | AP-236, progreso estudiantil | Contrato interno de cuenta, autorización, sesión y comparación persistente con pruebas sintéticas en [22-cuentas-estudiantes-consentimiento.md](22-cuentas-estudiantes-consentimiento.md). | Documento formal, verificador del representante, integración de sesiones reales de estudiantes y rutas protegidas; sigue abierta. |
 
 El banco actual es `demo-2026-10-v2`, con preguntas **provisionales**. Las preguntas de cada sesión se guardan como snapshot para conservar el intento aunque cambie el banco. Las sesiones previas de dos preguntas se migran sin revelar sus explicaciones provisionales. El historial visual muestra los 200 intentos más recientes; el cálculo de subtemas usa todos los intentos guardados de la cuenta. No es una medida académica validada.
