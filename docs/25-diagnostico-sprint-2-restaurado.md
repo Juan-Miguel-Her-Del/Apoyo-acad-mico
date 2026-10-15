@@ -37,6 +37,8 @@ El banco y las claves de respuesta se guardan en el servidor para que un cambio 
 
 Los criterios originales permanecen en Jira. La implementación de una demostración técnica no equivale a declarar cumplida la revisión curricular de AP-314 ni la revisión de consentimiento de AP-304.
 
+**Estado Jira verificado el 15/10/2026:** AP-59, AP-77, AP-80, AP-83, AP-84, AP-87 y AP-90 quedaron en «Listo» con evidencia técnica. AP-52, AP-56 y AP-76 permanecen «En curso» por sus criterios de estudiante o publicación. Doce subtareas de implementación/verificación quedaron «Listo»; AP-57 y AP-58 siguen «En curso» con la integración publicada como actividad pendiente. El Sprint 2 restaurado tiene **17 de 24 incidencias principales en «Listo» y 7 abiertas**, incluidas las cuatro de consentimiento AP-304/AP-305/AP-308/AP-311. No se cerró el sprint mientras esas dependencias permanezcan abiertas.
+
 ## Verificación
 
 Ejecutar desde `web/`:
