@@ -1,8 +1,8 @@
-# Sprint 5 — cierre de práctica y comparación de intentos
+# Sprint 5 — práctica y progreso con alcance original
 
-**Avance técnico inicial:** 15 de octubre de 2026. El alcance ya implementado es un **prototipo local para cuentas de adultos/evaluadores con datos sintéticos**; las 24 incidencias originales del Sprint 5 siguen siendo el alcance comprometido del sprint restaurado.
+**Avance técnico:** 15 de octubre de 2026. El alcance original de 24 incidencias se conserva en Jira. La práctica y el seguimiento funcionan en el prototipo local con cuentas de adultos/evaluadores y datos sintéticos; la publicación para estudiantes requiere las revisiones indicadas abajo.
 
-**Estado Jira corregido:** el sprint de demostración id 9 se cerró anticipadamente el 15 de octubre con AP-201, AP-202, AP-205 y AP-319 en Listo. Esa reducción fue una decisión equivocada: el usuario pidió desarrollar los sprints con todo su alcance original, sin usar la fecha de la sustentación para recortarlos. Jira no permite reabrir el sprint cerrado, así que se creó **AP Sprint 5 — alcance original (id 39)** con las fechas iniciales **27 de octubre–2 de noviembre de 2026** y las **24 incidencias originales**. Tres están Listo (AP-201/AP-202/AP-205) y 21 permanecen Por hacer. AP-319 es una tarea adicional de demostración y se conserva solo en el historial del id 9. Las subtareas AP-203/AP-204/AP-206/AP-207 quedaron en Listo con evidencia. AP-236 conserva la dependencia de consentimiento y cuenta estudiantil.
+**Estado Jira corregido:** el sprint de demostración id 9 se cerró anticipadamente el 15 de octubre con AP-201, AP-202, AP-205 y AP-319 en Listo. Esa reducción fue una decisión equivocada. Jira no permite reabrir el sprint cerrado, así que se creó **AP Sprint 5 — alcance original (id 39)** con las fechas iniciales **27 de octubre–2 de noviembre de 2026** y las **24 incidencias originales**. AP-201/AP-202/AP-205 están Listo; las otras 21 siguen abiertas, incluidas las historias AP-187/AP-194/AP-208/AP-215/AP-222/AP-229/AP-236 en curso. AP-319 se conserva solo en el historial del id 9. AP-236 conserva la dependencia de consentimiento y cuenta estudiantil.
 
 ## Alcance verificable
 
@@ -13,9 +13,37 @@
 
 ## Evidencia y límites
 
-Código: `web/src/lib/auth.ts`, `web/src/lib/practice-history.ts`, `web/src/app/api/practice/finish/route.ts`, `web/src/app/practice-session.tsx` y `web/src/app/account-panel.tsx`. Pruebas: `web/tests/practice.test.mjs` cubre cierre vacío, idempotencia, respuesta tardía, aislamiento entre cuentas y comparación del mismo tema; `web/tests/browser-smoke.mjs` recorre cierre vacío, historial, reingreso y comparación. Resultado local: **28/28 pruebas**, lint, build y Chrome con cuentas de prueba correctos.
+Código: `web/src/lib/auth.ts`, `web/src/lib/practice-history.ts`, `web/src/app/api/practice/finish/route.ts`, `web/src/app/practice-session.tsx` y `web/src/app/account-panel.tsx`. Pruebas: `web/tests/practice.test.mjs` cubre cierre vacío, idempotencia, respuesta tardía, aislamiento entre cuentas y comparación del mismo tema; `web/tests/browser-smoke.mjs` recorre cierre vacío, historial, reingreso y comparación. La suite integrada actual pasa **45/45 pruebas**, lint, build y Chrome con cuentas de prueba.
 
-Las rondas repetidas muestran las **mismas dos preguntas** del banco provisional. Evitar repetición inmediata y adaptar dificultad requiere ampliar el banco y fijar las preguntas seleccionadas en cada sesión antes de cambiarlo. El historial consulta hasta 200 sesiones recientes por cuenta. La comparación solo sirve para la demostración: [AP-236](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-236) y sus tareas de estudiantes reales continúan dependiendo del consentimiento [AP-304](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-304), registro [AP-257](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-257) e inicio de sesión [AP-267](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-267). La revisión docente [AP-314](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-314) y [AP-316](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-316) permanece pendiente.
+La comparación de cuentas adultas solo sirve para la demostración: [AP-236](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-236) y sus tareas de estudiantes reales continúan dependiendo del consentimiento [AP-304](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-304), registro [AP-257](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-257) e inicio de sesión [AP-267](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-267). La revisión docente [AP-314](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-314) y [AP-316](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP-316) permanece pendiente.
+
+## Avance del alcance original
+
+| Historia | Implementación verificable | Condición para marcar Listo |
+| --- | --- | --- |
+| AP-187, corrección explicada | Respuesta y opción de referencia; estado `pending-review` sin justificación no aprobada. Contrato de explicación revisada en [21-retroalimentacion-practica.md](21-retroalimentacion-practica.md). | Explicaciones de preguntas reales aprobadas y caso integrado verificado. |
+| AP-194, dificultad gradual | Dos niveles; una ronda de 2/2 aciertos lleva al nivel 2; el máximo no se supera. | Revisar criterio y evidencia Jira de regla/casos límite. |
+| AP-208, nuevas rondas | Sesión nueva con snapshot propio; no reabre resumen anterior ni repite preguntas de la ronda inmediata; agotamiento con HTTP 409. | Revisar evidencia Jira y subtareas. |
+| AP-215, variedad del banco | 6 preguntas provisionales por cada uno de 26 temas: 4 de nivel 1 y 2 de nivel 2. `cd web; npm.cmd run coverage:practice` informa cobertura y falla si un tema es insuficiente. | Revisar objetivo de variedad y validación del banco para uso educativo. Se garantizan dos rondas distintas, no variedad ilimitada. |
+| AP-222, dominio por subtema | Dos subtemas por tema; agregados por cuenta sobre todas las prácticas completas, indeterminado sin dos prácticas y dos respuestas del subtema. | Revisar la regla de dominio y la evidencia; el umbral actual es orientativo. |
+| AP-229, gráfica | Barras accesibles con fecha, aciertos y porcentaje de hasta 200 intentos; una sola medición no muestra tendencia. | Revisar caso principal/límite y evidencias de accesibilidad. |
+| AP-236, progreso estudiantil | Contrato interno de cuenta, autorización, sesión y comparación persistente con pruebas sintéticas en [22-cuentas-estudiantes-consentimiento.md](22-cuentas-estudiantes-consentimiento.md). | Documento formal, verificador del representante, integración de sesiones reales de estudiantes y rutas protegidas; sigue abierta. |
+
+El banco actual es `demo-2026-10-v2`, con preguntas **provisionales**. Las preguntas de cada sesión se guardan como snapshot para conservar el intento aunque cambie el banco. Las sesiones previas de dos preguntas se migran sin revelar sus explicaciones provisionales. El historial visual muestra los 200 intentos más recientes; el cálculo de subtemas usa todos los intentos guardados de la cuenta. No es una medida académica validada.
+
+### Casos de verificación
+
+| Entrada | Resultado esperado y observado en pruebas |
+| --- | --- |
+| Primera ronda de 2/2 aciertos en un tema | La siguiente ronda contiene dos preguntas nuevas del nivel 2; no cambia la sesión anterior. |
+| Primera ronda con un error | La siguiente usa otras dos preguntas de nivel 1. |
+| Acertar otra ronda en el nivel máximo y solicitar otra sin ítems nuevos | HTTP 409 con límite de banco; no se crea sesión ni se supera el nivel 2. |
+| Volver a pedir una ronda sin preguntas válidas | HTTP 409; la sesión previa continúa cerrada y conserva su resumen. |
+| Banco menor de 4 preguntas de nivel 1 o 2 de nivel 2 | El reporte marca cobertura insuficiente; la prueba del umbral falla. |
+| Un subtema con una sola respuesta de una práctica | Estado indeterminado. Tras dos prácticas completas y dos respuestas del subtema, se calcula el porcentaje observado; menos de 50 % = inicial, 50–79 % = en progreso, 80 % o más = alto. |
+| Una sola medición en la gráfica | Se muestra el valor con fecha y texto alternativo, sin tendencia; los agregados usan todo el historial aunque la vista limite a 200 intentos. |
+
+Pruebas del cambio integrado: `npm.cmd test` **45/45**, `npm.cmd run lint` y `npm.cmd run build` correctos; `npm.cmd run coverage:practice` muestra **26/26** temas con el mínimo definido para dos rondas. La prueba de Chrome con cuentas sintéticas pasó durante la integración. Código principal: `web/src/lib/practice.ts`, `web/src/lib/auth.ts`, `web/src/lib/progress-insights.ts`, `web/src/app/practice-session.tsx` y `web/src/app/account-progress-insights.tsx` (commit `2a528aa`).
 
 ## Para presentar
 

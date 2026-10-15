@@ -23,7 +23,9 @@ La fuente funcional vigente es el [backlog AP de Jira](https://juanmiguelsworksp
 | [Avance del Sprint 3](17-desarrollo-sprint-3.md) | Análisis demo por subtema, evidencia de pruebas y trabajo restante |
 | [Entrega académica de octubre](18-entrega-academica-octubre.md) | Alcance de prototipo 1.º–11.º, recorrido de presentación y puertas posteriores |
 | [Desarrollo del Sprint 4](19-desarrollo-sprint-4.md) | Práctica con seguimiento y replanificación antes de la entrega de octubre |
-| [Desarrollo del Sprint 5](20-desarrollo-sprint-5.md) | Cierre de práctica, resumen y comparación local de intentos |
+| [Desarrollo del Sprint 5](20-desarrollo-sprint-5.md) | Alcance original, rondas, dificultad, progreso y criterios abiertos |
+| [Corrección explicada](21-retroalimentacion-practica.md) | Contrato y puerta de revisión docente de correcciones |
+| [Cuentas estudiantiles](22-cuentas-estudiantes-consentimiento.md) | Base técnica interna, autorización y decisiones pendientes |
 | [Criterios de aceptación](criterios-aceptacion.md) | Escenarios comprobables para las historias |
 | [Estimaciones](estimaciones.md) | Esfuerzo preliminar y capacidad |
 | [Pruebas](pruebas.md) | Estrategia y resultados disponibles |
