@@ -1,6 +1,6 @@
 # Apoyo_academico
 
-Prototipo web de apoyo académico para la sustentación del **20 de octubre de 2026**. El Sprint 3 amplió la demostración a 1.º–11.º; el Sprint 4 añadió sesiones de práctica y el Sprint 5 permite terminarlas y comparar intentos en una cuenta local de prueba.
+Proyecto web de apoyo académico en desarrollo. El Sprint 3 amplió la demostración a 1.º–11.º; el Sprint 4 añadió sesiones de práctica y el avance del Sprint 5 permite terminarlas y comparar intentos en una cuenta local de prueba. El alcance original de los sprints sigue vigente en Jira.
 
 ## Iniciar en Windows
 
@@ -51,4 +51,4 @@ La prueba de navegador usa la compilación de producción. En una terminal ejecu
 - [Aplicación web](web/README.md): API y detalles técnicos.
 - [Jira AP](https://juanmiguelsworkspace-40060689.atlassian.net/browse/AP): seguimiento del proyecto.
 
-Los Sprints 1–5 se cerraron como prototipos. El Sprint 5 quedó cerrado en Jira el 15 de octubre de 2026 con **4/4 incidencias principales en «Listo»**: AP-201, AP-202, AP-205 y AP-319. Las funciones publicadas para estudiantes reales, la revisión curricular y el registro de menores continúan como trabajo separado del prototipo de entrega.
+Los Sprints 1–4 se cerraron como prototipos. Un cierre anticipado del Sprint 5 quedó en Jira como historial de demostración (id 9; AP-201, AP-202, AP-205 y AP-319). Tras la corrección del alcance, el [Sprint 5 original](https://juanmiguelsworkspace-40060689.atlassian.net/jira/software/projects/AP/boards/3) se restauró en un sprint nuevo (id 39) con sus **24 incidencias previstas**, de las cuales 3 ya están en «Listo» y 21 siguen pendientes. La revisión curricular y el registro de menores conservan sus dependencias.

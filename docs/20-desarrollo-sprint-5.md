@@ -1,8 +1,8 @@
 # Sprint 5 — cierre de práctica y comparación de intentos
 
-**Fecha de implementación:** 15 de octubre de 2026. La entrega al profesor es el 20 de octubre. El alcance ejecutado es un **prototipo local para cuentas de adultos/evaluadores con datos sintéticos**.
+**Avance técnico inicial:** 15 de octubre de 2026. El alcance ya implementado es un **prototipo local para cuentas de adultos/evaluadores con datos sintéticos**; las 24 incidencias originales del Sprint 5 siguen siendo el alcance comprometido del sprint restaurado.
 
-**Estado Jira:** Sprint 5 adelantado y cerrado el 15 de octubre con **4/4 incidencias principales en Listo**: AP-201 (historia de resumen), AP-202/AP-205 (tareas técnicas) y AP-319 (comparación local de demostración). Las subtareas AP-203/AP-204/AP-206/AP-207 quedaron en Listo con sus cuatro actividades marcadas y evidencia. Las otras 21 incidencias principales fueron devueltas al backlog; AP-236 conserva el bloqueo de consentimiento y cuenta estudiantil.
+**Estado Jira corregido:** el sprint de demostración id 9 se cerró anticipadamente el 15 de octubre con AP-201, AP-202, AP-205 y AP-319 en Listo. Esa reducción fue una decisión equivocada: el usuario pidió desarrollar los sprints con todo su alcance original, sin usar la fecha de la sustentación para recortarlos. Jira no permite reabrir el sprint cerrado, así que se creó **AP Sprint 5 — alcance original (id 39)** con las fechas iniciales **27 de octubre–2 de noviembre de 2026** y las **24 incidencias originales**. Tres están Listo (AP-201/AP-202/AP-205) y 21 permanecen Por hacer. AP-319 es una tarea adicional de demostración y se conserva solo en el historial del id 9. Las subtareas AP-203/AP-204/AP-206/AP-207 quedaron en Listo con evidencia. AP-236 conserva la dependencia de consentimiento y cuenta estudiantil.
 
 ## Alcance verificable
 
