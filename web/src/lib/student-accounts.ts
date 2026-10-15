@@ -7,7 +7,10 @@ import { promisify } from "node:util";
 const scrypt = promisify(scryptCallback);
 const REQUIRED_PURPOSES = ["educational_account", "progress_storage"] as const;
 const SESSION_MS = 7 * 24 * 60 * 60 * 1000;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const MAX_LOGIN_FAILURES = 5;
 const REGISTRATION_ERROR = "Revisa los datos e inténtalo de nuevo.";
+const LOGIN_ERROR = "No pudimos iniciar sesión. Revisa tus datos e inténtalo de nuevo.";
 
 export class StudentAccountError extends Error {
   status: number;
@@ -105,6 +108,9 @@ export function openStudentAccountStore(
     CREATE TABLE IF NOT EXISTS student_sessions (
       token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES student_users(id) ON DELETE CASCADE,
       expires_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS student_login_failures (
+      email_hash TEXT PRIMARY KEY, failures INTEGER NOT NULL, first_failed_at INTEGER NOT NULL
     );
     CREATE TABLE IF NOT EXISTS student_progress (
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES student_users(id) ON DELETE CASCADE,
@@ -206,23 +212,42 @@ export function openStudentAccountStore(
   }
   async function login(body: unknown) {
     requireReviewedPolicy();
-    if (!body || typeof body !== "object" || Array.isArray(body)) throw new StudentAccountError(401, "No pudimos iniciar sesión. Revisa tus datos e inténtalo de nuevo.");
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new StudentAccountError(401, LOGIN_ERROR);
     const data = body as Record<string, unknown>;
     let email: string;
     try { email = validEmail(data.email); }
-    catch { throw new StudentAccountError(401, "No pudimos iniciar sesión. Revisa tus datos e inténtalo de nuevo."); }
-    if (typeof data.password !== "string" || data.password.length > 128) throw new StudentAccountError(401, "No pudimos iniciar sesión. Revisa tus datos e inténtalo de nuevo.");
+    catch { throw new StudentAccountError(401, LOGIN_ERROR); }
+    if (typeof data.password !== "string" || data.password.length > 128) throw new StudentAccountError(401, LOGIN_ERROR);
+    const emailHash = hash(email);
+    const now = Date.now();
+    const failures = db.prepare("SELECT failures,first_failed_at FROM student_login_failures WHERE email_hash=?")
+      .get(emailHash) as { failures: number; first_failed_at: number } | undefined;
+    if (failures && failures.first_failed_at > now - LOGIN_WINDOW_MS && failures.failures >= MAX_LOGIN_FAILURES) {
+      throw new StudentAccountError(429, LOGIN_ERROR);
+    }
     const row = db.prepare(`SELECT u.id,u.email,u.password_salt,u.password_hash,u.consent_id
       FROM student_users u WHERE u.email=?`).get(email) as {
       id: string; email: string; password_salt: string; password_hash: string; consent_id: string
     } | undefined;
     const candidate = (await scrypt(data.password, row?.password_salt ?? "00000000000000000000000000000000", 64)) as Buffer;
     const expected = Buffer.from(row?.password_hash ?? "00".repeat(64), "hex");
-    if (!row || !timingSafeEqual(candidate, expected)) throw new StudentAccountError(401, "No pudimos iniciar sesión. Revisa tus datos e inténtalo de nuevo.");
+    if (!row || !timingSafeEqual(candidate, expected)) {
+      db.prepare(`INSERT INTO student_login_failures(email_hash,failures,first_failed_at) VALUES (?,1,?)
+        ON CONFLICT(email_hash) DO UPDATE SET failures=CASE
+          WHEN first_failed_at<=? THEN 1 ELSE failures+1 END,
+          first_failed_at=CASE WHEN first_failed_at<=? THEN excluded.first_failed_at ELSE first_failed_at END`)
+        .run(emailHash, now, now - LOGIN_WINDOW_MS, now - LOGIN_WINDOW_MS);
+      throw new StudentAccountError(401, LOGIN_ERROR);
+    }
     consentActive(row.consent_id);
     const token = randomBytes(32).toString("hex");
-    db.prepare("INSERT INTO student_sessions(token_hash,user_id,expires_at) VALUES (?,?,?)")
-      .run(hash(token), row.id, Date.now() + SESSION_MS);
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare("DELETE FROM student_login_failures WHERE email_hash=?").run(emailHash);
+      db.prepare("INSERT INTO student_sessions(token_hash,user_id,expires_at) VALUES (?,?,?)")
+        .run(hash(token), row.id, Date.now() + SESSION_MS);
+      db.exec("COMMIT");
+    } catch (error) { db.exec("ROLLBACK"); throw error; }
     return { user: { id: row.id, email: row.email }, token };
   }
   function currentStudent(token: string | null) {

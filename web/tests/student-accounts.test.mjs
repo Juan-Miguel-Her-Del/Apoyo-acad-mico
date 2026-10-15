@@ -162,3 +162,45 @@ test("sin origen servidor de sesiones completadas no admite resultados ni un obj
   assert.throws(() => store.recordCompletedSession(token, "5".repeat(32)), blocked(503));
   assert.equal(store.saveProgress, undefined);
 });
+
+test("cinco contraseñas erróneas limitan el acceso temporalmente sin revelar si existe la cuenta", async (t) => {
+  const { open, dbPath } = fixture(t);
+  const store = open();
+  const authorizationId = store.issueAuthorization(syntheticGrant());
+  await store.register({ email: "estudiante@example.test", password: "clave-segura-123", authorizationId });
+  for (const email of ["estudiante@example.test", "nadie@example.test"]) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await assert.rejects(store.login({ email, password: "incorrecta" }),
+        (error) => error.status === 401 && error.message === "No pudimos iniciar sesión. Revisa tus datos e inténtalo de nuevo.");
+    }
+    await assert.rejects(store.login({ email, password: "clave-segura-123" }),
+      (error) => error.status === 429 && error.message === "No pudimos iniciar sesión. Revisa tus datos e inténtalo de nuevo.");
+  }
+  const db = new DatabaseSync(dbPath);
+  try { db.prepare("UPDATE student_login_failures SET first_failed_at=0").run(); }
+  finally { db.close(); }
+  const session = await store.login({ email: "estudiante@example.test", password: "clave-segura-123" });
+  assert.equal(store.currentStudent(session.token).email, "estudiante@example.test");
+});
+
+test("sesiones simultáneas expiran individualmente y el reingreso no revive tokens anteriores", async (t) => {
+  const { open, dbPath } = fixture(t);
+  const store = open();
+  const authorizationId = store.issueAuthorization(syntheticGrant());
+  await store.register({ email: "estudiante@example.test", password: "clave-segura-123", authorizationId });
+  const first = await store.login({ email: "estudiante@example.test", password: "clave-segura-123" });
+  const second = await store.login({ email: "estudiante@example.test", password: "clave-segura-123" });
+  const db = new DatabaseSync(dbPath);
+  try {
+    db.prepare("UPDATE student_sessions SET expires_at=0 WHERE token_hash=?")
+      .run((await import("node:crypto")).createHash("sha256").update(first.token).digest("hex"));
+  } finally { db.close(); }
+  assert.throws(() => store.currentStudent(first.token), blocked(401));
+  assert.equal(store.currentStudent(second.token).email, "estudiante@example.test");
+  store.logout(second.token);
+  assert.throws(() => store.currentStudent(second.token), blocked(401));
+  const third = await store.login({ email: "estudiante@example.test", password: "clave-segura-123" });
+  assert.equal(store.currentStudent(third.token).email, "estudiante@example.test");
+  assert.throws(() => store.currentStudent(first.token), blocked(401));
+  assert.throws(() => store.currentStudent(second.token), blocked(401));
+});
