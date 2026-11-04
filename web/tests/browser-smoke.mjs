@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
+import { openAuthStore } from "../src/lib/auth.ts";
 
 const browser = process.env.CHROME_PATH ??
   (process.platform === "win32"
@@ -73,6 +74,10 @@ try {
     await waitFor(() => evaluate("document.readyState === 'complete'"), "carga de página");
   }
   async function waitText(selector, fragment) {
+    if (selector === ".grade-groups") {
+      await waitFor(() => evaluate("document.querySelector('.route-steps button') !== null"), "navegación de estudio");
+      if (!await evaluate("document.querySelector('.grade-groups') !== null")) await evaluate("document.querySelector('.route-steps button').click()");
+    }
     try {
       return await waitFor(
         () => evaluate(`document.querySelector(${JSON.stringify(selector)})?.textContent?.includes(${JSON.stringify(fragment)})`),
@@ -85,6 +90,17 @@ try {
     }
   }
   async function click(selector, fragment) {
+    if (selector === ".grade-choice" || selector === ".subject-choice" || selector === ".topic-choice") {
+      const index = selector === ".grade-choice" ? 0 : selector === ".subject-choice" ? 1 : 2;
+      if (!await evaluate(`document.querySelector(${JSON.stringify(selector)}) !== null`)) {
+        await evaluate(`document.querySelectorAll('.route-steps button')[${index}]?.click()`);
+        await waitFor(() => evaluate(`document.querySelector(${JSON.stringify(selector)}) !== null`), `paso ${selector}`);
+      }
+    }
+    if (selector.startsWith(".account-deletion")) {
+      await evaluate("[...document.querySelectorAll('.main-nav button')].find((item) => item.textContent === 'Cuenta')?.click()");
+      await waitFor(() => evaluate("document.querySelector('.account-deletion') !== null"), "gestión de cuenta");
+    }
     const expression = `[...document.querySelectorAll(${JSON.stringify(selector)})].find((item) => item.textContent.includes(${JSON.stringify(fragment)}))?.click()`;
     await evaluate(expression);
   }
@@ -92,6 +108,32 @@ try {
   await send("Page.enable");
   await send("Runtime.enable");
   await navigate();
+  await waitText(".welcome-intro", "Estudia a tu ritmo");
+  assert.equal(await evaluate("document.querySelector('.grade-choice, .main-nav') === null"), true, "la bienvenida aparece antes del contenido");
+  await click(".account-tabs button", "Crear cuenta");
+  await waitText(".policy-preview", "política de datos y los términos");
+  await evaluate(`(() => { const inputs = document.querySelectorAll('.account-panel form input');
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(inputs[0], 'perfil@example.test'); inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+    setter.call(inputs[1], 'Clave-segura-1234'); inputs[1].dispatchEvent(new Event('input', { bubbles: true })); })()`);
+  await click(".account-panel form .primary-button", "Continuar al perfil");
+  await waitText(".account-panel form", "Paso 2 de 2");
+  assert.equal(await evaluate("document.querySelector('.account-panel form select') !== null"), true);
+  await click(".welcome-intro button", "Explorar una vista previa");
+  assert.equal(await evaluate("document.querySelectorAll('.main-nav button').length"), 3);
+  await click(".main-nav button", "Mi progreso");
+  await waitText(".progress-gate", "Entra para ver tu progreso");
+  assert.equal(await evaluate("document.querySelector('.grade-groups')?.closest('[hidden]') !== null"), true);
+  await click(".progress-gate button", "Ir a mi cuenta");
+  await waitText(".account-panel", "Iniciar sesión");
+  await click(".account-tabs button", "Crear cuenta");
+  await waitText(".policy-preview", "política de datos y los términos");
+  const mailConfigured = await evaluate("fetch('/api/auth/email-status').then((response) => response.json()).then((body) => body.configured)");
+  if (!mailConfigured) await waitText(".account-panel", "envío de correos de confirmación aún no está configurado");
+  await click(".account-type-choice button", "menor de 18");
+  await waitText(".student-account-gate", "registro de menores sigue cerrado");
+  assert.equal(await evaluate("document.querySelector('.account-panel form') === null"), true);
+  await click(".main-nav button", "Estudiar");
   const testAccounts = process.env.BROWSER_TEST_ACCOUNTS === "true";
   const testEmail = `demo-${Date.now()}@example.test`;
   const testPassword = "DemoPassword-1234";
@@ -126,6 +168,9 @@ try {
   await click(".diagnostic-card .primary-button", "Empezar a estudiar");
   await waitText(".diagnostic-panel", "Antes de comenzar");
   await click(".diagnostic-panel .primary-button", "Comenzar preguntas");
+  await waitText(".question-progress", "Pregunta 1 de 2");
+  await click(".main-nav button", "Mi progreso");
+  await click(".main-nav button", "Estudiar");
   await waitText(".question-progress", "Pregunta 1 de 2");
   await evaluate("window.__answerPosts = 0; const originalDiagnosticFetch = window.fetch; window.fetch = (...args) => { if (String(args[0]).endsWith('/api/diagnostic') && args[1]?.method === 'POST') window.__answerPosts++; return originalDiagnosticFetch(...args); }");
   await evaluate("document.querySelector('.answer-option input').click()");
@@ -171,13 +216,38 @@ try {
   await click(".quick-practice .primary-button", "Revisar respuesta");
   await waitText(".quick-practice .answer-feedback", "¡Correcto!");
   if (testAccounts) {
-    const registrationStatus = await evaluate(`fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(testEmail)}, password: ${JSON.stringify(testPassword)}, adultConfirmed: true }) }).then((response) => response.status)`);
-    assert.equal(registrationStatus, 201, "el registro adulto debe funcionar en este servidor de pruebas");
+    const fixtureStore = openAuthStore();
+    await fixtureStore.register({ email: testEmail, password: testPassword, adultConfirmed: true });
+    fixtureStore.close();
+    const loginStatus = await evaluate(`fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(testEmail)}, password: ${JSON.stringify(testPassword)} }) }).then((response) => response.status)`);
+    assert.equal(loginStatus, 200, "una cuenta existente debe poder iniciar sesión");
+    await navigate();
+    await waitFor(async () => {
+      await click(".main-nav button", "Cuenta");
+      return evaluate("document.querySelector('.profile-setup') !== null");
+    }, "vista de cuenta tras iniciar sesión");
+    await waitText(".profile-setup", "Prepara tu perfil");
+    await waitFor(() => evaluate("document.querySelector('.profile-setup input') !== null"), "formulario de perfil");
+    await evaluate(`(() => { const input = document.querySelector('.profile-setup input');
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      setter.call(input, 'Cuenta de prueba'); input.dispatchEvent(new Event('input', { bubbles: true }));
+      const grade = document.querySelector('.profile-setup select'); grade.value = 'G10'; grade.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+    await click(".profile-setup .primary-button", "Guardar y elegir materia");
+    await waitText(".subject-grid", "Matemáticas");
+    assert.equal(await evaluate("fetch('/api/profile').then((response) => response.json()).then((body) => body.profile?.gradeId)"), "G10");
+    assert.equal(await evaluate("document.querySelectorAll('.grade-choice').length"), 0, "el grado del perfil no se elige en Estudiar");
+    await waitText(".profile-grade-banner", "10.º");
+    const wrongGradeSelection = await evaluate("fetch('/api/selection', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gradeId: 'G05', subjectId: 'MAT', topicId: 'G05-MAT' }) }).then((response) => response.status)");
+    assert.equal(wrongGradeSelection, 403, "la selección de otro grado se rechaza en el servidor");
+    const wrongGradePractice = await evaluate("fetch('/api/practice/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gradeId: 'G05', subjectId: 'MAT', topicId: 'G05-MAT' }) }).then((response) => response.status)");
+    assert.equal(wrongGradePractice, 403, "la práctica de otro grado se rechaza en el servidor");
+    const wrongGradeDiagnostic = await evaluate("fetch('/api/diagnostic/attempt/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gradeId: 'G05', subjectId: 'MAT', topicId: 'G05-MAT', mode: 'demo' }) }).then((response) => response.status)");
+    assert.equal(wrongGradeDiagnostic, 403, "el diagnóstico de otro grado se rechaza en el servidor");
     async function completeAccountDiagnostic(subject, topic) {
       await navigate();
       await waitText(".account-panel", testEmail);
-      await waitText(".grade-groups", "10.º");
-      await click(".grade-choice", "10.º");
+      await click(".main-nav button", "Estudiar");
+      await click(".route-steps button", "1. Materia");
       await waitText(".subject-grid", subject);
       await click(".subject-choice", subject);
       await waitText(".topic-list", topic);
@@ -242,12 +312,14 @@ try {
     await waitFor(() => evaluate("document.querySelector('.comparison-result') !== null"), "comparación de dos rondas respondidas");
     const guestStatus = await evaluate("fetch('/api/auth/logout', { method: 'POST' }).then((response) => response.status)");
     assert.equal(guestStatus, 200);
+    await navigate();
+    await click(".welcome-intro button", "Explorar una vista previa");
   }
   console.log("OK: dos respuestas del mismo subtema muestran señal demo con preguntas trazables.");
   await click(".grade-choice", "5.º");
   await waitText(".subject-grid", "Español");
   assert.equal(await evaluate("document.querySelectorAll('.subject-choice').length"), 2);
-  assert.equal(await evaluate("document.querySelector('.selection-summary').textContent.includes('Reacciones inorgánicas')"), false);
+  assert.equal(await evaluate("document.querySelector('.selection-summary')?.textContent.includes('Reacciones inorgánicas') ?? false"), false);
   assert.equal(await evaluate("document.querySelector('.diagnostic-panel') === null"), true, "cambiar grado reinicia el intento");
   await click(".subject-choice", "Español");
   await waitText(".topic-list", "Planear y producir");
@@ -255,13 +327,17 @@ try {
   await waitText(".selection-summary", "Planear y producir");
   await click(".subject-choice", "Matemáticas");
   await waitText(".topic-list", "Problemas con fracciones");
-  assert.equal(await evaluate("document.querySelector('.selection-summary').textContent.includes('Planear y producir')"), false);
+  assert.equal(await evaluate("document.querySelector('.selection-summary')?.textContent.includes('Planear y producir') ?? false"), false);
   console.log("OK: navegación G10-QUI → G05-ESP → G05-MAT; limpieza de selecciones.");
 
   async function scenario(source, run) {
     const { identifier } = await send("Page.addScriptToEvaluateOnNewDocument", { source });
     try {
       await navigate();
+      await waitFor(() => evaluate("document.querySelector('.welcome-intro button, .main-nav button') !== null"), "pantalla inicial");
+      if (await evaluate("document.querySelector('.welcome-intro button') !== null")) {
+        await click(".welcome-intro button", "Explorar una vista previa");
+      }
       await run();
     } finally {
       await send("Page.removeScriptToEvaluateOnNewDocument", { identifier });
@@ -358,7 +434,7 @@ try {
     await click(".subject-choice", "Química");
     await waitText('.step-card[aria-labelledby="topic-title"] .empty-state', "No hay temas disponibles");
     assert.equal(await evaluate("document.querySelectorAll('.topic-choice').length"), 0);
-    assert.equal(await evaluate("document.querySelector('.selection-summary').textContent.includes('Tu ruta está preparada')"), false);
+    assert.equal(await evaluate("document.querySelector('.selection-summary') === null"), true);
   });
   console.log("OK: combinación sin temas y sin avance al diagnóstico.");
 
@@ -412,7 +488,7 @@ try {
     await click(".grade-choice", "5.º");
     await new Promise((done) => setTimeout(done, 700));
     assert.equal(await evaluate("document.querySelector('.diagnostic-panel') === null"), true);
-    assert.equal(await evaluate("document.querySelector('.diagnostic-card').textContent.includes('Antes de comenzar')"), false);
+    assert.equal(await evaluate("document.querySelector('.diagnostic-card')?.textContent.includes('Antes de comenzar') ?? false"), false);
   });
   console.log("OK: respuesta tardía del diagnóstico descartada al cambiar el grado.");
 
@@ -429,11 +505,15 @@ try {
     await waitText(".subject-grid", "Español");
     await new Promise((done) => setTimeout(done, 700));
     assert.equal(await evaluate("document.querySelector('.topic-list')?.textContent?.includes('Reacciones inorgánicas') ?? false"), false);
-    assert.equal(await evaluate("document.querySelector('.selection-summary').textContent.includes('Reacciones inorgánicas')"), false);
+    assert.equal(await evaluate("document.querySelector('.selection-summary')?.textContent.includes('Reacciones inorgánicas') ?? false"), false);
   });
   console.log("OK: respuesta tardía de temas descartada tras cambiar el grado.");
   async function completeStudyForGrade(grade) {
     await navigate();
+    await waitFor(() => evaluate("document.querySelector('.welcome-intro button, .main-nav button') !== null"), "pantalla inicial");
+    if (await evaluate("document.querySelector('.welcome-intro button') !== null")) {
+      await click(".welcome-intro button", "Explorar una vista previa");
+    }
     await waitText(".grade-groups", grade);
     await click(".grade-choice", grade);
     await waitText(".subject-grid", "Matemáticas");
@@ -472,17 +552,38 @@ try {
     await waitText(".account-panel", testEmail);
     await waitText(".account-panel", "10.º · Química");
     await waitText(".account-panel", "Razones y funciones trigonométricas");
+    await click(".route-steps button", "1. Materia");
+    await waitText(".subject-grid", "Matemáticas");
+    await click(".subject-choice", "Matemáticas");
+    await waitFor(() => evaluate("document.querySelector('.topic-choice') !== null"), "tema guardable");
+    await evaluate("document.querySelector('.topic-choice').click()");
+    await waitFor(() => evaluate("fetch('/api/selection').then((response) => response.json()).then((body) => body.selection?.topicId === 'G10-MAT')"), "último tema persistido");
+    await navigate();
+    await waitText(".selection-summary", "Razones y funciones trigonométricas");
     const logoutStatus = await evaluate("fetch('/api/auth/logout', { method: 'POST' }).then((response) => response.status)");
     assert.equal(logoutStatus, 200);
     await navigate();
     assert.equal(await evaluate(`document.querySelector('.account-panel')?.textContent?.includes(${JSON.stringify(testEmail)})`), false);
     const secondEmail = `other-${Date.now()}@example.test`;
-    const secondStatus = await evaluate(`fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(secondEmail)}, password: ${JSON.stringify(testPassword)}, adultConfirmed: true }) }).then((response) => response.status)`);
-    assert.equal(secondStatus, 201);
+    const secondStore = openAuthStore();
+    await secondStore.register({ email: secondEmail, password: testPassword, adultConfirmed: true });
+    secondStore.close();
+    const secondStatus = await evaluate(`fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(secondEmail)}, password: ${JSON.stringify(testPassword)} }) }).then((response) => response.status)`);
+    assert.equal(secondStatus, 200);
     const privateSession = await evaluate("fetch('/api/practice/session?sessionId=' + localStorage.getItem('apoyo-practice:G10-MAT')).then((response) => response.status)");
     assert.equal(privateSession, 404, "otra cuenta no puede leer el intento");
-    const secondLogout = await evaluate("fetch('/api/auth/logout', { method: 'POST' }).then((response) => response.status)");
-    assert.equal(secondLogout, 200);
+    await navigate();
+    await waitText(".account-panel", secondEmail);
+    await click(".account-deletion button", "Solicitar eliminación");
+    await click(".account-deletion button", "Cancelar");
+    await click(".account-deletion button", "Solicitar eliminación");
+    await evaluate(`(() => { const inputs = document.querySelectorAll('.account-deletion input');
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      setter.call(inputs[0], 'ELIMINAR'); inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
+      setter.call(inputs[1], ${JSON.stringify(testPassword)}); inputs[1].dispatchEvent(new Event('input', { bubbles: true })); })()`);
+    await click(".account-deletion button", "Eliminar cuenta y datos");
+    await waitText(".welcome-notice", "eliminados");
+    assert.equal(await evaluate("fetch('/api/auth/me').then((response) => response.json()).then((body) => body.user)"), null);
     const loginStatus = await evaluate(`fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(testEmail)}, password: ${JSON.stringify(testPassword)} }) }).then((response) => response.status)`);
     assert.equal(loginStatus, 200);
     await navigate();
@@ -502,6 +603,12 @@ try {
     assert.equal(await evaluate("document.querySelector('.comparison-label select').value"), "G10-MAT");
     console.log("OK: cuenta adulta, progreso persistente, cierre e inicio de sesión en navegador.");
   }
+  await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await navigate();
+  await waitFor(() => evaluate("document.querySelector('.main-nav') !== null"), "navegación móvil");
+  assert.equal(await evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), true, "la página móvil no debe desbordarse horizontalmente");
+  assert.equal(await evaluate("[...document.querySelectorAll('.main-nav button')].every((item) => item.getBoundingClientRect().right <= window.innerWidth + 1)"), true, "las tres secciones deben quedar visibles en móvil");
+  console.log("OK: navegación visible y sin desbordamiento horizontal a 390 px.");
 } finally {
   socket?.close();
   chrome.kill();

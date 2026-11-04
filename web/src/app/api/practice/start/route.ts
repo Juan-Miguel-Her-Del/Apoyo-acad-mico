@@ -10,6 +10,8 @@ export async function POST(request: Request) {
     const store = authStore();
     const user = store.sessionUser(requestToken(request));
     if (!user) throw new AuthError(401, "Sesión requerida.");
-    return Response.json(store.startPractice(user.id, await readJson(request)), { status: 201, headers: noStore });
+    const input = await readJson(request);
+    store.assertCurrentGrade(user.id, (input as Record<string, unknown> | null)?.gradeId);
+    return Response.json(store.startPractice(user.id, input), { status: 201, headers: noStore });
   } catch (error) { return apiError(error); }
 }

@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "coverage:practice": "node --experimental-strip-types scripts/practice-coverage.mjs",
+    "review:ai": "node --experimental-strip-types scripts/ai-quality-report.mjs",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:browser": "node tests/browser-smoke.mjs",
     "test:diagnostic-browser": "node tests/diagnostic-account-browser.mjs"

@@ -62,7 +62,7 @@ export default function ExplanationFollowup({ explanationId, topicId, question, 
     if (ratingBusy || ratingLoading) return;
     if (mode !== "demo" || !topicId || !accountAvailable) {
       setRating((current) => updateRating(current, explanationId, value));
-      setRatingMessage("Valoración temporal; inicia sesión en una cuenta adulta de demostración para guardarla.");
+      setRatingMessage("Valoración temporal; inicia sesión en tu cuenta para guardarla.");
       return;
     }
     setRatingBusy(true);
@@ -81,7 +81,7 @@ export default function ExplanationFollowup({ explanationId, topicId, question, 
         throw new Error("No se pudo confirmar la valoración guardada.");
       }
       setRating({ explanationId, value });
-      setRatingMessage("Valoración guardada en tu cuenta adulta de demostración.");
+      setRatingMessage("Valoración guardada en tu cuenta.");
     } catch (error) {
       if (epoch === authEpoch.current) setRatingMessage(error instanceof Error ? error.message : "No se pudo guardar la valoración.");
     } finally { if (epoch === authEpoch.current) setRatingBusy(false); }
@@ -90,7 +90,7 @@ export default function ExplanationFollowup({ explanationId, topicId, question, 
   return <section className="explanation-followup" aria-label="Después de la explicación">
     <h4>¿Te ayudó esta explicación?</h4>
     <p>{mode === "demo" && accountAvailable
-      ? "La valoración de esta explicación se guarda en tu cuenta adulta de demostración."
+      ? "La valoración de esta explicación se guarda en tu cuenta."
       : "Esta valoración es temporal y no se guarda en una cuenta."}</p>
     <div role="group" aria-label="Valorar explicación">
       <button type="button" disabled={ratingBusy || ratingLoading} aria-pressed={currentRating === "helped"} onClick={() => void selectRating("helped")}>Sí, me ayudó</button>{" "}

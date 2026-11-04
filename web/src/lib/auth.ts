@@ -6,9 +6,13 @@ import { DatabaseSync } from "node:sqlite";
 import { topics } from "./catalog.ts";
 import { getPracticeBank, publicPracticeQuestions, PRACTICE_BANK_VERSION, PRACTICE_SKILL_CORRECTIONS, type PracticeQuestion } from "./practice.ts";
 import { correctionExplanation } from "./practice-feedback.ts";
+import { availableSelection, recommendStudy, studyStreak, type SavedSelection } from "./study-planning.ts";
+import { profileInput, type AccountProfile } from "./profile.ts";
 
 const scrypt = promisify(scryptCallback);
 const SESSION_SECONDS = 7 * 24 * 60 * 60;
+const RESET_LIFETIME_MS = 30 * 60 * 1000;
+const VERIFY_LIFETIME_MS = 24 * 60 * 60 * 1000;
 export const SESSION_COOKIE = "apoyo_session";
 export type PublicUser = { id: string; email: string };
 export type ProgressKind = "study" | "diagnostic";
@@ -78,19 +82,44 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, salt TEXT NOT NULL,
       password_hash TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active',
-      adult_confirmed INTEGER NOT NULL CHECK(adult_confirmed = 1), created_at TEXT NOT NULL
+      adult_confirmed INTEGER NOT NULL CHECK(adult_confirmed = 1), created_at TEXT NOT NULL,
+      email_verified_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      display_name TEXT NOT NULL, grade_id TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS pending_registrations (
+      email TEXT PRIMARY KEY, salt TEXT NOT NULL, password_hash TEXT NOT NULL,
+      display_name TEXT NOT NULL, grade_id TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE, expires_at INTEGER NOT NULL, created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS email_verification_limits (
+      email_hash TEXT PRIMARY KEY, window_start INTEGER NOT NULL, attempts INTEGER NOT NULL
     );
     CREATE TABLE IF NOT EXISTS sessions (
       token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       expires_at INTEGER NOT NULL, created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS sessions_by_user ON sessions(user_id);
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at INTEGER NOT NULL, created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS password_reset_limits (
+      email_hash TEXT PRIMARY KEY, window_start INTEGER NOT NULL, attempts INTEGER NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS progress (
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       grade_id TEXT NOT NULL, subject_id TEXT NOT NULL, topic_id TEXT NOT NULL,
       kind TEXT NOT NULL CHECK(kind IN ('study','diagnostic')),
       completed INTEGER NOT NULL CHECK(completed = 1), updated_at TEXT NOT NULL,
       PRIMARY KEY(user_id, topic_id, kind)
+    );
+    CREATE TABLE IF NOT EXISTS last_selections (
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      grade_id TEXT NOT NULL, subject_id TEXT NOT NULL, topic_id TEXT NOT NULL,
+      selected_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS practice_sessions (
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -112,6 +141,10 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
       PRIMARY KEY(session_id,position), UNIQUE(session_id,question_id)
     );`);
 
+  const userColumns = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+  if (!userColumns.some((column) => column.name === "email_verified_at")) {
+    db.exec("ALTER TABLE users ADD COLUMN email_verified_at TEXT");
+  }
   const sessionColumns = db.prepare("PRAGMA table_info(practice_sessions)").all() as { name: string }[];
   if (!sessionColumns.some((column) => column.name === "target_difficulty")) {
     db.exec("ALTER TABLE practice_sessions ADD COLUMN target_difficulty INTEGER NOT NULL DEFAULT 1");
@@ -157,6 +190,76 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
     }
     return { user: { id, email }, token: createSession(id) };
   }
+  async function requestRegistration(body: unknown, deliver: (email: string, token: string) => Promise<void>, now = Date.now()) {
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new AuthError(400, "Solicitud no válida.");
+    const data = body as Record<string, unknown>;
+    if (data.adultConfirmed !== true) throw new AuthError(403, "El registro de menores aún no está disponible.");
+    if (Object.keys(data).some((key) => !["email", "password", "adultConfirmed", "displayName", "gradeId"].includes(key))) {
+      throw new AuthError(400, "Datos adicionales no permitidos.");
+    }
+    const email = normalizedEmail(data.email);
+    const password = validPassword(data.password);
+    const profile = profileInput({ displayName: data.displayName, gradeId: data.gradeId });
+    if (!profile) throw new AuthError(400, "Nombre o grado no válido.");
+    db.prepare("DELETE FROM pending_registrations WHERE expires_at<=?").run(now);
+    db.prepare("DELETE FROM email_verification_limits WHERE window_start<?").run(now - 86400000);
+    const key = sha256(email);
+    const limit = db.prepare("SELECT window_start AS windowStart,attempts FROM email_verification_limits WHERE email_hash=?")
+      .get(key) as { windowStart: number; attempts: number } | undefined;
+    if (limit && now - limit.windowStart < 3600000 && limit.attempts >= 3) return;
+    if (!limit || now - limit.windowStart >= 3600000) {
+      db.prepare(`INSERT INTO email_verification_limits(email_hash,window_start,attempts) VALUES (?,?,1)
+        ON CONFLICT(email_hash) DO UPDATE SET window_start=excluded.window_start,attempts=1`).run(key, now);
+    } else db.prepare("UPDATE email_verification_limits SET attempts=attempts+1 WHERE email_hash=?").run(key);
+    if (db.prepare("SELECT id FROM users WHERE email=?").get(email)) return;
+    const pending = db.prepare("SELECT token_hash AS tokenHash,expires_at AS expiresAt FROM pending_registrations WHERE email=?")
+      .get(email) as { tokenHash: string; expiresAt: number } | undefined;
+    const token = randomBytes(32).toString("hex");
+    const tokenHash = sha256(token);
+    if (pending) {
+      db.prepare("UPDATE pending_registrations SET token_hash=?,expires_at=? WHERE email=?")
+        .run(tokenHash, now + VERIFY_LIFETIME_MS, email);
+    } else {
+      const salt = randomBytes(16).toString("hex");
+      const hash = (await passwordHash(password, salt)).toString("hex");
+      db.prepare(`INSERT INTO pending_registrations(email,salt,password_hash,display_name,grade_id,token_hash,expires_at,created_at)
+        VALUES (?,?,?,?,?,?,?,?)`).run(email, salt, hash, profile.displayName, profile.gradeId,
+          tokenHash, now + VERIFY_LIFETIME_MS, new Date(now).toISOString());
+    }
+    try { await deliver(email, token); }
+    catch (error) {
+      if (pending) db.prepare("UPDATE pending_registrations SET token_hash=?,expires_at=? WHERE email=? AND token_hash=?")
+        .run(pending.tokenHash, pending.expiresAt, email, tokenHash);
+      else db.prepare("DELETE FROM pending_registrations WHERE email=? AND token_hash=?").run(email, tokenHash);
+      db.prepare("UPDATE email_verification_limits SET attempts=MAX(0,attempts-1) WHERE email_hash=?").run(key);
+      throw error;
+    }
+  }
+  function verifyRegistration(body: unknown, now = Date.now()) {
+    if (!body || typeof body !== "object" || Array.isArray(body) ||
+        Object.keys(body).some((key) => key !== "token")) throw new AuthError(400, "Enlace no válido.");
+    const token = (body as Record<string, unknown>).token;
+    if (typeof token !== "string" || !/^[0-9a-f]{64}$/.test(token)) throw new AuthError(400, "Enlace no válido o vencido.");
+    const tokenHash = sha256(token);
+    const pending = db.prepare("SELECT * FROM pending_registrations WHERE token_hash=? AND expires_at>?")
+      .get(tokenHash, now) as { email: string; salt: string; password_hash: string; display_name: string; grade_id: string } | undefined;
+    if (!pending) throw new AuthError(400, "Enlace no válido o vencido.");
+    const id = randomBytes(16).toString("hex");
+    const timestamp = new Date(now).toISOString();
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      if (db.prepare("DELETE FROM pending_registrations WHERE token_hash=? AND expires_at>?").run(tokenHash, now).changes !== 1) {
+        throw new AuthError(400, "Enlace no válido o vencido.");
+      }
+      db.prepare("INSERT INTO users(id,email,salt,password_hash,adult_confirmed,created_at,email_verified_at) VALUES (?,?,?,?,1,?,?)")
+        .run(id, pending.email, pending.salt, pending.password_hash, timestamp, timestamp);
+      db.prepare("INSERT INTO user_profiles(user_id,display_name,grade_id,updated_at) VALUES (?,?,?,?)")
+        .run(id, pending.display_name, pending.grade_id, timestamp);
+      db.prepare("DELETE FROM email_verification_limits WHERE email_hash=?").run(sha256(pending.email));
+      db.exec("COMMIT");
+    } catch (error) { db.exec("ROLLBACK"); throw error; }
+    return { user: { id, email: pending.email }, token: createSession(id) };
+  }
   async function login(body: unknown) {
     if (!body || typeof body !== "object" || Array.isArray(body)) throw new AuthError(400, "Solicitud no válida.");
     const data = body as Record<string, unknown>;
@@ -179,12 +282,115 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
       .get(sha256(token), Date.now()) as UserRow | undefined;
     return row ? publicUser(row) : null;
   }
+  function getProfile(userId: string): AccountProfile | null {
+    const row = db.prepare(`SELECT p.display_name AS displayName,p.grade_id AS gradeId,p.updated_at AS updatedAt
+      FROM user_profiles p JOIN users u ON u.id=p.user_id WHERE p.user_id=? AND u.status='active'`)
+      .get(userId) as Omit<AccountProfile, "role"> | undefined;
+    return row ? { role: "adult_student", ...row } : null;
+  }
+  function assertCurrentGrade(userId: string, gradeId: unknown): string {
+    const profile = getProfile(userId);
+    if (!profile) throw new AuthError(409, "Completa tu perfil y elige tu grado antes de estudiar.");
+    if (profile.gradeId !== gradeId) throw new AuthError(403, "Este tema no corresponde al grado de tu perfil.");
+    return profile.gradeId;
+  }
+  function saveProfile(userId: string, body: unknown): AccountProfile {
+    const input = profileInput(body);
+    if (!input) throw new AuthError(400, "Nombre o grado no válido.");
+    const active = db.prepare("SELECT id FROM users WHERE id=? AND status='active'").get(userId);
+    if (!active) throw new AuthError(401, "Sesión requerida.");
+    const previousGradeId = getProfile(userId)?.gradeId;
+    const lastSelection = db.prepare("SELECT grade_id AS gradeId FROM last_selections WHERE user_id=?")
+      .get(userId) as { gradeId: string } | undefined;
+    const updatedAt = new Date().toISOString();
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare(`INSERT INTO user_profiles(user_id,display_name,grade_id,updated_at) VALUES (?,?,?,?)
+        ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name,grade_id=excluded.grade_id,updated_at=excluded.updated_at`)
+        .run(userId, input.displayName, input.gradeId, updatedAt);
+      if (previousGradeId !== input.gradeId || lastSelection?.gradeId !== input.gradeId) {
+        db.prepare("DELETE FROM last_selections WHERE user_id=?").run(userId);
+      }
+      db.exec("COMMIT");
+    } catch (error) { db.exec("ROLLBACK"); throw error; }
+    return { role: "adult_student", ...input, updatedAt };
+  }
   function logout(token: string | null | undefined) {
     if (token && /^[0-9a-f]{64}$/.test(token)) db.prepare("DELETE FROM sessions WHERE token_hash=?").run(sha256(token));
   }
   function disableUser(userId: string) {
     db.prepare("UPDATE users SET status='disabled' WHERE id=?").run(userId);
     db.prepare("DELETE FROM sessions WHERE user_id=?").run(userId);
+  }
+  async function requestPasswordReset(body: unknown, deliver: (email: string, token: string) => Promise<void>, now = Date.now()) {
+    if (!body || typeof body !== "object" || Array.isArray(body) ||
+      Object.keys(body).some((key) => key !== "email")) throw new AuthError(400, "Solicitud no válida.");
+    const email = normalizedEmail((body as Record<string, unknown>).email);
+    const key = sha256(email);
+    db.prepare("DELETE FROM password_reset_limits WHERE window_start<?").run(now - 86400000);
+    const limit = db.prepare("SELECT window_start AS windowStart,attempts FROM password_reset_limits WHERE email_hash=?")
+      .get(key) as { windowStart: number; attempts: number } | undefined;
+    if (!limit || now - limit.windowStart >= 3600000) {
+      db.prepare("INSERT INTO password_reset_limits(email_hash,window_start,attempts) VALUES (?,?,1) ON CONFLICT(email_hash) DO UPDATE SET window_start=excluded.window_start,attempts=1")
+        .run(key, now);
+    } else {
+      if (limit.attempts >= 3) return;
+      db.prepare("UPDATE password_reset_limits SET attempts=attempts+1 WHERE email_hash=?").run(key);
+    }
+    const row = db.prepare("SELECT id FROM users WHERE email=? AND status='active'").get(email) as { id: string } | undefined;
+    if (!row) return;
+    const token = randomBytes(32).toString("hex");
+    const tokenHash = sha256(token);
+    db.prepare("DELETE FROM password_reset_tokens WHERE user_id=? OR expires_at<=?").run(row.id, now);
+    db.prepare("INSERT INTO password_reset_tokens(token_hash,user_id,expires_at,created_at) VALUES (?,?,?,?)")
+      .run(tokenHash, row.id, now + RESET_LIFETIME_MS, new Date(now).toISOString());
+    try { await deliver(email, token); }
+    catch (error) {
+      db.prepare("DELETE FROM password_reset_tokens WHERE token_hash=?").run(tokenHash);
+      throw error;
+    }
+  }
+  async function resetPassword(body: unknown, now = Date.now()) {
+    if (!body || typeof body !== "object" || Array.isArray(body) ||
+      Object.keys(body).some((key) => !["token", "password"].includes(key))) throw new AuthError(400, "Solicitud no válida.");
+    const { token, password: supplied } = body as Record<string, unknown>;
+    if (typeof token !== "string" || !/^[0-9a-f]{64}$/.test(token)) throw new AuthError(400, "Enlace no válido o vencido.");
+    const password = validPassword(supplied);
+    const tokenHash = sha256(token);
+    const row = db.prepare(`SELECT t.user_id AS userId,t.expires_at AS expiresAt FROM password_reset_tokens t
+      JOIN users u ON u.id=t.user_id WHERE t.token_hash=? AND u.status='active'`).get(tokenHash) as
+      { userId: string; expiresAt: number } | undefined;
+    if (!row || row.expiresAt <= now) throw new AuthError(400, "Enlace no válido o vencido.");
+    const salt = randomBytes(16).toString("hex");
+    const hash = (await passwordHash(password, salt)).toString("hex");
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      const consumed = db.prepare("DELETE FROM password_reset_tokens WHERE token_hash=? AND expires_at>?")
+        .run(tokenHash, now);
+      if (consumed.changes !== 1) throw new AuthError(400, "Enlace no válido o vencido.");
+      db.prepare("UPDATE users SET salt=?,password_hash=? WHERE id=? AND status='active'").run(salt, hash, row.userId);
+      db.prepare("DELETE FROM password_reset_tokens WHERE user_id=?").run(row.userId);
+      db.prepare("DELETE FROM sessions WHERE user_id=?").run(row.userId);
+      db.exec("COMMIT");
+    } catch (error) { db.exec("ROLLBACK"); throw error; }
+  }
+  async function deleteOwnAccount(userId: string, body: unknown) {
+    activeUser(userId);
+    if (!body || typeof body !== "object" || Array.isArray(body) ||
+      Object.keys(body).some((key) => !["confirmation", "password"].includes(key))) throw new AuthError(400, "Solicitud no válida.");
+    const { confirmation, password } = body as Record<string, unknown>;
+    if (confirmation !== "ELIMINAR" || typeof password !== "string") throw new AuthError(400, "Confirma la eliminación con tu contraseña.");
+    const row = db.prepare("SELECT id,email,salt,password_hash,status FROM users WHERE id=? AND status='active'").get(userId) as UserRow;
+    const candidate = await passwordHash(password, row.salt);
+    if (!timingSafeEqual(candidate, Buffer.from(row.password_hash, "hex"))) throw new AuthError(401, "Contraseña incorrecta.");
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare("DELETE FROM password_reset_limits WHERE email_hash=?").run(sha256(row.email));
+      if (db.prepare("DELETE FROM users WHERE id=? AND status='active'").run(userId).changes !== 1) {
+        throw new AuthError(401, "Sesión no válida.");
+      }
+      db.exec("COMMIT");
+    } catch (error) { db.exec("ROLLBACK"); throw error; }
   }
   function saveProgress(userId: string, body: unknown): ProgressItem {
     if (!body || typeof body !== "object" || Array.isArray(body)) throw new AuthError(400, "Progreso no válido.");
@@ -215,6 +421,43 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
     if (!db.prepare("SELECT id FROM users WHERE id=? AND status='active' AND adult_confirmed=1").get(userId)) {
       throw new AuthError(401, "Sesión no válida.");
     }
+  }
+  function getLastSelection(userId: string): { selection: SavedSelection | null; unavailable: boolean } {
+    activeUser(userId);
+    const row = db.prepare("SELECT grade_id AS gradeId,subject_id AS subjectId,topic_id AS topicId FROM last_selections WHERE user_id=?")
+      .get(userId) as SavedSelection | undefined;
+    const profileGradeId = getProfile(userId)?.gradeId;
+    const selection = row?.gradeId === profileGradeId ? availableSelection(row) : null;
+    return { selection, unavailable: !!row && !selection };
+  }
+  function saveLastSelection(userId: string, body: unknown): SavedSelection {
+    activeUser(userId);
+    if (!body || typeof body !== "object" || Array.isArray(body) ||
+      Object.keys(body).some((key) => !["gradeId", "subjectId", "topicId"].includes(key))) {
+      throw new AuthError(400, "Selección no válida.");
+    }
+    const selection = availableSelection(body);
+    if (selection) assertCurrentGrade(userId, selection.gradeId);
+    if (!selection) throw new AuthError(400, "El tema ya no está disponible. Elige otro.");
+    db.prepare(`INSERT INTO last_selections(user_id,grade_id,subject_id,topic_id,selected_at)
+      VALUES (?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET grade_id=excluded.grade_id,
+      subject_id=excluded.subject_id,topic_id=excluded.topic_id,selected_at=excluded.selected_at`)
+      .run(userId, selection.gradeId, selection.subjectId, selection.topicId, new Date().toISOString());
+    return selection;
+  }
+  function studySummary(userId: string, now = new Date()) {
+    activeUser(userId);
+    const lastSelection = getLastSelection(userId);
+    const completedDates = db.prepare(`SELECT s.completed_at AS completedAt FROM practice_sessions s
+      WHERE s.user_id=? AND s.status='completed' AND s.completed_at IS NOT NULL
+        AND EXISTS (SELECT 1 FROM practice_answers a WHERE a.session_id=s.id)`)
+      .all(userId) as { completedAt: string }[];
+    const gradeId = getProfile(userId)?.gradeId;
+    const firstTopic = topics.find((topic) => topic.gradeId === gradeId && topic.active && topic.pilotCandidate);
+    const currentSelection = lastSelection.selection ?? (firstTopic
+      ? { gradeId: firstTopic.gradeId, subjectId: firstTopic.subjectId, topicId: firstTopic.id } : null);
+    return { recommendation: recommendStudy(currentSelection, listPracticeSkillTotals(userId)),
+      streak: studyStreak(completedDates.map((row) => row.completedAt), now) };
   }
   function sessionFromRow(row: PracticeSessionRow): PracticeSession {
     const skills = db.prepare(`SELECT skill_id AS skillId, COUNT(*) AS answered,
@@ -392,7 +635,10 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
       .run(new Date().toISOString(), session.id, userId);
     return ownedPracticeSession(userId, session.id);
   }
-  return { register, login, sessionUser, logout, disableUser, saveProgress, listProgress,
+  return { register, requestRegistration, verifyRegistration, login, sessionUser, getProfile, assertCurrentGrade, saveProfile,
+    logout, disableUser, requestPasswordReset, resetPassword,
+    deleteOwnAccount, saveProgress, listProgress,
+    getLastSelection, saveLastSelection, studySummary,
     startPractice, answerPractice, finishPractice, getPracticeSession, listPracticeSessions,
     listPracticeSkillTotals, close: () => db.close() };
 }

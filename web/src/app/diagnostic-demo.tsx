@@ -98,17 +98,17 @@ export default function DiagnosticDemo({ selection }: { selection: Selection }) 
     setStage("idle"); setQuestions([]); setIndex(0); setOptionId(""); setAnswers([]); setFeedback(null); setError(""); setBusy(false);
   }
 
-  if (stage === "account") return <section className="diagnostic-card" aria-labelledby="diagnostic-title"><p className="eyebrow">Demostración · cuenta adulta</p><h2 id="diagnostic-title">Prueba un diagnóstico corto</h2><DiagnosticAccountAttempt selection={selection} onExit={reset} /></section>;
+  if (stage === "account") return <section className="diagnostic-card" aria-labelledby="diagnostic-title"><p className="eyebrow">Cuenta de estudiante · contenido provisional</p><h2 id="diagnostic-title">Prueba un diagnóstico corto</h2><DiagnosticAccountAttempt selection={selection} onExit={reset} /></section>;
   if (stage === "study") return <>
     <StudyDemo selection={selection} />
     <button className="text-button" type="button" onClick={() => setStage("finished")}>Volver al resumen del diagnóstico</button>
   </>;
 
   return <section className="diagnostic-card" aria-labelledby="diagnostic-title">
-    <p className="eyebrow">Demostración · diagnóstico y estudio</p>
+    <p className="eyebrow">Diagnóstico y estudio provisional</p>
     <h2 id="diagnostic-title">Prueba un diagnóstico corto</h2>
-    <p className="diagnostic-disclaimer">Las preguntas son ejemplos provisionales sin revisión docente. Con una cuenta adulta el intento se guarda en el servidor; sin cuenta puedes explorar una vista previa que no conserva respuestas. Ninguna opción es una calificación académica.</p>
-    {stage === "idle" && <button className="primary-button" type="button" onClick={prepare} disabled={!ready}>Empezar a estudiar (demo)</button>}
+    <p className="diagnostic-disclaimer">Las preguntas son ejemplos provisionales sin revisión docente. Con una cuenta de estudiante mayor de edad, el intento se guarda en el servidor; sin cuenta puedes explorar una vista previa que no conserva respuestas. Ninguna opción es una calificación académica.</p>
+    {stage === "idle" && <button className="primary-button" type="button" onClick={prepare} disabled={!ready}>Empezar a estudiar</button>}
     {stage === "loading" && <p role="status">Preparando preguntas de demostración…</p>}
     {stage === "intro" && <div className="diagnostic-panel"><h3>Antes de comenzar · vista previa sin cuenta</h3><p>Responde con calma. Verás {questions.length} {questions.length === 1 ? "pregunta de prueba" : "preguntas de prueba"} sobre el tema elegido. Esta vista previa no guarda respuestas ni puntaje, no recibirás una nota académica y podrás salir cuando quieras.</p><button className="primary-button" type="button" onClick={() => setStage("question")}>Comenzar preguntas</button></div>}
     {stage === "question" && question && <div className="diagnostic-panel">

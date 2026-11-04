@@ -32,6 +32,16 @@ La fuente funcional vigente es el [proyecto AP de Jira](https://juanmiguelsworks
 | [Paquete para revisión docente (PDF)](28-paquete-revision-docente-piloto.pdf) · [HTML](28-paquete-revision-docente-piloto.html) | Seis combinaciones piloto, explicaciones, preguntas, respuestas y formato de observaciones; contenido provisional |
 | [Referentes curriculares del MEN](29-trazabilidad-curricular-men.md) | DBA, estándares y mallas oficiales; cotejo preliminar de las seis combinaciones |
 | [Aplicación de la revisión técnica del piloto](30-aplicacion-revision-tecnica-piloto.md) | Cambios técnicos hechos a partir del informe y la matriz recibidos; aprobación docente pendiente |
+| [Política de tratamiento de datos (PDF)](31-politica-tratamiento-datos-borrador.pdf) · [Markdown](31-politica-tratamiento-datos-borrador.md) | Responsable, inventario, finalidades, IA, derechos y conservación para revisión jurídica |
+| [Autorización del representante (PDF)](32-autorizacion-representante-borrador.pdf) · [Markdown](32-autorizacion-representante-borrador.md) | Texto de elección y prueba verificable de la autorización; sin uso operativo todavía |
+| [Información para menores (PDF)](33-informacion-privacidad-menores-borrador.pdf) · [Markdown](33-informacion-privacidad-menores-borrador.md) | Explicaciones por rango de grados y mecanismo propuesto para escuchar al estudiante |
+| [Términos y condiciones (PDF)](34-terminos-condiciones-borrador.pdf) · [Markdown](34-terminos-condiciones-borrador.md) | Reglas de cuenta, uso académico, supervisión y límites del contenido |
+| [Protocolo de seguridad e incidentes (PDF)](35-protocolo-seguridad-incidentes-borrador.pdf) · [Markdown](35-protocolo-seguridad-incidentes-borrador.md) | Controles existentes y pendientes, respuesta a incidentes y solicitudes de titulares |
+| [Desarrollo del Sprint 6](36-desarrollo-sprint-6.md) | Último tema, recomendaciones, racha, recuperación, eliminación y límites del alcance |
+| [Rúbrica de calidad de IA](37-rubrica-calidad-ia.md) | Muestra de 18 casos, criterios, registro y puerta de revisión |
+| [Matriz de observaciones jurídicas preliminares](38-matriz-observaciones-juridicas-preliminar.md) | Feedback del 20/10 sobre los borradores 31–35, decisiones pendientes y evidencia técnica necesaria; no es aprobación |
+| [Perfiles y preparación](39-perfiles-y-preparacion.md) | Flujo de perfil adulto, base estudiantil cerrada y nuevos datos que debe revisar la abogada |
+| [Bienvenida y verificación de correo](40-bienvenida-registro-verificacion.md) | Registro de mayores con perfil previo, confirmación por correo y configuración pendiente del proveedor |
 | [Corrección explicada](21-retroalimentacion-practica.md) | Contrato y puerta de revisión docente de correcciones |
 | [Cuentas estudiantiles](22-cuentas-estudiantes-consentimiento.md) | Base técnica interna, autorización y decisiones pendientes |
 | [Criterios de aceptación](criterios-aceptacion.md) | Escenarios comprobables para las historias |
@@ -40,3 +50,7 @@ La fuente funcional vigente es el [proyecto AP de Jira](https://juanmiguelsworks
 | [Presentación](presentacion-proyecto.md) | Guion académico |
 
 Los términos **propuesto** y **por definir** indican decisiones aún no cerradas. **NO IMPLEMENTADO** en documentos históricos se refiere al momento en que fueron redactados; comprueba el estado actual en Jira y en `web/`.
+
+Los documentos 31–35 conforman el paquete solicitado para revisión de la abogada el 16 de octubre de 2026. **No son versiones aprobadas ni deben mostrarse como política vigente o usarse para registrar menores.** Faltan, como mínimo, la identidad y contactos del responsable, los plazos de conservación, el método de verificación del representante, las decisiones sobre IA/proveedores, el canal de derechos y la aprobación fechada de los textos exactos. La [página actual de privacidad](../web/src/app/privacidad/page.tsx) informa que el registro de menores está deshabilitado hasta que esas decisiones y el flujo técnico se implementen y prueben. La cuenta de mayor de edad ahora tiene finalidad de estudio, incluso para educación por ciclos o aceleración; véase la [decisión de producto](39-perfiles-y-preparacion.md). Las referencias a «demostración adulta» en los borradores 31, 34 y 35 deben corregirse con la abogada antes de aprobar nuevos PDF.
+
+Los cinco PDF se regeneran desde sus Markdown con `python scripts/export_legal_drafts.py` ejecutado desde la raíz del proyecto; requiere `reportlab` y las fuentes Arial de Windows.

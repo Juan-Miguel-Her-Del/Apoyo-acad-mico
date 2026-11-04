@@ -70,7 +70,7 @@ export default function DiagnosticAccountAttempt({ selection, onExit }: { select
     setAnswers([]);
     setFeedback(null);
     setOptionId("");
-    setNotice("Nuevo intento de demostración guardado en tu cuenta adulta.");
+    setNotice("Nuevo intento provisional guardado en tu cuenta.");
   }
 
   useEffect(() => {
@@ -154,7 +154,7 @@ export default function DiagnosticAccountAttempt({ selection, onExit }: { select
   const analysis = diagnosticSkillInsights(answeredQuestions, answers);
   return <div className="diagnostic-account-attempt">
     <h3>Diagnóstico de demostración en tu cuenta</h3>
-    <p>Las preguntas y el resultado son provisionales. Tu intento y respuestas se guardan en el servidor de esta cuenta adulta; no son una calificación validada.</p>
+    <p>Las preguntas y el resultado son provisionales. Tu intento y respuestas se guardan en tu cuenta; no son una calificación validada.</p>
     {notice && <p role="status">{notice}</p>}
     {busy && !attempt && <p role="status">Preparando o recuperando el intento…</p>}
     {attempt?.status === "open" && question && <div className="diagnostic-panel">

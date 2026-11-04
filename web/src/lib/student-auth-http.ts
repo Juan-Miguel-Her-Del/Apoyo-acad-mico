@@ -4,7 +4,7 @@ import { StudentAccountError, type openStudentAccountStore } from "./student-acc
 
 const COOKIE = "apoyo_student_session";
 const NO_STORE = { "Cache-Control": "no-store" };
-const UNAVAILABLE = "Las cuentas de estudiantes aún no están disponibles.";
+const UNAVAILABLE = "Las cuentas de menores aún no están disponibles.";
 type StudentStore = Pick<ReturnType<typeof openStudentAccountStore>, "login" | "currentStudent" | "logout">;
 
 function tokenFrom(request: Request) {

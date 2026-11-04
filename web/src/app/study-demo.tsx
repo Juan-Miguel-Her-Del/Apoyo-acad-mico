@@ -20,7 +20,7 @@ export default function StudyDemo({ selection }: { selection: Selection }) {
   return <section className="diagnostic-card" aria-labelledby="study-demo-title">
     <p className="eyebrow">Estudio y práctica · demostración</p>
     <h2 id="study-demo-title">Estudia un tema y ponlo en práctica</h2>
-    <p className="diagnostic-disclaimer">Contenido provisional sin revisión docente. Sirve para mostrar cómo funcionará el estudio; no es una lección validada ni una calificación académica. La prueba rápida no se guarda; la práctica con seguimiento sí se registra en tu cuenta de demostración.</p>
+    <p className="diagnostic-disclaimer">Contenido provisional sin revisión docente. Todavía no es una lección validada ni una calificación académica. La prueba rápida no se guarda; la práctica con seguimiento sí se registra en tu cuenta.</p>
     {!lesson ? <p className="empty-state">Elige un grado, una materia y un tema disponible para abrir esta demostración.</p> : <div className="diagnostic-panel">
       <h3>{lesson.title}</h3>
       <h4>Explicación breve</h4>

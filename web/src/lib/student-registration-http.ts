@@ -15,7 +15,7 @@ export async function handleStudentRegistration(request: Request, deps: StudentR
     ensureSameOrigin(request);
     // Both dependencies are supplied by reviewed server code, never by JSON or an env toggle.
     if (!deps.reviewedPolicy || !deps.verifyRepresentative) {
-      throw new StudentAccountError(503, "El registro de estudiantes aún no está disponible.");
+      throw new StudentAccountError(503, "El registro de menores aún no está disponible.");
     }
     const body = await readJson(request);
     if (!body || typeof body !== "object" || Array.isArray(body) ||

@@ -78,6 +78,26 @@ test("autorización sintética válida permite registro, sesión y progreso entr
   assert.equal(comparison.previous.id, first.id);
 });
 
+test("perfil estudiantil interno requiere consentimiento vigente y se aísla por sesión", async (t) => {
+  const { open } = fixture(t);
+  const store = open();
+  const authorizationA = store.issueAuthorization(syntheticGrant("profile-A"));
+  const authorizationB = store.issueAuthorization(syntheticGrant("profile-B"));
+  await store.register({ email: "a@example.test", password: "clave-segura-123", authorizationId: authorizationA });
+  await store.register({ email: "b@example.test", password: "clave-segura-123", authorizationId: authorizationB });
+  const a = await store.login({ email: "a@example.test", password: "clave-segura-123" });
+  const b = await store.login({ email: "b@example.test", password: "clave-segura-123" });
+  assert.equal(store.getProfile(a.token), null);
+  const profile = store.saveProfile(a.token, { displayName: "Luna", gradeId: "G05" });
+  assert.equal(profile.role, "minor_student");
+  assert.equal(open().getProfile(a.token).gradeId, "G05");
+  assert.equal(store.getProfile(b.token), null);
+  assert.throws(() => store.saveProfile(b.token, { displayName: "Luna", gradeId: "G13" }), blocked(400));
+  store.revoke(authorizationA);
+  assert.throws(() => store.getProfile(a.token), blocked(401));
+  assert.throws(() => store.saveProfile(a.token, { displayName: "Luna", gradeId: "G05" }), blocked(401));
+});
+
 test("faltante, finalidades parciales, duplicado y aviso distinto bloquean activación", async (t) => {
   const { open } = fixture(t);
   const store = open();

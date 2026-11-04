@@ -136,7 +136,7 @@ export default function PracticeSession({ selection }: { selection: Selection })
   const question = questions[index];
   return <div className="practice-session" aria-labelledby="practice-session-title">
     <h4 id="practice-session-title">Práctica con seguimiento</h4>
-    <p>Rondas de dos preguntas provisionales sobre este tema. Con una cuenta de demostración, tus respuestas y el resultado quedan guardados para retomarlos.</p>
+    <p>Rondas de dos preguntas provisionales sobre este tema. Con tu cuenta, las respuestas y el resultado quedan guardados para retomarlos.</p>
     {coverage && <p className="practice-coverage">Banco provisional: {coverage.total} preguntas; nivel 1: {coverage.byDifficulty[1]}; nivel 2: {coverage.byDifficulty[2]}. {coverage.sufficientForTwoDistinctRounds ? "Cobertura suficiente para dos rondas distintas." : "Cobertura insuficiente para nuevas rondas; requiere más preguntas."}</p>}
     {coverageError && <p className="diagnostic-error" role="alert">{coverageError}</p>}
     {!session && <button className="primary-button" type="button" onClick={start} disabled={busy || coverage?.sufficientForTwoDistinctRounds === false}>{busy ? "Preparando…" : "Empezar práctica de dos preguntas"}</button>}
@@ -168,7 +168,7 @@ export default function PracticeSession({ selection }: { selection: Selection })
     {session?.status === "completed" && !feedback && <div className="practice-result" role="status">
       <strong>{session.answered === 0 ? "Práctica terminada sin respuestas." : `Práctica terminada: ${session.correctCount} de ${session.answered} respuestas correctas.`}</strong>
       <p>{session.answered === 0 ? "No hay un resultado que calcular todavía." : `${session.answered} de ${session.total} preguntas respondidas. ${session.total - session.answered} quedaron sin responder.`}</p>
-      <p>Esta sesión quedó guardada en tu cuenta de demostración. Puedes consultar el historial arriba.</p>
+      <p>Esta sesión quedó guardada en tu cuenta. Puedes consultar el historial en «Mi progreso».</p>
       <button className="text-button" type="button" onClick={start} disabled={busy}>Iniciar otra ronda con preguntas nuevas</button>
     </div>}
     {error && <p className="diagnostic-error" role="alert">{error}</p>}

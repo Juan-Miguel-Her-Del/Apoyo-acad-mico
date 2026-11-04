@@ -69,6 +69,45 @@ test("progreso aislado por usuario, combinación válida y revocación de sesió
     (error) => error instanceof AuthError && error.status === 401);
 });
 
+test("perfil adulto conserva nombre y grado por cuenta y reinicia el tema al cambiar grado", async (t) => {
+  const { open } = fixture(t);
+  const store = open();
+  const a = await store.register({ email: "a@example.test", password: "clave-segura-123", adultConfirmed: true });
+  const b = await store.register({ email: "b@example.test", password: "clave-segura-123", adultConfirmed: true });
+  assert.equal(store.getProfile(a.user.id), null);
+  const profile = store.saveProfile(a.user.id, { displayName: " Ana  María ", gradeId: "G05" });
+  assert.equal(profile.role, "adult_student");
+  assert.equal(profile.displayName, "Ana María");
+  assert.equal(open().getProfile(a.user.id).gradeId, "G05");
+  assert.equal(store.getProfile(b.user.id), null);
+  const selection = { gradeId: "G05", subjectId: "MAT", topicId: "G05-MAT" };
+  store.saveLastSelection(a.user.id, selection);
+  const earlierSessionId = store.startPractice(a.user.id, selection).session.id;
+  store.finishPractice(a.user.id, { sessionId: earlierSessionId });
+  store.saveProfile(a.user.id, { displayName: "Ana", gradeId: "G05" });
+  assert.deepEqual(store.getLastSelection(a.user.id).selection, selection);
+  store.saveProfile(a.user.id, { displayName: "Ana", gradeId: "G10" });
+  assert.equal(store.getLastSelection(a.user.id).selection, null);
+  assert.equal(store.listPracticeSessions(a.user.id)[0].id, earlierSessionId, "el historial del grado anterior permanece");
+  assert.equal(store.studySummary(a.user.id).recommendation.topicId.startsWith("G10-"), true);
+  assert.throws(() => store.saveLastSelection(a.user.id, selection),
+    (error) => error instanceof AuthError && error.status === 403);
+  assert.throws(() => store.assertCurrentGrade(a.user.id, "G05"),
+    (error) => error instanceof AuthError && error.status === 403);
+  assert.equal(store.assertCurrentGrade(a.user.id, "G10"), "G10");
+  assert.throws(() => store.assertCurrentGrade(b.user.id, "G05"),
+    (error) => error instanceof AuthError && error.status === 409);
+  store.saveProfile(b.user.id, { displayName: "Beto", gradeId: "G05" });
+  store.saveLastSelection(b.user.id, selection);
+  store.saveProfile(b.user.id, { displayName: "Beto", gradeId: "G10" });
+  assert.equal(store.getLastSelection(b.user.id).selection, null, "la preparación de una cuenta antigua limpia un tema de otro grado");
+  assert.throws(() => store.saveProfile(a.user.id, { displayName: "Ana", gradeId: "G12" }),
+    (error) => error instanceof AuthError && error.status === 400);
+  assert.throws(() => store.saveProfile("not-the-owner", { displayName: "Ana", gradeId: "G05" }),
+    (error) => error instanceof AuthError && error.status === 401);
+  assert.equal(store.getProfile(b.user.id).gradeId, "G10");
+});
+
 test("origen y cookie restringen escrituras entre sitios", () => {
   const same = new Request("http://localhost:3000/api/progress", { method: "POST", headers: { origin: "http://localhost:3000", cookie: "apoyo_session=token" } });
   assert.doesNotThrow(() => ensureSameOrigin(same));
@@ -76,6 +115,29 @@ test("origen y cookie restringen escrituras entre sitios", () => {
   assert.match(sessionCookie("token", same), /HttpOnly; SameSite=Strict/);
   const cross = new Request("http://localhost:3000/api/progress", { method: "POST", headers: { origin: "https://attacker.example" } });
   assert.throws(() => ensureSameOrigin(cross), (error) => error instanceof AuthError && error.status === 403);
+  const proxied = new Request("http://127.0.0.1:3000/api/progress", { method: "POST", headers: {
+    origin: "https://preview.example.test", host: "127.0.0.1:3000", "x-forwarded-host": "preview.example.test",
+    "sec-fetch-site": "same-origin",
+  } });
+  assert.doesNotThrow(() => ensureSameOrigin(proxied), "un proxy puede cambiar la URL interna y el protocolo");
+  assert.match(sessionCookie("token", proxied), /Secure/, "la cookie del túnel HTTPS debe ser segura");
+  const tunnelWithoutForwardedHost = new Request("http://127.0.0.1:3000/api/progress", { method: "POST", headers: {
+    origin: "https://preview.example.test", host: "127.0.0.1:3000", "sec-fetch-site": "same-origin",
+  } });
+  assert.doesNotThrow(() => ensureSameOrigin(tunnelWithoutForwardedHost), "la solicitud del mismo origen pasa aunque el túnel no reenvíe el host público");
+  const forgedProxy = new Request("http://127.0.0.1:3000/api/progress", { method: "POST", headers: {
+    origin: "https://attacker.example", host: "127.0.0.1:3000", "x-forwarded-host": "attacker.example",
+    "sec-fetch-site": "cross-site",
+  } });
+  assert.throws(() => ensureSameOrigin(forgedProxy), (error) => error instanceof AuthError && error.status === 403);
+  const differentScheme = new Request("http://localhost:3000/api/progress", { method: "POST", headers: {
+    origin: "https://localhost:3000", host: "localhost:3000", "sec-fetch-site": "same-site",
+  } });
+  assert.throws(() => ensureSameOrigin(differentScheme), (error) => error instanceof AuthError && error.status === 403);
+  const noFetchMetadata = new Request("http://localhost:3000/api/progress", { method: "POST", headers: {
+    origin: "https://localhost:3000", host: "localhost:3000",
+  } });
+  assert.throws(() => ensureSameOrigin(noFetchMetadata), (error) => error instanceof AuthError && error.status === 403);
   const secure = new Request("https://example.test/api/progress");
   assert.match(sessionCookie("token", secure), /Secure/);
   assert.throws(() => ensureAccountsEnabled(secure), (error) => error instanceof AuthError && error.status === 503);

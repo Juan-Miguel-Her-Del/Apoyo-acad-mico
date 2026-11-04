@@ -16,13 +16,22 @@ export function ensureSameOrigin(request: Request) {
   const fetchSite = request.headers.get("sec-fetch-site");
   const host = request.headers.get("host") ?? new URL(request.url).host;
   let originHost: string | null = null;
+  let originProtocol: string | null = null;
   try {
     if (origin) {
       const parsed = new URL(origin);
-      if (parsed.protocol === new URL(request.url).protocol && parsed.origin === origin) originHost = parsed.host;
+      if (["http:", "https:"].includes(parsed.protocol) && parsed.origin === origin) {
+        originHost = parsed.host;
+        originProtocol = parsed.protocol;
+      }
     }
   } catch { /* Invalid Origin is rejected below. */ }
-  if (!originHost || originHost !== host || fetchSite === "cross-site") {
+  // A browser can see the public tunnel origin while Next receives its local URL.
+  // Fetch Metadata is set by the browser and confirms that the request came from that page.
+  const sameBrowserOrigin = fetchSite === "same-origin";
+  const sameDirectOrigin = originHost === host && originProtocol === new URL(request.url).protocol;
+  if (!originHost || (fetchSite !== null && !sameBrowserOrigin) ||
+      (!sameBrowserOrigin && !sameDirectOrigin)) {
     throw new AuthError(403, "Origen no permitido.");
   }
 }
@@ -46,7 +55,8 @@ export function requestToken(request: Request): string | null {
 }
 
 export function sessionCookie(token: string, request: Request, expire = false) {
-  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
+  const publicOrigin = request.headers.get("origin");
+  const secure = new URL(request.url).protocol === "https:" || publicOrigin?.startsWith("https://") ? "; Secure" : "";
   return `${SESSION_COOKIE}=${expire ? "" : token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${expire ? 0 : 604800}${secure}`;
 }
 

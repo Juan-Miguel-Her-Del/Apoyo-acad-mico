@@ -3,6 +3,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { promisify } from "node:util";
+import { profileInput, type AccountProfile } from "./profile.ts";
 
 const scrypt = promisify(scryptCallback);
 const REQUIRED_PURPOSES = ["educational_account", "progress_storage"] as const;
@@ -105,6 +106,10 @@ export function openStudentAccountStore(
       password_hash TEXT NOT NULL, consent_id TEXT NOT NULL UNIQUE REFERENCES student_consents(id),
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS student_profiles (
+      user_id TEXT PRIMARY KEY REFERENCES student_users(id) ON DELETE CASCADE,
+      display_name TEXT NOT NULL, grade_id TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS student_sessions (
       token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES student_users(id) ON DELETE CASCADE,
       expires_at INTEGER NOT NULL
@@ -124,7 +129,7 @@ export function openStudentAccountStore(
     // Formal approval has not arrived. A deployment cannot turn this on with an
     // environment variable or an arbitrary policy object: release needs a code change.
     if (process.env.NODE_ENV === "production" || !reviewedPolicy) {
-      throw new StudentAccountError(503, "Las cuentas de estudiantes aún no están disponibles.");
+      throw new StudentAccountError(503, "Las cuentas de menores aún no están disponibles.");
     }
     return reviewedPolicy;
   }
@@ -260,6 +265,22 @@ export function openStudentAccountStore(
     consentActive(row.consent_id);
     return { id: row.id, email: row.email };
   }
+  function getProfile(token: string): AccountProfile | null {
+    const user = currentStudent(token);
+    const row = db.prepare(`SELECT display_name AS displayName,grade_id AS gradeId,updated_at AS updatedAt
+      FROM student_profiles WHERE user_id=?`).get(user.id) as Omit<AccountProfile, "role"> | undefined;
+    return row ? { role: "minor_student", ...row } : null;
+  }
+  function saveProfile(token: string, body: unknown): AccountProfile {
+    const user = currentStudent(token);
+    const input = profileInput(body);
+    if (!input) throw new StudentAccountError(400, "Nombre o grado no válido.");
+    const updatedAt = new Date().toISOString();
+    db.prepare(`INSERT INTO student_profiles(user_id,display_name,grade_id,updated_at) VALUES (?,?,?,?)
+      ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name,grade_id=excluded.grade_id,updated_at=excluded.updated_at`)
+      .run(user.id, input.displayName, input.gradeId, updatedAt);
+    return { role: "minor_student", ...input, updatedAt };
+  }
   function logout(token: string | null) {
     if (token && /^[0-9a-f]{64}$/.test(token)) db.prepare("DELETE FROM student_sessions WHERE token_hash=?").run(hash(token));
   }
@@ -277,7 +298,7 @@ export function openStudentAccountStore(
     if (typeof sessionId !== "string" || !/^[0-9a-f]{32}$/.test(sessionId)) {
       throw new StudentAccountError(400, "Sesión no válida.");
     }
-    if (!resolveCompletedSession) throw new StudentAccountError(503, "El seguimiento de estudiantes aún no está disponible.");
+    if (!resolveCompletedSession) throw new StudentAccountError(503, "El seguimiento de menores aún no está disponible.");
     db.exec("BEGIN IMMEDIATE");
     try {
       const user = currentStudent(token);
@@ -322,6 +343,6 @@ export function openStudentAccountStore(
     return { status: "ready" as const, current, previous,
       percentagePointChange: Math.round((current.correctCount / current.answered - previous.correctCount / previous.answered) * 100) };
   }
-  return { issueAuthorization, register, registerAuthorized, login, currentStudent, logout, revoke,
+  return { issueAuthorization, register, registerAuthorized, login, currentStudent, getProfile, saveProfile, logout, revoke,
     recordCompletedSession, listProgress, compareProgress, close: () => db.close() };
 }
