@@ -42,6 +42,8 @@ La fuente funcional vigente es el [proyecto AP de Jira](https://juanmiguelsworks
 | [Matriz de observaciones jurídicas preliminares](38-matriz-observaciones-juridicas-preliminar.md) | Feedback del 20/10 sobre los borradores 31–35, decisiones pendientes y evidencia técnica necesaria; no es aprobación |
 | [Perfiles y preparación](39-perfiles-y-preparacion.md) | Flujo de perfil adulto, base estudiantil cerrada y nuevos datos que debe revisar la abogada |
 | [Bienvenida y verificación de correo](40-bienvenida-registro-verificacion.md) | Registro de mayores con perfil previo, confirmación por correo y configuración pendiente del proveedor |
+| [Renovación del diseño](41-renovacion-diseno.md) | Auditoría de redundancias y botones, recorrido por pantallas y comprobación en navegador |
+| [Contenido y perfiles ficticios](42-contenido-y-perfiles-ficticios.md) | Lecciones de tres partes en 26 combinaciones, simulación local de perfiles y límites de publicación |
 | [Corrección explicada](21-retroalimentacion-practica.md) | Contrato y puerta de revisión docente de correcciones |
 | [Cuentas estudiantiles](22-cuentas-estudiantes-consentimiento.md) | Base técnica interna, autorización y decisiones pendientes |
 | [Criterios de aceptación](criterios-aceptacion.md) | Escenarios comprobables para las historias |

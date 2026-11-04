@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { topics } from "../src/lib/catalog.ts";
 import { checkStudyAnswer, getStudyDemo } from "../src/lib/study-demo.ts";
 
-test("las 26 combinaciones tienen explicación, ejemplo y pregunta con respuesta definida", () => {
+test("las 26 combinaciones tienen tres partes de estudio y una pregunta definida", () => {
   assert.equal(topics.length, 26);
   for (const topic of topics) {
     const lesson = getStudyDemo(topic.gradeId, topic.subjectId, topic.id);
@@ -12,6 +12,12 @@ test("las 26 combinaciones tienen explicación, ejemplo y pregunta con respuesta
     assert.equal(lesson.provisional, true);
     assert.ok(lesson.explanation.length > 35, topic.id);
     assert.ok(lesson.example.length > 20, topic.id);
+    assert.equal(lesson.chapters.length, 3, topic.id);
+    assert.equal(new Set(lesson.chapters.map((chapter) => chapter.title)).size, 3, topic.id);
+    for (const chapter of lesson.chapters) {
+      assert.ok(chapter.explanation.length > 35, topic.id);
+      assert.ok(chapter.example.length > 20, topic.id);
+    }
     assert.ok(lesson.question.prompt.length > 10, topic.id);
     assert.equal(lesson.question.options.length, 3, topic.id);
     assert.equal(new Set(lesson.question.options).size, 3, topic.id);

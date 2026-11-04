@@ -9,7 +9,6 @@ import { diagnosticSkillInsights } from "@/lib/diagnostic-analysis";
 import type { SkillTotal } from "@/lib/progress-insights";
 import type { Recommendation, StudyStreak } from "@/lib/study-planning";
 import AccountProgressInsights from "./account-progress-insights";
-import StudentRegistrationPreview from "./student-registration-preview";
 
 type Account = { id: string; email: string };
 type DiagnosticHistoryItem = {
@@ -28,10 +27,11 @@ function dateLabel(value: string | null) {
   return value ? new Date(value).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" }) : "sin fecha";
 }
 
-export default function AccountPanel({ section, onOpenAccount, onProfileSaved, compact = false }: {
+export default function AccountPanel({ section, onOpenAccount, onProfileSaved, onOpenDemoMinor, compact = false }: {
   section: "account" | "progress";
   onOpenAccount: () => void;
   onProfileSaved: (gradeId: string, initial: boolean) => void;
+  onOpenDemoMinor?: () => void;
   compact?: boolean;
 }) {
   const [account, setAccount] = useState<Account | null>(null);
@@ -46,6 +46,8 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, c
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [streak, setStreak] = useState<StudyStreak | null>(null);
   const [selectedTopic, setSelectedTopic] = useState("");
+  const [progressScreen, setProgressScreen] = useState<"overview" | "diagnostics" | "practice" | "insights">("overview");
+  const [accountScreen, setAccountScreen] = useState<"profile" | "security">("profile");
   const [mode, setMode] = useState<"login" | "register">("login");
   const [registerStep, setRegisterStep] = useState<"access" | "profile">("access");
   const [verificationSent, setVerificationSent] = useState(false);
@@ -169,6 +171,7 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, c
       if (!response.ok || !body.user) throw new Error(typeof body.error === "string" ? body.error : "No se pudo abrir la cuenta.");
       authEpoch.current += 1;
       setAccount(body.user);
+      setAccountScreen("profile"); setProgressScreen("overview");
       setProfile(null);
       setProfileStatus("loading");
       setPassword("");
@@ -191,6 +194,7 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, c
       if (!response.ok) throw new Error("No se pudo cerrar la sesión.");
       authEpoch.current += 1;
       setAccount(null);
+      setAccountScreen("profile"); setProgressScreen("overview");
       setProfile(null);
       setProfileStatus("loading");
       setDiagnosticItems([]);
@@ -234,6 +238,7 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, c
       if (!response.ok) throw new Error(body.error ?? "No se pudo eliminar la cuenta.");
       authEpoch.current += 1;
       setAccount(null); setDiagnosticItems([]); setPracticeItems([]); setSkillTotals(null);
+      setAccountScreen("profile"); setProgressScreen("overview");
       setProfile(null); setProfileStatus("loading");
       setRecommendation(null); setStreak(null); setDeleteOpen(false);
       setDeleteConfirmation(""); setDeletePassword("");
@@ -281,21 +286,31 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, c
     : null;
 
   return <section className={`account-card${compact ? " account-card-compact" : ""}`} aria-labelledby="account-title">
-    <div><p className="eyebrow">{section === "progress" ? "Tus avances" : "Tu cuenta de estudiante"}</p><h2 id="account-title">{section === "progress" ? "Tu recorrido de estudio" : "Guarda tu recorrido"}</h2>
-      <p>{section === "progress" ? "Aquí aparecen tus diagnósticos y prácticas guardados en tu cuenta." : "Si tienes 18 años o más, puedes crear tu perfil y conservar tus avances. El registro para menores sigue pendiente de autorización."}</p></div>
+    <div><p className="eyebrow">{section === "progress" ? "Tus avances" : "Tu cuenta"}</p><h2 id="account-title">{section === "progress" ? "Tu recorrido" : account ? "Tu perfil" : "Comienza a estudiar"}</h2>
+      <p>{section === "progress" ? "Consulta cada parte de tu progreso por separado." : account ? "Gestiona tu grado y los datos de tu cuenta." : "Entra o crea tu perfil para conservar tus avances."}</p></div>
     {account ? <div className="account-panel">
       <p>Sesión iniciada como <strong>{profile?.displayName ?? account.email}</strong>{profile && <> · {account.email}</>}.</p>
       {section === "account" && <button className="text-button" type="button" onClick={logout} disabled={busy}>Cerrar sesión</button>}
       {section === "progress" && <>
       {!profile && <div className="profile-reminder"><strong>Completa tu perfil</strong><p>Elige un nombre para mostrar y el grado que cursas o estás preparando.</p><button className="text-button" type="button" onClick={onOpenAccount}>Preparar mi perfil</button></div>}
+      {progressScreen !== "overview" && <button className="text-button screen-back" type="button" onClick={() => setProgressScreen("overview")}>← Volver a mi progreso</button>}
+      {progressScreen === "overview" && <>
       <div className="study-summary" role="status">
         <h3>Tu siguiente paso</h3>
         {recommendation ? <><p>{recommendation.reason}</p><button className="text-button" type="button"
           onClick={() => window.dispatchEvent(new CustomEvent("ap-select-topic", { detail: { topicId: recommendation.topicId } }))}>Ir al tema recomendado</button></>
           : <p>Elige un tema para recibir una sugerencia de estudio.</p>}
-        <p>Racha de práctica: <strong>{streak?.days ?? 0} {streak?.days === 1 ? "día" : "días"}</strong>. Se cuenta una práctica terminada con respuestas por día, según la hora de Bogotá.</p>
-        <p>Estas sugerencias usan contenido académico provisional pendiente de revisión docente.</p>
+        <p>Racha de práctica: <strong>{streak?.days ?? 0} {streak?.days === 1 ? "día" : "días"}</strong>.</p>
       </div>
+      <div className="screen-card-grid" aria-label="Secciones de progreso">
+        <button type="button" onClick={() => setProgressScreen("diagnostics")}><strong>Diagnósticos</strong><span>{diagnosticItems.length} intentos guardados</span><span>Ver resultados →</span></button>
+        <button type="button" onClick={() => setProgressScreen("practice")}><strong>Prácticas</strong><span>{practiceItems.length} sesiones guardadas</span><span>Ver historial y comparar →</span></button>
+        <button type="button" onClick={() => setProgressScreen("insights")}><strong>Evolución</strong><span>Consulta subtemas y gráficas</span><span>Explorar progreso →</span></button>
+      </div>
+      <button className="text-button" type="button" onClick={() => void refreshProgress()}>Actualizar progreso</button>
+      <p className="content-status">Resultados orientativos con contenido pendiente de revisión docente.</p>
+      </>}
+      {progressScreen === "diagnostics" && <div className="progress-detail-screen">
       <h3>Intentos diagnósticos guardados</h3>
       {diagnosticItems.length === 0 ? <p>Aún no has guardado un intento diagnóstico en esta cuenta.</p> : <ul>{diagnosticItems.map((item) => <li key={item.id}>
         {topicLabel(item)} · {item.status === "completed" ? `${item.correctCount}/${item.answered} correctas` : `${item.answered}/${item.total} respondidas; pendiente`} · {dateLabel(item.completedAt ?? item.startedAt)}. {item.status === "completed" && <button className="text-button" type="button" aria-expanded={selectedDiagnosticId === item.id} onClick={() => setSelectedDiagnosticId((current) => current === item.id ? "" : item.id)}>Ver resumen</button>}
@@ -306,11 +321,12 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, c
         {diagnosticAnalysis?.skills.length ? <ul>{diagnosticAnalysis.skills.map((skill) => <li key={skill.skill}>{skill.skill}: {skill.correct}/{skill.answered} correctas · {skill.strength ? "fortaleza observada" : skill.status === "dificultad-demo" ? "señal de dificultad" : "evidencia indeterminada"} · confianza {skill.confidence === null ? "insuficiente" : `${skill.confidence} %`}.</li>)}</ul> : <p>No hay suficientes respuestas por subtema para analizar.</p>}
         <p>Resumen provisional basado en las respuestas guardadas de esta cuenta; no es una evaluación académica validada.</p>
       </div>}
+      </div>}
+      {progressScreen === "practice" && <div className="progress-detail-screen">
       <h3>Historial de práctica</h3>
       {practiceItems.length === 0 ? <p>Aún no has iniciado una práctica con seguimiento.</p> : <ul>{practiceItems.map((item) => <li key={item.id}>
         {topicLabel(item)} · {item.status === "completed" ? item.answered === 0 ? "terminada sin respuestas" : `${item.correctCount}/${item.answered} correctas; ${item.answered}/${item.total} respondidas` : `${item.answered}/${item.total} respondidas; pendiente`} · {dateLabel(item.completedAt ?? item.startedAt)}
       </li>)}</ul>}
-      <AccountProgressInsights items={practiceItems} totals={skillTotals} />
       <h3>Comparar intentos de un tema</h3>
       {completedTopics.length > 0 && <label className="comparison-label">Tema
         <select value={comparisonTopic} onChange={(event) => setSelectedTopic(event.target.value)}>
@@ -327,12 +343,13 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, c
         <p>Comparación orientativa de dos intentos con preguntas provisionales. No es una evaluación académica validada.</p>
       </div>}
       {comparison?.status === "insufficient" && comparison.latest && <p>Último intento con respuestas: {comparison.latest.correctCount}/{comparison.latest.answered} correctas · {dateLabel(comparison.latest.completedAt)}.</p>}
-      <button className="text-button" type="button" onClick={() => void refreshProgress()}>Actualizar progreso</button>
+      </div>}
+      {progressScreen === "insights" && <div className="progress-detail-screen"><AccountProgressInsights items={practiceItems} totals={skillTotals} /></div>}
       </>}
-      {section === "account" && <>
+      {section === "account" && accountScreen === "profile" && <>
       <div className="profile-setup">
         <span className="profile-role">Estudiante mayor de edad</span>
-        <h3>{profile ? "Tu perfil" : "Prepara tu perfil"}</h3>
+        <h3>{profile ? "Datos de estudio" : "Prepara tu perfil"}</h3>
         <p>Usa un nombre o apodo para mostrar y elige el grado que cursas o estás preparando, incluido si estudias por ciclos. Puedes cambiarlo después; tus avances anteriores se conservan.</p>
         {profileStatus === "loading" ? <p role="status">Cargando perfil…</p> : profileStatus === "error" ? <div role="alert"><p>No se pudo cargar tu perfil.</p><button className="text-button" type="button" onClick={() => void loadProfile(authEpoch.current)}>Reintentar</button></div> :
           <form onSubmit={saveProfile}>
@@ -344,7 +361,12 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, c
             <button className="primary-button" type="submit" disabled={busy}>{busy ? "Guardando…" : profile ? "Guardar cambios" : "Guardar y elegir materia"}</button>
           </form>}
       </div>
-      <p>Tu cuenta conserva el perfil y los avances. Puedes cerrar sesión o eliminar tus datos desde aquí.</p>
+      <button className="text-button" type="button" onClick={() => setAccountScreen("security")}>Datos y seguridad →</button>
+      </>}
+      {section === "account" && accountScreen === "security" && <div className="security-screen">
+      <button className="text-button screen-back" type="button" onClick={() => { setAccountScreen("profile"); setDeleteOpen(false); }}>← Volver a mi perfil</button>
+      <h3>Datos y seguridad</h3>
+      <p>Consulta el <Link href="/privacidad">estado de privacidad</Link> y los <Link href="/terminos">términos de uso</Link>.</p>
       <div className="account-deletion">
         <h3>Eliminar mi cuenta</h3>
         <p>Se borrarán esta cuenta, sus sesiones, diagnósticos, prácticas y progreso guardado. Esta acción no se puede deshacer.</p>
@@ -357,7 +379,7 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, c
             <button className="text-button" type="button" onClick={() => { setDeleteOpen(false); setDeletePassword(""); setDeleteConfirmation(""); }}>Cancelar</button>
           </form>}
       </div>
-      </>}
+      </div>}
     </div> : section === "account" ? <div className="account-panel">
       <div className="account-tabs"><button type="button" aria-pressed={mode === "login"} onClick={() => { setMode("login"); setRegisterStep("access"); setVerificationSent(false); setMessage(""); }}>Iniciar sesión</button><button type="button" aria-pressed={mode === "register"} onClick={() => { setMode("register"); setRegisterStep("access"); setVerificationSent(false); setMessage(""); }}>Crear cuenta</button></div>
       {mode === "register" && <><div className="account-type-choice" aria-label="Tipo de cuenta">
@@ -365,9 +387,9 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, c
         <button type="button" aria-pressed={accountType === "minor"} onClick={() => setAccountType("minor")}>Estudiante menor de 18</button>
       </div>
       <div className="policy-preview"><strong>Antes de crear tu perfil</strong><p>La política de datos y los términos están en revisión. Consulta el <Link href="/privacidad">estado de privacidad</Link> y el <Link href="/terminos">estado de los términos</Link>. Estos textos aún no son documentos definitivos.</p></div>
-      {emailConfigured === false && <p role="status">El envío de correos de confirmación aún no está configurado. El registro estará disponible cuando se conecte.</p>}
+      {accountType === "adult" && emailConfigured === false && <p role="status">El envío de correos de confirmación aún no está configurado. El registro estará disponible cuando se conecte.</p>}
       </>}
-      {mode === "register" && accountType === "minor" ? <div className="student-account-gate" role="status"><h3>Registro para menores</h3><p>La preparación del perfil está diseñada, pero el registro de menores sigue cerrado hasta contar con la autorización verificable y los documentos aprobados. No ingreses datos de estudiantes menores aquí.</p><Link href="/privacidad">Ver estado de privacidad</Link></div> : verificationSent && mode === "register" ? <div className="verification-sent" role="status"><h3>Revisa tu correo</h3><p>Enviamos un enlace para confirmar la dirección y activar tu perfil. Revisa también la carpeta de correo no deseado.</p><button className="text-button" type="button" onClick={() => { setVerificationSent(false); setRegisterStep("access"); setMessage(""); }}>Volver al registro o solicitar otro enlace</button></div> : <>
+      {mode === "register" && accountType === "minor" ? <div className="student-account-gate" role="status"><h3>Registro para menores</h3><p>El registro real de menores sigue cerrado. Puedes crear un perfil ficticio para probar el recorrido sin datos personales; se guarda solo en este navegador.</p>{onOpenDemoMinor && <button className="primary-button" type="button" onClick={onOpenDemoMinor}>Crear perfil ficticio de prueba</button>}<p><Link href="/privacidad">Ver estado de privacidad</Link></p></div> : verificationSent && mode === "register" ? <div className="verification-sent" role="status"><h3>Revisa tu correo</h3><p>Enviamos un enlace para confirmar la dirección y activar tu perfil. Revisa también la carpeta de correo no deseado.</p><button className="text-button" type="button" onClick={() => { setVerificationSent(false); setRegisterStep("access"); setMessage(""); }}>Volver al registro o solicitar otro enlace</button></div> : <>
       <form onSubmit={submit}>
         {mode === "login" || registerStep === "access" ? <>
           <label>Correo electrónico<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required /></label>
@@ -390,6 +412,5 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, c
       </>}
     </div> : <div className="account-panel progress-gate"><h3>Entra para ver tu progreso</h3><p>El progreso se guarda en tu cuenta. Actualmente puedes registrarte si tienes 18 años o más.</p><button className="primary-button" type="button" onClick={onOpenAccount}>Ir a mi cuenta</button></div>}
     {message && <p className="account-message" role="status">{message}</p>}
-    {section === "account" && !compact && <StudentRegistrationPreview />}
   </section>;
 }

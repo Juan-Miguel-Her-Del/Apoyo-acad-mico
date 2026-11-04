@@ -1,4 +1,5 @@
 import { topics, type SubjectId } from "./catalog.ts";
+import { additionalChapters, type StudyChapter } from "./study-chapters.ts";
 
 export type StudyQuestion = {
   prompt: string;
@@ -14,6 +15,7 @@ export type StudyDemo = {
   title: string;
   explanation: string;
   example: string;
+  chapters: readonly StudyChapter[];
   question: StudyQuestion;
   provisional: true;
 };
@@ -56,6 +58,8 @@ export function getStudyDemo(gradeId: string, subjectId: string, topicId: string
   const draft = topic && drafts[topic.id];
   if (!topic || !draft) return null;
   const [explanation, example, prompt, options, correctIndex, feedback] = draft;
+  const chapters = additionalChapters[topic.id];
+  if (!chapters) return null;
   return {
     topicId: topic.id,
     gradeId: topic.gradeId,
@@ -63,6 +67,7 @@ export function getStudyDemo(gradeId: string, subjectId: string, topicId: string
     title: topic.name,
     explanation,
     example,
+    chapters: [{ title: "Primer acercamiento", explanation, example }, ...chapters],
     question: { prompt, options, correctIndex, feedback },
     provisional: true,
   };

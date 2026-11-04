@@ -12,7 +12,7 @@ type Feedback =
   | { state: "pending"; message: string };
 type Answer = { questionId: string; optionId: string; correct: boolean };
 
-export default function DiagnosticDemo({ selection }: { selection: Selection }) {
+export default function DiagnosticDemo({ selection, onDemoCompleted }: { selection: Selection; onDemoCompleted?: (result: { topicId: string; answered: number; correctCount: number }) => void }) {
   const [stage, setStage] = useState<"idle" | "loading" | "intro" | "question" | "finished" | "study" | "account">("idle");
   const [questions, setQuestions] = useState<QuestionView[]>([]);
   const [index, setIndex] = useState(0);
@@ -89,7 +89,10 @@ export default function DiagnosticDemo({ selection }: { selection: Selection }) 
     setFeedback(null);
     setOptionId("");
     setError("");
-    if (index + 1 >= questions.length) setStage("finished");
+    if (index + 1 >= questions.length) {
+      if (selection.topicId) onDemoCompleted?.({ topicId: selection.topicId, answered: answers.length, correctCount: answers.filter((answer) => answer.correct).length });
+      setStage("finished");
+    }
     else setIndex(index + 1);
   }
 
@@ -107,10 +110,10 @@ export default function DiagnosticDemo({ selection }: { selection: Selection }) 
   return <section className="diagnostic-card" aria-labelledby="diagnostic-title">
     <p className="eyebrow">Diagnóstico y estudio provisional</p>
     <h2 id="diagnostic-title">Prueba un diagnóstico corto</h2>
-    <p className="diagnostic-disclaimer">Las preguntas son ejemplos provisionales sin revisión docente. Con una cuenta de estudiante mayor de edad, el intento se guarda en el servidor; sin cuenta puedes explorar una vista previa que no conserva respuestas. Ninguna opción es una calificación académica.</p>
+    <p className="diagnostic-disclaimer">Las preguntas son ejemplos provisionales sin revisión docente. {onDemoCompleted ? "Este perfil ficticio guarda solo el resultado de prueba en este navegador." : "Con una cuenta de estudiante mayor de edad, el intento se guarda en el servidor; sin cuenta puedes explorar una vista previa que no conserva respuestas."} Ninguna opción es una calificación académica.</p>
     {stage === "idle" && <button className="primary-button" type="button" onClick={prepare} disabled={!ready}>Empezar a estudiar</button>}
     {stage === "loading" && <p role="status">Preparando preguntas de demostración…</p>}
-    {stage === "intro" && <div className="diagnostic-panel"><h3>Antes de comenzar · vista previa sin cuenta</h3><p>Responde con calma. Verás {questions.length} {questions.length === 1 ? "pregunta de prueba" : "preguntas de prueba"} sobre el tema elegido. Esta vista previa no guarda respuestas ni puntaje, no recibirás una nota académica y podrás salir cuando quieras.</p><button className="primary-button" type="button" onClick={() => setStage("question")}>Comenzar preguntas</button></div>}
+    {stage === "intro" && <div className="diagnostic-panel"><h3>Antes de comenzar · {onDemoCompleted ? "perfil ficticio" : "vista previa sin cuenta"}</h3><p>Responde con calma. Verás {questions.length} {questions.length === 1 ? "pregunta de prueba" : "preguntas de prueba"} sobre el tema elegido. {onDemoCompleted ? "Solo el resultado resumido quedará en este navegador." : "Esta vista previa no guarda respuestas ni puntaje."} No recibirás una nota académica y podrás salir cuando quieras.</p><button className="primary-button" type="button" onClick={() => setStage("question")}>Comenzar preguntas</button></div>}
     {stage === "question" && question && <div className="diagnostic-panel">
       <p className="question-progress" aria-live="polite">Pregunta {index + 1} de {questions.length}</p>
       <progress value={index + 1} max={questions.length} aria-label="Avance del diagnóstico" />
@@ -131,7 +134,7 @@ export default function DiagnosticDemo({ selection }: { selection: Selection }) 
         <span> {result.correct}/{result.answered} aciertos; preguntas {result.questionIds.map((id) => questions.findIndex((item) => item.id === id) + 1).join(", ")}.</span>
       </li>)}</ul>}
       {analysis.unmappedQuestionIds.length > 0 && <p className="diagnostic-error">Resultado incompleto: {analysis.unmappedQuestionIds.length} {analysis.unmappedQuestionIds.length === 1 ? "pregunta no tiene" : "preguntas no tienen"} un subtema vinculado; no se les asignó dificultad.</p>}
-      <p>Este resumen es orientativo y solo existe en esta vista previa; no equivale a una evaluación validada ni queda guardado.</p><button className="primary-button" type="button" onClick={() => setStage("study")}>Continuar a estudiar</button><button className="text-button" type="button" onClick={reset}>Volver a empezar</button></div>}
+      <p>Este resumen es orientativo y no equivale a una evaluación validada. {onDemoCompleted ? "El resultado resumido se guarda únicamente en este navegador." : "No queda guardado."}</p><button className="primary-button" type="button" onClick={() => setStage("study")}>Continuar a estudiar</button><button className="text-button" type="button" onClick={reset}>Volver a empezar</button></div>}
     {error && <p className="diagnostic-error" role="alert">{error}</p>}
     {stage !== "idle" && stage !== "finished" && <button className="text-button" type="button" onClick={reset}>Salir de la demostración</button>}
   </section>;

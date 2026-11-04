@@ -148,7 +148,7 @@ export default function DiagnosticAccountAttempt({ selection, onExit }: { select
     finally { setBusy(false); }
   }
 
-  if (studying) return <><StudyDemo selection={selection} /><button className="text-button" type="button" onClick={() => setStudying(false)}>Volver al diagnóstico guardado</button></>;
+  if (studying) return <><StudyDemo selection={selection} accountMode /><button className="text-button" type="button" onClick={() => setStudying(false)}>Volver al diagnóstico guardado</button></>;
 
   const answeredQuestions: QuestionView[] = answers.map((answer) => ({ id: answer.questionId, prompt: "", options: [], skill: answer.skill }));
   const analysis = diagnosticSkillInsights(answeredQuestions, answers);

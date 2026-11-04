@@ -5,6 +5,7 @@ import { isDemoGrade, topics, type Grade, type GradeGroup, type Subject, type To
 import { emptySelection, selectGrade, selectSubject, selectTopic, validSelection } from "@/lib/selection";
 import DiagnosticDemo from "./diagnostic-demo";
 import AccountPanel from "./account-panel";
+import DemoStudentWorkspace from "./demo-student-workspace";
 
 type Result<T> = { key: string; status: "success" | "error"; items: T[] };
 const groups: GradeGroup[] = ["Primaria", "Bachillerato"];
@@ -51,6 +52,7 @@ export default function Home() {
   const [profileGradeId, setProfileGradeId] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [demoMinorOpen, setDemoMinorOpen] = useState(false);
   const [welcomeNotice, setWelcomeNotice] = useState("");
   const [selectionNotice, setSelectionNotice] = useState("");
   const [view, setView] = useState<"study" | "progress" | "account">("study");
@@ -160,6 +162,7 @@ export default function Home() {
   const topic = availableTopics.find((item) => item.id === valid.topicId);
 
   if (!authChecked) return <main className="app-shell"><div className="welcome-loading" role="status">Preparando Apoyo académico…</div></main>;
+  if (demoMinorOpen && !accountId) return <DemoStudentWorkspace onExit={() => { setDemoMinorOpen(false); navigate("study"); }} />;
   if (!accountId && !previewOpen) return <main className="app-shell">
     <header className="site-header"><div className="brand-mark" aria-hidden="true">A</div>
       <div className="brand-copy"><strong>Apoyo académico</strong><span>Aprender a tu ritmo</span></div></header>
@@ -171,7 +174,7 @@ export default function Home() {
       <ul><li>Diagnósticos breves para orientar tu práctica.</li><li>Temas de Matemáticas y Español de 1.º a 11.º, y Física y Química en 10.º y 11.º.</li><li>Tu progreso queda ligado a tu cuenta.</li></ul>
       <p className="welcome-note">El contenido académico es provisional y está pendiente de revisión docente.</p>
       <button className="text-button" type="button" onClick={() => setPreviewOpen(true)}>Explorar una vista previa sin cuenta</button>
-    </section><AccountPanel section="account" onOpenAccount={() => {}} onProfileSaved={() => {}} compact /></div>
+    </section><AccountPanel section="account" onOpenAccount={() => {}} onProfileSaved={() => {}} onOpenDemoMinor={() => setDemoMinorOpen(true)} compact /></div>
     <footer className="site-footer"><span>Apoyo académico · Colombia</span><span>Registro de menores aún no disponible</span></footer>
   </main>;
 
@@ -186,21 +189,22 @@ export default function Home() {
           <button type="button" aria-current={view === "account" ? "page" : undefined} onClick={() => navigate("account")}>Cuenta</button>
         </nav>
       </header>
+      {!accountId && <button className="text-button preview-exit" type="button" onClick={() => { setPreviewOpen(false); changeSelection(emptySelection); setStep("grade"); navigate("study"); }}>← Volver al inicio</button>}
 
       <div hidden={view !== "study"}>
-      <section className="hero compact-hero" aria-labelledby="hero-title">
+      {step !== "ready" && <section className="hero compact-hero" aria-labelledby="hero-title">
         <div className="hero-content">
           <p className="eyebrow">Tu espacio de aprendizaje</p>
           <h1 id="hero-title">Un tema a la vez, a tu ritmo.</h1>
           <p className="hero-description">{accountId ? "Estudia las materias y temas de tu grado. Después podrás hacer un diagnóstico corto y practicar." : "Escoge tu grado, materia y tema. Después podrás hacer un diagnóstico corto y practicar."}</p>
         </div>
         <div className="hero-art" aria-hidden="true"><span>∑</span><span>A+</span><span>⚛</span></div>
-      </section>
+      </section>}
 
-      <div className="flow-heading"><div><p className="eyebrow">Explora</p><h2>{step === "ready" ? "Tu tema de estudio" : "Elige qué estudiar"}</h2></div><span>{step === "ready" ? "LISTO" : accountId ? `${step === "subject" ? "01" : "02"} / 02` : `${step === "grade" ? "01" : step === "subject" ? "02" : "03"} / 03`}</span></div>
-      {accountId && <div className="profile-grade-banner"><span>Tu grado: <strong>{grade?.label ?? "Pendiente de configurar"}</strong></span><button className="text-button" type="button" onClick={() => navigate("account")}>Cambiar en mi perfil</button></div>}
+      {step !== "ready" && <div className="flow-heading"><div><p className="eyebrow">Tu ruta</p><h2>Elige qué estudiar</h2></div><span>{accountId ? `${step === "subject" ? "01" : "02"} / 02` : `${step === "grade" ? "01" : step === "subject" ? "02" : "03"} / 03`}</span></div>}
+      {accountId && step !== "ready" && <div className="profile-grade-banner"><span>Tu grado: <strong>{grade?.label ?? "Pendiente de configurar"}</strong></span><button className="text-button" type="button" onClick={() => navigate("account")}>Cambiar en mi perfil</button></div>}
       {accountId && !profileGradeId && <div className="profile-reminder"><strong>Completa tu perfil para estudiar</strong><p>Elige el grado que cursas o preparas en tu cuenta.</p><button className="text-button" type="button" onClick={() => navigate("account")}>Ir a mi perfil</button></div>}
-      <nav className={`route-steps${accountId ? " route-steps-profile" : ""}`} aria-label="Pasos de tu ruta">
+      <nav className={`route-steps${accountId ? " route-steps-profile" : ""}${step === "ready" ? " route-steps-ready" : ""}`} aria-label="Pasos de tu ruta">
         {!accountId && <button type="button" className={step === "grade" ? "active" : ""} onClick={() => setStep("grade")}>1. Grado <small>{grade?.label ?? "Por elegir"}</small></button>}
         <button type="button" className={step === "subject" ? "active" : ""} disabled={!grade} onClick={() => setStep("subject")}>{accountId ? "1" : "2"}. Materia <small>{subject?.name ?? "Por elegir"}</small></button>
         <button type="button" className={step === "topic" || step === "ready" ? "active" : ""} disabled={!subject} onClick={() => setStep("topic")}>{accountId ? "2" : "3"}. Tema <small>{topic?.name ?? "Por elegir"}</small></button>
@@ -229,8 +233,8 @@ export default function Home() {
       </section>}
 
       {step === "subject" && <section className="step-card" aria-labelledby="subject-title">
-        <div className="step-intro"><span className="step-number">02</span><div><h3 id="subject-title">Elige una materia</h3><p>Verás las materias disponibles para tu grado.</p></div></div>
-        {!grade ? <p className="empty-state">Selecciona un grado para ver sus materias.</p> : subjectResource.status !== "success" ? <LoadState status={subjectResource.status} retry={subjectResource.retry} empty="No hay materias disponibles para este grado." error="No pudimos cargar las materias. Inténtalo de nuevo." /> : availableSubjects.length === 0 ? <LoadState status="empty" retry={subjectResource.retry} empty="No hay materias disponibles para este grado." error="" /> : (
+        <div className="step-intro"><span className="step-number">{accountId ? "01" : "02"}</span><div><h3 id="subject-title">Elige una materia</h3><p>Verás las materias disponibles para tu grado.</p></div></div>
+        {!grade ? !accountId && <p className="empty-state">Selecciona un grado para ver sus materias.</p> : subjectResource.status !== "success" ? <LoadState status={subjectResource.status} retry={subjectResource.retry} empty="No hay materias disponibles para este grado." error="No pudimos cargar las materias. Inténtalo de nuevo." /> : availableSubjects.length === 0 ? <LoadState status="empty" retry={subjectResource.retry} empty="No hay materias disponibles para este grado." error="" /> : (
           <div className="subject-grid">
             {availableSubjects.map((item) => (
               <button className={`subject-choice ${valid.subjectId === item.id ? "selected" : ""}`} type="button" key={item.id} aria-pressed={valid.subjectId === item.id} onClick={() => { changeSelection((current) => selectSubject(current, item.id)); setStep("topic"); }}>
@@ -243,7 +247,7 @@ export default function Home() {
       </section>}
 
       {step === "topic" && <section className="step-card" aria-labelledby="topic-title">
-        <div className="step-intro"><span className="step-number">03</span><div><h3 id="topic-title">Selecciona un tema</h3><p>Elige lo que te gustaría repasar primero.</p></div></div>
+        <div className="step-intro"><span className="step-number">{accountId ? "02" : "03"}</span><div><h3 id="topic-title">Selecciona un tema</h3><p>Elige lo que te gustaría repasar primero.</p></div></div>
         {!subject ? <p className="empty-state">Selecciona una materia para ver sus temas.</p> : topicResource.status !== "success" ? <LoadState status={topicResource.status} retry={topicResource.retry} empty="No hay temas disponibles para esta materia." error="No se pudo cargar el catálogo. Inténtalo de nuevo." /> : availableTopics.length === 0 ? <LoadState status="empty" retry={topicResource.retry} empty="No hay temas disponibles para esta materia." error="" /> : (
           <div className="topic-list">
             {availableTopics.map((item) => (
@@ -260,16 +264,13 @@ export default function Home() {
         <div><p className="eyebrow">Tu selección</p><h2>{topic ? topic.name : "Preparando tu ruta…"}</h2><p>{topic && grade && subject ? `${grade.label} · ${subject.name}` : "Estamos cargando el tema que elegiste."}</p></div>
         <span aria-hidden="true">✦</span>
       </section>
-      <div className="route-actions"><button className="text-button" type="button" onClick={() => setStep("topic")}>Cambiar tema</button>{!accountId && <button className="text-button" type="button" onClick={() => setStep("grade")}>Cambiar grado</button>}</div>
       <DiagnosticDemo key={`${valid.gradeId ?? ""}/${valid.subjectId ?? ""}/${valid.topicId ?? ""}`} selection={valid} />
       </>}
-      <p className="catalog-note" role="note">Contenido académico provisional pendiente de revisión docente. Las cuentas de menores siguen deshabilitadas.</p>
-      </div>
-      <div hidden={view === "study"}>
-        <div className="section-heading"><p className="eyebrow">Apoyo académico</p><h1>{view === "progress" ? "Mi progreso" : "Mi cuenta"}</h1><p>{view === "progress" ? "Consulta tus intentos, prácticas y sugerencias de estudio." : "Gestiona tu perfil de estudiante y tus datos."}</p></div>
+      {step !== "ready" && <p className="catalog-note" role="note">Contenido académico provisional pendiente de revisión docente.</p>}
       </div>
       <div hidden={view === "study"}><AccountPanel section={view === "account" ? "account" : "progress"}
         onOpenAccount={() => navigate("account")}
+        onOpenDemoMinor={() => setDemoMinorOpen(true)}
         onProfileSaved={(gradeId, initial) => {
           profileGradeRef.current = gradeId;
           setProfileGradeId(gradeId);

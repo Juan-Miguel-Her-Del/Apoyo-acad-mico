@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
+import { openAuthStore } from "../src/lib/auth.ts";
 
 const browser = process.env.CHROME_PATH ?? (process.platform === "win32"
   ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" : "google-chrome");
@@ -69,8 +70,7 @@ try {
     await waitFor(() => evaluate("document.readyState === 'complete'"), "página cargada");
   }
   async function selectTopic() {
-    await text(".grade-groups", "10.º");
-    await click(".grade-choice", "10.º");
+    await click(".route-steps button", "1. Materia");
     await text(".subject-grid", "Matemáticas");
     await click(".subject-choice", "Matemáticas");
     await text(".topic-list", "Razones y funciones");
@@ -82,12 +82,17 @@ try {
   await send("Runtime.enable");
   await navigate();
   const email = `diagnostic-${Date.now()}@example.test`;
-  const registration = await evaluate(`fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(email)}, password: 'DemoPassword-1234', adultConfirmed: true }) }).then(async (response) => ({ status: response.status, body: await response.json() }))`);
-  assert.equal(registration.status, 201, `registro adulto: ${JSON.stringify(registration.body)}`);
+  const store = openAuthStore();
+  try {
+    const account = await store.register({ email, password: "DemoPassword-1234", adultConfirmed: true });
+    store.saveProfile(account.user.id, { displayName: "Prueba diagnóstica", gradeId: "G10" });
+  } finally { store.close(); }
   const anonymous = await fetch(`${baseUrl}/api/diagnostic/attempt?gradeId=G10&subjectId=MAT&topicId=G10-MAT`);
   assert.equal(anonymous.status, 401, "sin cookie no se accede a intentos");
   assert.equal((await fetch(`${baseUrl}/api/diagnostic/attempts`)).status, 401,
     "sin cookie no se accede al historial diagnóstico");
+  const login = await evaluate(`fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(email)}, password: 'DemoPassword-1234' }) }).then((response) => response.status)`);
+  assert.equal(login, 200, "la cuenta de prueba debe iniciar sesión");
   await navigate();
   await selectTopic();
   await text(".diagnostic-account-attempt", "Pregunta 1 de 4");

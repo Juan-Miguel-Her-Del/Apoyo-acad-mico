@@ -99,10 +99,19 @@ try {
     }
     if (selector.startsWith(".account-deletion")) {
       await evaluate("[...document.querySelectorAll('.main-nav button')].find((item) => item.textContent === 'Cuenta')?.click()");
+      await evaluate("[...document.querySelectorAll('.account-panel .text-button')].find((item) => item.textContent.includes('Datos y seguridad'))?.click()");
       await waitFor(() => evaluate("document.querySelector('.account-deletion') !== null"), "gestión de cuenta");
     }
     const expression = `[...document.querySelectorAll(${JSON.stringify(selector)})].find((item) => item.textContent.includes(${JSON.stringify(fragment)}))?.click()`;
     await evaluate(expression);
+  }
+  async function finishLesson() {
+    await waitText(".chapter-progress", "Parte 1 de 3");
+    await click(".study-screen .primary-button", "Siguiente parte");
+    await waitText(".chapter-progress", "Parte 2 de 3");
+    await click(".study-screen .primary-button", "Siguiente parte");
+    await waitText(".chapter-progress", "Parte 3 de 3");
+    await click(".study-screen .primary-button", "Comprobar lo aprendido");
   }
 
   await send("Page.enable");
@@ -131,8 +140,38 @@ try {
   const mailConfigured = await evaluate("fetch('/api/auth/email-status').then((response) => response.json()).then((body) => body.configured)");
   if (!mailConfigured) await waitText(".account-panel", "envío de correos de confirmación aún no está configurado");
   await click(".account-type-choice button", "menor de 18");
-  await waitText(".student-account-gate", "registro de menores sigue cerrado");
+  await waitText(".student-account-gate", "registro real de menores sigue cerrado");
   assert.equal(await evaluate("document.querySelector('.account-panel form') === null"), true);
+  await click(".student-account-gate button", "Crear perfil ficticio de prueba");
+  await waitText(".demo-profile-picker", "Perfiles ficticios de estudiantes");
+  await evaluate("document.querySelector('.demo-create select').value = 'G05'; document.querySelector('.demo-create select').dispatchEvent(new Event('change', { bubbles: true }))");
+  await click(".demo-create button", "Crear perfil ficticio");
+  await waitText(".demo-study-flow", "Perfil ficticio 1");
+  assert.equal(await evaluate("document.querySelector('.demo-study-flow .grade-choice') === null"), true, "el grado ficticio queda fijo en su perfil");
+  await click(".demo-study-flow .subject-choice", "Matemáticas");
+  await click(".demo-study-flow .topic-choice", "Problemas con fracciones");
+  await click(".diagnostic-card .primary-button", "Empezar a estudiar");
+  await waitText(".diagnostic-panel", "Antes de comenzar");
+  await click(".diagnostic-panel .primary-button", "Comenzar preguntas");
+  for (let index = 0; index < 2; index += 1) {
+    await waitText(".question-progress", `Pregunta ${index + 1} de 2`);
+    await evaluate("document.querySelector('.diagnostic-panel .answer-option input').click()");
+    await click(".diagnostic-panel .primary-button", "Revisar respuesta");
+    await waitFor(() => evaluate("document.querySelector('.answer-feedback .primary-button') !== null"), "respuesta del perfil ficticio");
+    await click(".answer-feedback .primary-button", index === 0 ? "Siguiente pregunta" : "Ver resumen");
+  }
+  await click(".main-nav button", "Mi progreso");
+  await waitText(".demo-progress", "Problemas con fracciones");
+  await click(".main-nav button", "Perfil");
+  await click(".demo-profile-details button", "Cambiar de perfil");
+  await click(".demo-profile-list button", "Perfil ficticio 1");
+  await click(".main-nav button", "Mi progreso");
+  await waitText(".demo-progress", "Problemas con fracciones");
+  await click(".main-nav button", "Perfil");
+  await click(".demo-profile-details button", "Borrar este perfil ficticio");
+  await waitText(".demo-profile-picker", "Perfiles ficticios de estudiantes");
+  assert.equal(await evaluate("localStorage.getItem('apoyo-perfiles-ficticios-v1')"), "[]");
+  await click(".demo-profile-picker button", "Volver al inicio");
   await click(".main-nav button", "Estudiar");
   const testAccounts = process.env.BROWSER_TEST_ACCOUNTS === "true";
   const testEmail = `demo-${Date.now()}@example.test`;
@@ -209,9 +248,9 @@ try {
   await waitText(".skill-results", "señal de dificultad (demo)");
   assert.equal(await evaluate("document.querySelector('.skill-results li').textContent.includes('0/2 aciertos; preguntas 1, 2')"), true);
   await click(".diagnostic-panel .primary-button", "Continuar a estudiar");
-  await waitText(".diagnostic-card", "Estudia un tema y ponlo en práctica");
-  await waitText(".diagnostic-panel", "Explicación breve");
-  await click(".quick-practice summary", "Prueba rápida sin cuenta");
+  await waitText(".study-screen", "Explicación");
+  await finishLesson();
+  await waitText(".quick-practice", "Elige una respuesta");
   await evaluate("document.querySelector('.quick-practice .answer-option input').click()");
   await click(".quick-practice .primary-button", "Revisar respuesta");
   await waitText(".quick-practice .answer-feedback", "¡Correcto!");
@@ -261,12 +300,19 @@ try {
         await click(".diagnostic-account-attempt .answer-feedback .primary-button", questionNumber === 4 ? "Ver resumen" : "Siguiente pregunta");
       }
       await waitText(".diagnostic-account-attempt", "Terminaste la demostración");
-      await waitText(".account-panel", topic);
+      await click(".main-nav button", "Mi progreso");
+      await click(".screen-card-grid button", "Diagnósticos");
+      await waitText(".progress-detail-screen", topic);
+      await click(".screen-back", "Volver a mi progreso");
+      await click(".main-nav button", "Estudiar");
     }
     await completeAccountDiagnostic("Química", "Reacciones inorgánicas");
     await completeAccountDiagnostic("Matemáticas", "Razones y funciones");
     await click(".diagnostic-account-attempt .primary-button", "Continuar a estudiar");
-    await waitText(".diagnostic-panel", "Explicación breve");
+    await waitText(".study-screen", "Explicación");
+    await finishLesson();
+    await waitText(".explanation-followup", "Comprueba lo que entendiste");
+    await click(".study-screen .primary-button", "Ir a la práctica");
     await click(".practice-session .primary-button", "Empezar práctica de dos preguntas");
     await waitText(".practice-session .question-progress", "Pregunta 1 de 2");
     await evaluate("document.querySelector('.practice-session .answer-option input').click()");
@@ -281,14 +327,22 @@ try {
     await waitFor(() => evaluate("document.querySelector('.practice-session .answer-feedback') !== null"), "respuesta de práctica 2");
     await click(".practice-session .answer-feedback .primary-button", "Ver resultado");
     await waitText(".practice-result", "Práctica terminada");
+    await click(".main-nav button", "Mi progreso");
+    await click(".screen-card-grid button", "Evolución");
     await waitText(".domain-summary", "Indeterminado");
     assert.equal(await evaluate("document.querySelectorAll('.skill-overview li').length"), 2);
     assert.equal(await evaluate("document.querySelectorAll('.progress-bars li').length"), 1);
+    await click(".screen-back", "Volver a mi progreso");
+    await click(".main-nav button", "Estudiar");
     const closedPractice = await evaluate("fetch('/api/practice/answer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: localStorage.getItem('apoyo-practice:G10-MAT'), questionId: 'practice-g10-mat-02', optionId: 'a' }) }).then((response) => response.status)");
     assert.equal(closedPractice, 409, "una sesión terminada no debe cambiar de resultado");
     const forgedStudy = await evaluate("fetch('/api/progress', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gradeId: 'G10', subjectId: 'MAT', topicId: 'G10-MAT', kind: 'study', completed: true }) }).then((response) => response.status)");
     assert.equal(forgedStudy, 400, "el avance de práctica no puede declararse desde el cliente");
-    await waitText(".account-panel", "Razones y funciones trigonométricas");
+    await click(".main-nav button", "Mi progreso");
+    await click(".screen-card-grid button", "Prácticas");
+    await waitText(".progress-detail-screen", "Razones y funciones trigonométricas");
+    await click(".screen-back", "Volver a mi progreso");
+    await click(".main-nav button", "Estudiar");
     await click(".practice-result .text-button", "Iniciar otra ronda");
     await waitText(".practice-session .question-progress", "Pregunta 1 de 2");
     await waitText(".practice-question", "Nivel de esta pregunta: 2");
@@ -302,13 +356,19 @@ try {
     await waitFor(() => evaluate("document.querySelector('.practice-session .answer-feedback') !== null"), "respuesta de segunda ronda 2");
     await click(".practice-session .answer-feedback .primary-button", "Ver resultado");
     await waitText(".practice-result", "Práctica terminada");
+    await click(".main-nav button", "Mi progreso");
+    await click(".screen-card-grid button", "Evolución");
     await waitFor(() => evaluate("document.querySelectorAll('.progress-bars li').length === 2"), "dos puntos de progreso del subtema");
     assert.equal(await evaluate("document.querySelector('.domain-summary').textContent.includes('Indeterminado')"), false);
+    await click(".screen-back", "Volver a mi progreso");
+    await click(".main-nav button", "Estudiar");
     await click(".practice-result .text-button", "Iniciar otra ronda");
     await waitText(".practice-session .question-progress", "Pregunta 1 de 2");
     await click(".practice-session > .text-button", "Terminar práctica ahora");
     await waitText(".practice-result", "sin respuestas");
-    await waitText(".account-panel", "terminada sin respuestas");
+    await click(".main-nav button", "Mi progreso");
+    await click(".screen-card-grid button", "Prácticas");
+    await waitText(".progress-detail-screen", "terminada sin respuestas");
     await waitFor(() => evaluate("document.querySelector('.comparison-result') !== null"), "comparación de dos rondas respondidas");
     const guestStatus = await evaluate("fetch('/api/auth/logout', { method: 'POST' }).then((response) => response.status)");
     assert.equal(guestStatus, 200);
@@ -369,7 +429,7 @@ try {
     await click(".diagnostic-card .text-button", "Salir de la demostración");
     assert.equal(await evaluate("document.querySelector('.diagnostic-panel') === null"), true);
     await click(".diagnostic-card .primary-button", "Empezar a estudiar");
-    await waitText(".diagnostic-panel", "no recibirás una nota académica");
+    await waitText(".diagnostic-panel", "No recibirás una nota académica");
     await click(".diagnostic-panel .primary-button", "Comenzar preguntas");
     await waitText(".question-progress", "Pregunta 1 de 1");
     assert.equal(await evaluate("document.querySelector('.diagnostic-panel progress').max"), 1);
@@ -532,12 +592,9 @@ try {
     }
     await waitText(".diagnostic-panel", "Terminaste la demostración");
     await click(".diagnostic-panel .primary-button", "Continuar a estudiar");
-    await waitText(".diagnostic-panel", "Explicación breve");
-    await waitText(".explanation-followup", "Comprueba lo que entendiste");
-    await waitFor(() => evaluate("document.querySelector('.explanation-followup button')?.disabled === false"), "valoración lista");
-    await click(".explanation-followup button", "Sí, me ayudó");
-    await waitText(".explanation-followup [role='status']", "me ayudó");
-    await click(".quick-practice summary", "Prueba rápida sin cuenta");
+    await waitText(".study-screen", "Explicación");
+    await finishLesson();
+    await waitText(".quick-practice", "Elige una respuesta");
     await evaluate("document.querySelector('.quick-practice .answer-option input').click()");
     await click(".quick-practice .primary-button", "Revisar respuesta");
     await waitFor(() => evaluate("document.querySelector('.quick-practice .answer-feedback') !== null"), "retroalimentación de práctica");
@@ -550,8 +607,13 @@ try {
     assert.equal(restoredLogin, 200);
     await navigate();
     await waitText(".account-panel", testEmail);
-    await waitText(".account-panel", "10.º · Química");
-    await waitText(".account-panel", "Razones y funciones trigonométricas");
+    await click(".main-nav button", "Mi progreso");
+    await click(".screen-card-grid button", "Diagnósticos");
+    await waitText(".progress-detail-screen", "10.º · Química");
+    await click(".screen-back", "Volver a mi progreso");
+    await click(".screen-card-grid button", "Prácticas");
+    await waitText(".progress-detail-screen", "Razones y funciones trigonométricas");
+    await click(".main-nav button", "Estudiar");
     await click(".route-steps button", "1. Materia");
     await waitText(".subject-grid", "Matemáticas");
     await click(".subject-choice", "Matemáticas");
@@ -587,7 +649,9 @@ try {
     const loginStatus = await evaluate(`fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ${JSON.stringify(testEmail)}, password: ${JSON.stringify(testPassword)} }) }).then((response) => response.status)`);
     assert.equal(loginStatus, 200);
     await navigate();
-    await waitText(".account-panel", "Razones y funciones trigonométricas");
+    await click(".main-nav button", "Mi progreso");
+    await click(".screen-card-grid button", "Prácticas");
+    await waitText(".progress-detail-screen", "Razones y funciones trigonométricas");
     const secondAttempt = await evaluate(`(async () => {
       const started = await fetch('/api/practice/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gradeId: 'G10', subjectId: 'MAT', topicId: 'G10-MAT' }) }).then((response) => response.json());
       for (const question of started.questions) {
@@ -598,6 +662,9 @@ try {
     })()`);
     assert.equal(secondAttempt, true);
     await navigate();
+    await waitText(".account-panel", testEmail);
+    await click(".main-nav button", "Mi progreso");
+    await click(".screen-card-grid button", "Prácticas");
     await waitText(".comparison-result", "Anterior:");
     await waitText(".comparison-result", "Reciente:");
     assert.equal(await evaluate("document.querySelector('.comparison-label select').value"), "G10-MAT");

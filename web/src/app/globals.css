@@ -90,3 +90,99 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f5f7f
 .welcome-intro{padding:36px 0}.welcome-intro h1{max-width:650px;font-size:clamp(38px,5vw,64px);line-height:1.04;margin-bottom:25px}.welcome-intro>p{max-width:590px;font-size:17px;line-height:1.6;color:#53627a}.welcome-intro ul{max-width:560px;padding-left:23px;line-height:1.75;color:#425b76}.welcome-intro .welcome-note{margin:22px 0 5px;padding:14px 16px;border-left:3px solid var(--blue);background:#edf4ff;font-size:13px}.welcome-layout .account-card-compact{display:block;margin:0;padding:28px;border-radius:23px;box-shadow:0 18px 45px #273a5a12}.welcome-layout .account-card-compact>div:first-child{margin-bottom:17px}.welcome-layout .account-card-compact .account-panel{padding:20px}.welcome-layout .account-card-compact .account-message{margin-top:16px!important}.account-panel select{width:100%;min-height:42px;padding:10px 12px;border:1px solid #becbdd;border-radius:8px;background:white;color:var(--ink);font:inherit}.account-panel form>p{margin:0;color:var(--muted);font-size:13px}.verify-card{max-width:590px;margin:90px auto;padding:40px;border:1px solid var(--line);border-radius:20px;background:white;box-shadow:0 14px 35px #273a5a10}.verify-card h1{font-size:32px}.verify-card p{line-height:1.6;color:#53627a}.verify-card a{color:var(--blue);font-weight:700}
 @media(max-width:850px){.welcome-layout{grid-template-columns:1fr;gap:8px;padding:24px 0 45px}.welcome-intro{padding:15px 0}.welcome-intro h1{font-size:clamp(35px,7vw,52px)}}
 @media(max-width:600px){.welcome-layout .account-card-compact{padding:20px}.welcome-layout .account-card-compact .account-panel{padding:16px}.welcome-intro>p{font-size:15px}.verify-card{margin:35px auto;padding:25px}}
+
+/* Recorrido por pantallas: una decisión o actividad principal en cada vista. */
+:root{--ink:#17313a;--muted:#60737a;--line:#dce7e3;--blue:#08766f;--soft:#e9f6f2}
+body{background:#f5f7f4;color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.app-shell{max-width:1160px;padding:0 30px}
+.site-header{min-height:82px;border-bottom:1px solid var(--line)}
+.brand-mark{border-radius:14px;background:#08766f;box-shadow:0 8px 18px #08766f2c}
+.brand-copy strong{font-size:18px;letter-spacing:-.035em}
+.main-nav{border-color:#dce8e3;box-shadow:0 3px 14px #17313a08}
+.main-nav button[aria-current=page]{background:#dff2eb;color:#075e58}
+.main-nav button:hover:not([aria-current=page]){background:#f1f7f4;color:var(--ink)}
+.eyebrow{color:#08766f}
+.compact-hero{margin-top:27px;min-height:205px;background:linear-gradient(115deg,#0c5e64,#147e77 68%,#4aa78d);box-shadow:0 18px 32px #0b5e5e24}
+.compact-hero .hero-content{padding:35px 0 32px 42px}
+.compact-hero .hero-description{color:#e5f7ee}
+.hero .eyebrow{color:#bde8d9}
+.hero-art span{color:#0d6764}
+.flow-heading{padding:31px 3px 15px}
+.flow-heading h2{font-size:27px}
+.step-card,.diagnostic-card,.account-card{border-color:var(--line);box-shadow:0 12px 32px #17313a0a}
+.step-card{max-width:970px;margin:0 auto 20px;padding:29px 34px}
+.step-number{background:#dff2eb;color:#08766f}
+.grade-choice.selected,.subject-choice.selected,.topic-choice.selected{border-color:#08766f;background:#eff9f5;box-shadow:inset 0 0 0 1px #08766f}
+.grade-choice:hover:not(:disabled),.subject-choice:hover,.topic-choice:hover{border-color:#40a795}
+.topic-choice.selected .radio-indicator{border-color:#08766f}
+.route-steps{max-width:970px;margin-left:auto;margin-right:auto}
+.route-steps button.active{border-color:#08766f;background:#e9f6f2;color:#075e58;box-shadow:inset 0 0 0 1px #08766f}
+.route-steps-ready{max-width:860px;margin-top:22px;margin-bottom:11px}
+.route-steps-ready button{padding:10px 14px;font-size:12px}
+.profile-grade-banner{max-width:970px;margin-left:auto;margin-right:auto;border-color:#cfe6db;background:#eff9f5;color:#175d55}
+.selection-summary{max-width:860px;margin:0 auto 15px;padding:18px 23px;border:1px solid #cfe8df;background:#eaf6ef}
+.selection-summary h2{font-size:22px}
+.selection-summary>span{width:43px;height:43px;background:#d5eee2;color:#08766f}
+.diagnostic-card{max-width:860px;margin:0 auto 28px;padding:28px 34px}
+.diagnostic-panel{max-width:none;background:#f8fbf9;border-color:#e1ece7}
+.primary-button{background:#08766f;border-radius:10px;cursor:pointer}
+.primary-button:hover:not(:disabled){background:#065b56}
+.primary-button:disabled{background:#a7beb7}
+.text-button{color:#08766f}
+.answer-option:has(input:checked){border-color:#08766f;background:#eaf7f1}
+.diagnostic-panel progress,.practice-question progress{accent-color:#08766f}
+.study-screen .lesson-content{max-width:720px;margin:21px auto 0;padding:25px 29px;border:1px solid #e2ece7;border-radius:15px;background:#fbfdfb}
+.lesson-content h3{margin:21px 0 8px;font-size:17px}
+.lesson-content h4{margin:21px 0 7px;font-size:14px;color:#345d59}
+.lesson-content>p{line-height:1.7}
+.lesson-content .chapter-progress{margin:16px 0 3px;color:#08766f;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.lesson-content .content-status{display:inline-block;margin:0;padding:7px 11px;border-radius:8px;background:#fff6e5;color:#77551c;font-size:12px}
+.lesson-content .quick-practice,.lesson-content .explanation-followup,.lesson-content .practice-session{margin:0;padding:0;border:0}
+.screen-actions{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin-top:25px}
+.screen-actions .text-button{margin:0}
+.quick-practice fieldset{margin:16px 0;border:0;padding:0}
+.quick-practice legend{font-weight:700}
+.preview-exit{margin:16px 0 0}
+.welcome-layout{gap:32px;align-items:stretch;padding:31px 0 50px}
+.welcome-intro{position:relative;overflow:hidden;padding:43px;border:1px solid #dce9df;border-radius:25px;background:radial-gradient(circle at 93% 14%,#d8efe0 0,#d8efe0 18%,transparent 19%),linear-gradient(140deg,#fffdf5,#e8f5ed);box-shadow:0 15px 35px #17313a0a}
+.welcome-intro h1{font-size:clamp(35px,4.5vw,57px)}
+.welcome-intro>p{font-size:16px}
+.welcome-intro .welcome-note{border-left-color:#08766f;background:#e9f6ed}
+.welcome-layout .account-card-compact{border-color:#dce9df;box-shadow:0 15px 35px #17313a0d}
+.account-card{max-width:1000px;margin:28px auto 35px;grid-template-columns:minmax(190px,250px) minmax(0,1fr);padding:29px}
+.account-panel{background:#f7faf8}
+.account-card .account-panel>ul{max-height:none;overflow:visible}
+.study-summary{padding:18px;border-color:#cfe6db;background:#eff9f5}
+.study-summary h3{margin-top:0}
+.study-summary strong{display:inline;color:#075e58}
+.screen-card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:17px 0}
+.screen-card-grid button{display:flex;flex-direction:column;align-items:flex-start;gap:11px;min-height:150px;padding:18px;border:1px solid #d7e6de;border-radius:15px;background:white;color:var(--ink);text-align:left;cursor:pointer}
+.screen-card-grid button:hover{border-color:#08766f;background:#f5fbf7;transform:translateY(-2px)}
+.screen-card-grid button strong{color:#17313a;font-size:17px}
+.screen-card-grid button span{color:#60737a;font-size:12px;line-height:1.4}
+.screen-card-grid button span:last-child{margin-top:auto;color:#08766f;font-weight:700}
+.progress-detail-screen{padding:7px 2px}
+.progress-detail-screen>h3:first-child{margin-top:3px}
+.progress-detail-screen>ul{padding-left:0;list-style:none}
+.progress-detail-screen>ul li{padding:12px 0;border-bottom:1px solid var(--line);font-size:13px;line-height:1.5}
+.screen-back{margin:4px 0 17px}
+.content-status{font-size:12px;color:#74613e}
+.security-screen{padding:3px 4px}
+.security-screen a{color:#08766f;font-weight:700}
+.account-deletion{margin-top:22px}
+.demo-student-notice{margin:20px 0;padding:13px 17px;border:1px solid #ead9aa;border-radius:11px;background:#fff8e7;color:#695226;font-size:13px;line-height:1.5}
+.demo-profile-picker{margin-top:23px}
+.demo-profile-picker h1,.demo-study-flow h1,.demo-progress h1,.demo-profile-details h1{font-size:clamp(25px,3vw,34px)}
+.demo-profile-list{margin:28px 0}.demo-profile-list h2{font-size:18px}
+.demo-profile-list .subject-choice{width:100%;margin:8px 0;justify-content:space-between}
+.demo-create{display:flex;flex-wrap:wrap;align-items:end;gap:16px;margin:24px 0}
+.demo-create label{display:grid;gap:7px;font-weight:700}
+.demo-create select{min-width:230px;padding:11px;border:1px solid var(--line);border-radius:9px;background:#fff;font:inherit}
+.demo-progress ul{list-style:none;padding:0}.demo-progress li{padding:13px 0;border-bottom:1px solid var(--line)}
+.demo-profile-details .text-button{display:block;margin:16px 0}
+.student-account-gate .primary-button{margin:14px 0}
+.catalog-note{max-width:970px;margin-left:auto;margin-right:auto}
+.site-footer{margin-top:28px;color:#72857e}
+@media(max-width:850px){.account-card{grid-template-columns:1fr}.screen-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.welcome-intro{padding:33px}.compact-hero .hero-content{padding:32px}}
+@media(max-width:600px){.app-shell{padding:0 16px}.site-header{gap:10px}.brand-copy strong{font-size:16px}.main-nav{margin-top:10px}.main-nav button{padding:10px 5px;font-size:11px}.compact-hero{margin-top:17px;min-height:auto}.compact-hero .hero-content{padding:29px 23px}.compact-hero h1{font-size:32px}.flow-heading{padding-top:28px}.step-card,.diagnostic-card{padding:22px 19px}.route-steps-ready{margin-top:16px}.route-steps-ready button{padding:9px 8px}.selection-summary{padding:15px 17px}.study-screen .lesson-content{padding:17px;margin-top:16px}.screen-card-grid{grid-template-columns:1fr}.screen-card-grid button{min-height:116px}.account-card{padding:19px}.welcome-layout{padding-top:22px}.welcome-intro{padding:27px 23px}.welcome-intro h1{font-size:37px}.screen-actions{align-items:stretch;flex-direction:column}.screen-actions .primary-button{width:100%}}
+@media(prefers-reduced-motion:reduce){.screen-card-grid button:hover{transform:none}}
