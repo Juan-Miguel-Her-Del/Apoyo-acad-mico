@@ -162,6 +162,7 @@ try {
   }
   await click(".main-nav button", "Mi progreso");
   await waitText(".demo-progress", "Problemas con fracciones");
+  await waitText(".demo-progress", "No hay fortalezas observadas todavía");
   await click(".main-nav button", "Perfil");
   await click(".demo-profile-details button", "Cambiar de perfil");
   await click(".demo-profile-list button", "Perfil ficticio 1");
@@ -171,6 +172,24 @@ try {
   await click(".demo-profile-details button", "Borrar este perfil ficticio");
   await waitText(".demo-profile-picker", "Perfiles ficticios de estudiantes");
   assert.equal(await evaluate("localStorage.getItem('apoyo-perfiles-ficticios-v1')"), "[]");
+  await evaluate("document.querySelector('.demo-create select').value = 'G10'; document.querySelector('.demo-create select').dispatchEvent(new Event('change', { bubbles: true }))");
+  await click(".demo-create button", "Crear perfil ficticio");
+  await click(".demo-study-flow .subject-choice", "Matemáticas");
+  await click(".demo-study-flow .topic-choice", "Razones y funciones trigonométricas");
+  await click(".diagnostic-card .primary-button", "Empezar a estudiar");
+  await waitText(".diagnostic-panel", "Antes de comenzar");
+  await click(".diagnostic-panel .primary-button", "Comenzar preguntas");
+  for (const [index, expected] of ["Cateto opuesto / hipotenusa", "3/5"].entries()) {
+    await waitText(".question-progress", `Pregunta ${index + 1} de 2`);
+    await evaluate(`[...document.querySelectorAll('.diagnostic-panel .answer-option')].find((item) => item.textContent.includes(${JSON.stringify(expected)}))?.querySelector('input')?.click()`);
+    await click(".diagnostic-panel .primary-button", "Revisar respuesta");
+    await waitText(".answer-feedback.correct", "Respuesta correcta");
+    await click(".answer-feedback .primary-button", index === 0 ? "Siguiente pregunta" : "Ver resumen");
+  }
+  await click(".main-nav button", "Mi progreso");
+  await waitText(".demo-strengths", "razón trigonométrica");
+  await click(".main-nav button", "Perfil");
+  await click(".demo-profile-details button", "Borrar este perfil ficticio");
   await click(".demo-profile-picker button", "Volver al inicio");
   await click(".main-nav button", "Estudiar");
   const testAccounts = process.env.BROWSER_TEST_ACCOUNTS === "true";

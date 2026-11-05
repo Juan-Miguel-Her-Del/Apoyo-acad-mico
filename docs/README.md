@@ -44,6 +44,7 @@ La fuente funcional vigente es el [proyecto AP de Jira](https://juanmiguelsworks
 | [Bienvenida y verificación de correo](40-bienvenida-registro-verificacion.md) | Registro de mayores con perfil previo, confirmación por correo y configuración pendiente del proveedor |
 | [Renovación del diseño](41-renovacion-diseno.md) | Auditoría de redundancias y botones, recorrido por pantallas y comprobación en navegador |
 | [Contenido y perfiles ficticios](42-contenido-y-perfiles-ficticios.md) | Lecciones de tres partes en 26 combinaciones, simulación local de perfiles y límites de publicación |
+| [Estado y cierre del Sprint 3](43-estado-sprint-3-y-pasos-de-cierre.md) | Nueve incidencias abiertas, avance verificable y pasos para preparar OpenAI y el contenido aprobado |
 | [Corrección explicada](21-retroalimentacion-practica.md) | Contrato y puerta de revisión docente de correcciones |
 | [Cuentas estudiantiles](22-cuentas-estudiantes-consentimiento.md) | Base técnica interna, autorización y decisiones pendientes |
 | [Criterios de aceptación](criterios-aceptacion.md) | Escenarios comprobables para las historias |

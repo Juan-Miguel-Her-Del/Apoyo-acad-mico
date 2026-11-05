@@ -12,7 +12,7 @@ Antes de publicar contenido académico para estudiantes reales faltan revisión 
 
 ## Simulación de perfiles de menores
 
-En «Crear cuenta» → «Estudiante menor de 18» aparece «Crear perfil ficticio de prueba». La simulación permite crear hasta ocho perfiles con un alias automático y un grado elegido. No solicita nombre, correo, contraseña, documento, fotografía ni datos del representante. El grado queda fijo durante el estudio. El diagnóstico de demostración guarda en `localStorage` solo el tema, el número de respuestas, el número de aciertos y la fecha. El perfil y sus resultados pueden borrarse desde «Perfil».
+En «Crear cuenta» → «Estudiante menor de 18» aparece «Crear perfil ficticio de prueba». La simulación permite crear hasta ocho perfiles con un alias automático y un grado elegido. No solicita nombre, correo, contraseña, documento, fotografía ni datos del representante. El grado queda fijo durante el estudio. El diagnóstico de demostración guarda en `localStorage` el tema, el número de respuestas, el número de aciertos, la fecha y un resumen de aciertos por subtema. «Mi progreso» muestra las fortalezas observadas cuando hay al menos dos respuestas distintas correctas del mismo subtema, o explica por qué todavía no hay evidencia suficiente. Esta señal es provisional y no demuestra dominio académico. El perfil y sus resultados pueden borrarse desde «Perfil».
 
 Estos perfiles **no son cuentas reales de menores**: no tienen sesión de servidor, recuperación, sincronización entre dispositivos ni práctica guardada. Las rutas `/api/student/*` continúan cerradas. Los datos de prueba solo persisten en el navegador donde se crearon; borrar los datos del sitio también los elimina. La interfaz pide usar únicamente información ficticia.
 

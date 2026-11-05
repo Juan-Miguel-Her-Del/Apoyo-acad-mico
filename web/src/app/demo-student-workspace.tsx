@@ -5,7 +5,8 @@ import { grades, subjects, topics } from "@/lib/catalog";
 import type { Selection } from "@/lib/selection";
 import DiagnosticDemo from "./diagnostic-demo";
 
-type Result = { topicId: string; answered: number; correctCount: number; at: string };
+type SkillResult = { skill: string; answered: number; correct: number; strength: boolean };
+type Result = { topicId: string; answered: number; correctCount: number; at: string; skills?: SkillResult[] };
 type Profile = { id: string; label: string; gradeId: string; results: Result[] };
 const storageKey = "apoyo-perfiles-ficticios-v1";
 
@@ -20,7 +21,12 @@ function loadProfiles(): Profile[] {
         topics.some((topic) => topic.id === result.topicId && topic.gradeId === item.gradeId) &&
         Number.isInteger(result.answered) && result.answered >= 0 && result.answered <= 4 &&
         Number.isInteger(result.correctCount) && result.correctCount >= 0 && result.correctCount <= result.answered &&
-        typeof result.at === "string" && !Number.isNaN(Date.parse(result.at)))).slice(0, 8);
+        typeof result.at === "string" && !Number.isNaN(Date.parse(result.at)) &&
+        (result.skills === undefined || (Array.isArray(result.skills) && result.skills.every((skill) =>
+          skill && typeof skill.skill === "string" && skill.skill.length > 0 && skill.skill.length <= 120 &&
+          Number.isInteger(skill.answered) && skill.answered >= 0 && skill.answered <= result.answered &&
+          Number.isInteger(skill.correct) && skill.correct >= 0 && skill.correct <= skill.answered &&
+          typeof skill.strength === "boolean"))))).slice(0, 8);
   } catch { return []; }
 }
 
@@ -40,6 +46,12 @@ export default function DemoStudentWorkspace({ onExit }: { onExit: () => void })
   const availableSubjects = subjects.filter((item) => item.active && grade && item.grades.includes(grade.number));
   const availableTopics = topics.filter((item) => item.active && item.pilotCandidate && item.gradeId === profile?.gradeId && item.subjectId === selection.subjectId);
   const currentTopic = availableTopics.find((item) => item.id === selection.topicId);
+  const latestSkills = new Map<string, SkillResult & { topicId: string }>();
+  for (const result of profile?.results ?? []) for (const skill of result.skills ?? []) {
+    const key = `${result.topicId}/${skill.skill}`;
+    if (!latestSkills.has(key)) latestSkills.set(key, { ...skill, topicId: result.topicId });
+  }
+  const observedStrengths = [...latestSkills.values()].filter((item) => item.strength);
 
   function persist(next: Profile[]) {
     setProfiles(next);
@@ -100,6 +112,11 @@ export default function DemoStudentWorkspace({ onExit }: { onExit: () => void })
               <DiagnosticDemo key={currentTopic.id} selection={selection} onDemoCompleted={recordResult} /></>}
       </section>}
       {view === "progress" && <section className="step-card demo-progress"><p className="eyebrow">{profile.label}</p><h1>Mi progreso de prueba</h1><p>Estos resultados son orientativos y existen solo en este navegador.</p>
+        <h2>Fortalezas observadas en la prueba</h2>
+        {observedStrengths.length ? <ul className="demo-strengths">{observedStrengths.map((item) => <li key={`${item.topicId}/${item.skill}`}><strong>{item.skill}</strong> · {topics.find((topic) => topic.id === item.topicId)?.name} · {item.correct}/{item.answered} aciertos</li>)}</ul>
+          : <p>No hay fortalezas observadas todavía. Se necesitan al menos dos respuestas distintas del mismo subtema, ambas correctas, en un diagnóstico. Esto no significa que no sepas el tema.</p>}
+        <p className="content-status">La señal es provisional y no demuestra dominio académico.</p>
+        <h2>Diagnósticos terminados</h2>
         {profile.results.length ? <ul>{profile.results.map((item, index) => <li key={`${item.at}-${index}`}><strong>{topics.find((topic) => topic.id === item.topicId)?.name ?? "Tema"}</strong> · {item.correctCount}/{item.answered} respuestas correctas · {new Date(item.at).toLocaleDateString("es-CO")}</li>)}</ul> : <p>Aún no hay diagnósticos terminados en este perfil.</p>}
       </section>}
       {view === "profile" && <section className="step-card demo-profile-details"><p className="eyebrow">Simulación local</p><h1>{profile.label}</h1><p>Grado: <strong>{grade?.label}</strong>. Este perfil no tiene correo ni contraseña y no es una cuenta real de menor.</p>

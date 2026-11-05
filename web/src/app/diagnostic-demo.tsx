@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { analyzeDemoSkills } from "@/lib/diagnostic-analysis";
+import { analyzeDemoSkills, diagnosticSkillInsights } from "@/lib/diagnostic-analysis";
 import type { QuestionView } from "@/lib/diagnostic";
 import type { Selection } from "@/lib/selection";
 import DiagnosticAccountAttempt from "./diagnostic-account-attempt";
@@ -12,7 +12,7 @@ type Feedback =
   | { state: "pending"; message: string };
 type Answer = { questionId: string; optionId: string; correct: boolean };
 
-export default function DiagnosticDemo({ selection, onDemoCompleted }: { selection: Selection; onDemoCompleted?: (result: { topicId: string; answered: number; correctCount: number }) => void }) {
+export default function DiagnosticDemo({ selection, onDemoCompleted }: { selection: Selection; onDemoCompleted?: (result: { topicId: string; answered: number; correctCount: number; skills: { skill: string; answered: number; correct: number; strength: boolean }[] }) => void }) {
   const [stage, setStage] = useState<"idle" | "loading" | "intro" | "question" | "finished" | "study" | "account">("idle");
   const [questions, setQuestions] = useState<QuestionView[]>([]);
   const [index, setIndex] = useState(0);
@@ -90,7 +90,11 @@ export default function DiagnosticDemo({ selection, onDemoCompleted }: { selecti
     setOptionId("");
     setError("");
     if (index + 1 >= questions.length) {
-      if (selection.topicId) onDemoCompleted?.({ topicId: selection.topicId, answered: answers.length, correctCount: answers.filter((answer) => answer.correct).length });
+      if (selection.topicId) onDemoCompleted?.({
+        topicId: selection.topicId, answered: answers.length,
+        correctCount: answers.filter((answer) => answer.correct).length,
+        skills: diagnosticSkillInsights(questions, answers).skills.map(({ skill, answered, correct, strength }) => ({ skill, answered, correct, strength })),
+      });
       setStage("finished");
     }
     else setIndex(index + 1);
