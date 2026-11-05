@@ -19,6 +19,8 @@ El acuerdo actual es usar **solo perfiles ficticios de menores**. Por ello, las 
 5. Con esa evidencia, incorpora únicamente las fuentes aprobadas en `src/lib/explanation-sources.ts` con los campos de `ReviewedExplanationSource`. Actualiza en el catálogo `approvedForPublication`, `explanationApproved` y `validatedQuestionCount` **solo** para contenido efectivamente revisado; publica el diagnóstico correspondiente.
 6. Prueba con datos ficticios el recorrido completo: diagnóstico publicado → dificultad por subtema → solicitud a `/api/explanation` → respuesta y ejemplo de la fuente. Revisa exactitud, pertinencia y errores reales del proveedor antes de cerrar AP-128/AP-129/AP-135.
 
+**Comprobación del 5 de noviembre:** `web/.env.local` contiene una entrada no vacía para `OPENAI_API_KEY`. La clave autenticó la consulta del modelo `gpt-6-luna` (HTTP 200), pero la solicitud real a Responses devolvió HTTP 429 con código `credit_balance_exhausted`. Según la documentación de OpenAI, la organización necesita créditos de API. Una vez añadidos, desde `web/` ejecuta `npm.cmd run check:openai`: usa texto matemático ficticio, no imprime la clave ni el contenido generado, y valida que la respuesta extraiga fragmentos de la fuente de prueba. Hasta que esa prueba pase, no hay evidencia de generación real satisfactoria.
+
 La clave por sí sola no quita el bloqueo curricular. El adaptador envía identificadores y fragmentos académicos de la fuente aprobada, no un chat libre ni perfiles de estudiantes.
 
 ## Verificación de esta revisión

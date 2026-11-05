@@ -12,7 +12,8 @@
     "review:ai": "node --experimental-strip-types scripts/ai-quality-report.mjs",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:browser": "node tests/browser-smoke.mjs",
-    "test:diagnostic-browser": "node tests/diagnostic-account-browser.mjs"
+    "test:diagnostic-browser": "node tests/diagnostic-account-browser.mjs",
+    "check:openai": "node --env-file=.env.local --experimental-strip-types scripts/check-openai-connection.mjs"
   },
   "dependencies": {
     "next": "16.3.8",
