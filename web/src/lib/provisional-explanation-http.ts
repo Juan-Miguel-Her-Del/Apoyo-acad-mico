@@ -1,0 +1,33 @@
+import { AuthError } from "./auth.ts";
+import { apiError, ensureSameOrigin, noStore, readJson } from "./auth-http.ts";
+import type { ExplanationProvider } from "./explanation-service.ts";
+import { provisionalExplanationInput, validateProvisionalExplanation } from "./provisional-explanation.ts";
+
+export async function handleProvisionalExplanationRequest(request: Request, deps: {
+  enabled: boolean;
+  provider: ExplanationProvider;
+  consumeQuota: () => boolean;
+}) {
+  try {
+    ensureSameOrigin(request);
+    if (!deps.enabled) return Response.json({ error: "La explicación con IA no está disponible en esta instalación." }, { status: 503, headers: noStore });
+    const body = await readJson(request);
+    if (!body || typeof body !== "object" || Array.isArray(body) ||
+        Object.keys(body).some((key) => !["gradeId", "subjectId", "topicId", "subskillId"].includes(key))) {
+      throw new AuthError(400, "Solicitud no válida.");
+    }
+    const { gradeId, subjectId, topicId, subskillId } = body as Record<string, unknown>;
+    if (![gradeId, subjectId, topicId, subskillId].every((value) => typeof value === "string" && value.length > 0 && value.length <= 120)) {
+      throw new AuthError(400, "Selección no válida.");
+    }
+    const input = provisionalExplanationInput(gradeId as string, subjectId as string, topicId as string, subskillId as string);
+    if (!input) throw new AuthError(400, "El subtema no pertenece a este diagnóstico de prueba.");
+    if (!deps.consumeQuota()) return Response.json({ error: "Límite de pruebas con IA alcanzado. Sigue con la explicación local." }, { status: 429, headers: noStore });
+    let output: unknown;
+    try { output = await deps.provider(input); }
+    catch { return Response.json({ error: "Gemini no respondió. Puedes continuar con la explicación local." }, { status: 503, headers: noStore }); }
+    const result = validateProvisionalExplanation(output, input);
+    if (!result) return Response.json({ error: "La respuesta de Gemini no pasó la comprobación. Continúa con la explicación local." }, { status: 503, headers: noStore });
+    return Response.json(result, { headers: noStore });
+  } catch (error) { return apiError(error); }
+}

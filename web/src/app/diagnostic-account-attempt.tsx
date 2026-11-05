@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { diagnosticSkillInsights, MIN_DIAGNOSTIC_SKILL_ANSWERS } from "@/lib/diagnostic-analysis";
 import type { QuestionView } from "@/lib/diagnostic";
 import type { Selection } from "@/lib/selection";
-import ExplanationPanel from "./explanation-panel";
+import ProvisionalExplanationPanel from "./provisional-explanation-panel";
 import StudyDemo from "./study-demo";
 
 type Attempt = {
@@ -187,7 +187,7 @@ export default function DiagnosticAccountAttempt({ selection, onExit }: { select
       <p>Regla provisional: se necesitan al menos {MIN_DIAGNOSTIC_SKILL_ANSWERS} respuestas del mismo subtema. El porcentaje de confianza describe cantidad y consistencia de respuestas de este intento; no mide probabilidad de dominio. Una mezcla equilibrada de aciertos y errores da 0 % y deja el resultado indeterminado.</p>
       {analysis.skills.length > 0 ? <ul className="skill-results">{analysis.skills.map((result) => <li key={result.skill}>
         <strong>{result.skill}</strong>: {result.strength ? "fortaleza observada (demo)" : result.status === "dificultad-demo" ? "señal de dificultad (demo)" : "indeterminado: evidencia insuficiente o resultado mixto"}. {result.correct}/{result.answered} aciertos. Confianza en la señal: {result.confidence === null ? "insuficiente por pocas respuestas" : `${result.confidence} % (${result.confidenceLevel})`}.
-        {result.status === "dificultad-demo" && <ExplanationPanel attemptId={attempt.id} subskillId={result.skill} label={result.skill} />}
+        {result.status === "dificultad-demo" && <ProvisionalExplanationPanel key={`${attempt.id}/${result.skill}`} selection={selection} subskillId={result.skill} />}
       </li>)}</ul> : <p>No hay respuestas por subtema para analizar.</p>}
       <h4>Fortalezas observadas</h4>
       {analysis.strengths.length > 0 ? <ul className="skill-strengths">{analysis.strengths.map((result) => <li key={result.skill}>{result.skill} · {result.correct}/{result.answered} aciertos · confianza {result.confidence} %</li>)}</ul>

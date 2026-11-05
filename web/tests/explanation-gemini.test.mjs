@@ -70,3 +70,25 @@ test("Gemini sin clave o con salida incompleta no devuelve explicación", async 
     else process.env.GEMINI_API_KEY = oldKey;
   }
 });
+
+test("borrador provisional se identifica como no revisado ante Gemini", async () => {
+  const oldKey = process.env.GEMINI_API_KEY;
+  const oldFetch = globalThis.fetch;
+  try {
+    process.env.GEMINI_API_KEY = "server-gemini-test-key";
+    globalThis.fetch = async (_url, options) => {
+      const request = JSON.parse(options.body);
+      assert.equal(JSON.parse(request.input).sourceStatus, "provisional");
+      assert.match(request.system_instruction, /borrador educativo no revisado/);
+      assert.equal(request.store, false);
+      return Response.json({ status: "completed", steps: [
+        { type: "model_output", content: [{ type: "text", text: JSON.stringify(modelOutput) }] },
+      ] });
+    };
+    assert.deepEqual(await geminiExplanationProvider({ ...input, sourceStatus: "provisional" }), modelOutput);
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = oldKey;
+  }
+});

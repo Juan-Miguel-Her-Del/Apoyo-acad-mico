@@ -30,9 +30,12 @@ export async function geminiExplanationProvider(input: ExplanationProviderInput)
     headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       model, store: false,
-      system_instruction: "Extrae solo fragmentos literales contiguos de explanation y example revisados, adecuados para el grado y dentro de los límites de palabras. No parafrasees ni agregues hechos. Devuelve los identificadores exactamente iguales a la entrada.",
+      system_instruction: input.sourceStatus === "provisional"
+        ? "Esta fuente es un borrador educativo no revisado. Para el subtema solicitado, extrae solo fragmentos literales contiguos de explanation y example, adecuados para el grado y dentro de los límites de palabras. No parafrasees, no agregues hechos y no afirmes que el material está aprobado. Devuelve los identificadores exactamente iguales a la entrada."
+        : "Extrae solo fragmentos literales contiguos de explanation y example revisados, adecuados para el grado y dentro de los límites de palabras. No parafrasees ni agregues hechos. Devuelve los identificadores exactamente iguales a la entrada.",
       input: JSON.stringify({
         topicId: input.topicId, subskillId: input.subskillId, sourceVersion: input.sourceVersion,
+        sourceStatus: input.sourceStatus ?? "reviewed",
         topicName: input.topicName, approvedText: { explanation: input.explanation, example: input.example },
         level: { gradeId: input.gradeId, vocabulary: input.level.vocabulary,
           depth: input.level.depth, maxExplanationWords: input.level.maxExplanationWords,

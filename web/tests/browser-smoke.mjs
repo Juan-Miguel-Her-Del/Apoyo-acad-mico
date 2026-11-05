@@ -188,6 +188,21 @@ try {
   }
   await click(".main-nav button", "Mi progreso");
   await waitText(".demo-strengths", "razón trigonométrica");
+  await click(".main-nav button", "Estudiar");
+  await click(".diagnostic-card .primary-button", "Empezar a estudiar");
+  await waitText(".diagnostic-panel", "Antes de comenzar");
+  await click(".diagnostic-panel .primary-button", "Comenzar preguntas");
+  for (const [index, expected] of ["Cateto adyacente / hipotenusa", "5/3"].entries()) {
+    await waitText(".question-progress", `Pregunta ${index + 1} de 2`);
+    await evaluate(`[...document.querySelectorAll('.diagnostic-panel .answer-option')].find((item) => item.textContent.includes(${JSON.stringify(expected)}))?.querySelector('input')?.click()`);
+    await click(".diagnostic-panel .primary-button", "Revisar respuesta");
+    await waitText(".answer-feedback.incorrect", "Respuesta incorrecta");
+    await click(".answer-feedback .primary-button", index === 0 ? "Siguiente pregunta" : "Ver resumen");
+  }
+  await waitText(".provisional-explanation", "Explicación de prueba");
+  await waitText(".provisional-explanation", "Borrador sin revisión docente");
+  const provisionalAiAvailable = await evaluate("fetch('/api/explanation/provisional').then((response) => response.json()).then((body) => body.available)");
+  if (provisionalAiAvailable) await waitText(".provisional-explanation button", "Gemini");
   await click(".main-nav button", "Perfil");
   await click(".demo-profile-details button", "Borrar este perfil ficticio");
   await click(".demo-profile-picker button", "Volver al inicio");

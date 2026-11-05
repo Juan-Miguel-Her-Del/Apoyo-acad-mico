@@ -6,6 +6,7 @@ import type { QuestionView } from "@/lib/diagnostic";
 import type { Selection } from "@/lib/selection";
 import DiagnosticAccountAttempt from "./diagnostic-account-attempt";
 import StudyDemo from "./study-demo";
+import ProvisionalExplanationPanel from "./provisional-explanation-panel";
 
 type Feedback =
   | { state: "evaluated"; correct: boolean; correctOptionId: string; explanation: string }
@@ -136,6 +137,7 @@ export default function DiagnosticDemo({ selection, onDemoCompleted }: { selecti
       {analysis.results.length > 0 && <ul className="skill-results">{analysis.results.map((result) => <li key={result.skill}>
         <strong>{result.skill}</strong>: {result.status === "dificultad-demo" ? "señal de dificultad (demo)" : result.status === "sin-senal-demo" ? "sin señal de dificultad en esta prueba" : "indeterminado: evidencia insuficiente o resultado mixto"}.
         <span> {result.correct}/{result.answered} aciertos; preguntas {result.questionIds.map((id) => questions.findIndex((item) => item.id === id) + 1).join(", ")}.</span>
+        {result.status === "dificultad-demo" && <ProvisionalExplanationPanel key={`${selection.topicId}/${result.skill}`} selection={selection} subskillId={result.skill} />}
       </li>)}</ul>}
       {analysis.unmappedQuestionIds.length > 0 && <p className="diagnostic-error">Resultado incompleto: {analysis.unmappedQuestionIds.length} {analysis.unmappedQuestionIds.length === 1 ? "pregunta no tiene" : "preguntas no tienen"} un subtema vinculado; no se les asignó dificultad.</p>}
       <p>Este resumen es orientativo y no equivale a una evaluación validada. {onDemoCompleted ? "El resultado resumido se guarda únicamente en este navegador." : "No queda guardado."}</p><button className="primary-button" type="button" onClick={() => setStage("study")}>Continuar a estudiar</button><button className="text-button" type="button" onClick={reset}>Volver a empezar</button></div>}

@@ -182,6 +182,11 @@ body{background:#f5f7f4;color:var(--ink);font-family:system-ui,-apple-system,"Se
 .demo-profile-details .text-button{display:block;margin:16px 0}
 .student-account-gate .primary-button{margin:14px 0}
 .catalog-note{max-width:970px;margin-left:auto;margin-right:auto}
+.skill-results>li{margin:14px 0;line-height:1.55}
+.provisional-explanation{margin:13px 0 4px;padding:17px 19px;border:1px solid #e7dbb9;border-radius:13px;background:#fffdf7}
+.provisional-explanation h5{margin:0 0 8px;color:#4d3e18;font-size:16px}
+.provisional-explanation p{margin:8px 0;line-height:1.55}
+.provisional-explanation .text-button{margin-top:5px}
 .site-footer{margin-top:28px;color:#72857e}
 @media(max-width:850px){.account-card{grid-template-columns:1fr}.screen-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.welcome-intro{padding:33px}.compact-hero .hero-content{padding:32px}}
 @media(max-width:600px){.app-shell{padding:0 16px}.site-header{gap:10px}.brand-copy strong{font-size:16px}.main-nav{margin-top:10px}.main-nav button{padding:10px 5px;font-size:11px}.compact-hero{margin-top:17px;min-height:auto}.compact-hero .hero-content{padding:29px 23px}.compact-hero h1{font-size:32px}.flow-heading{padding-top:28px}.step-card,.diagnostic-card{padding:22px 19px}.route-steps-ready{margin-top:16px}.route-steps-ready button{padding:9px 8px}.selection-summary{padding:15px 17px}.study-screen .lesson-content{padding:17px;margin-top:16px}.screen-card-grid{grid-template-columns:1fr}.screen-card-grid button{min-height:116px}.account-card{padding:19px}.welcome-layout{padding-top:22px}.welcome-intro{padding:27px 23px}.welcome-intro h1{font-size:37px}.screen-actions{align-items:stretch;flex-direction:column}.screen-actions .primary-button{width:100%}}

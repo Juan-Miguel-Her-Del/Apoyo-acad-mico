@@ -16,7 +16,7 @@ export type ExplanationRequest = { attemptId: string; subskillId: string; exampl
 export type ExplanationProviderInput = {
   gradeId: string; subjectId: string; topicId: string; topicName: string; subskillId: string;
   sourceVersion: string; explanation: string; example: string; reference: string;
-  level: ExplanationLevel; exampleIndex: number;
+  level: ExplanationLevel; exampleIndex: number; sourceStatus?: "provisional";
 };
 export type ExplanationProvider = (input: ExplanationProviderInput) => Promise<unknown>;
 export type ExplanationResult = {

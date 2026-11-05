@@ -77,3 +77,17 @@ export function checkStudyAnswer(lesson: StudyDemo, selectedIndex: number): { co
   if (!Number.isInteger(selectedIndex) || selectedIndex < 0 || selectedIndex >= lesson.question.options.length) return null;
   return { correct: selectedIndex === lesson.question.correctIndex, feedback: lesson.question.feedback };
 }
+
+export function pickStudyChapter(lesson: StudyDemo, subskill: string): StudyChapter {
+  const tokens = subskill.toLocaleLowerCase("es-CO").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .split(/[^a-z0-9]+/).filter((token) => token.length >= 4);
+  let best = lesson.chapters[0];
+  let bestScore = -1;
+  for (const chapter of lesson.chapters) {
+    const content = `${chapter.title} ${chapter.explanation}`.toLocaleLowerCase("es-CO")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const score = tokens.filter((token) => content.includes(token)).length;
+    if (score > bestScore) { best = chapter; bestScore = score; }
+  }
+  return best;
+}
