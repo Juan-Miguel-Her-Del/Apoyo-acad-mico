@@ -1,8 +1,10 @@
 import type { ExplanationProvider, ExplanationProviderInput } from "./explanation-service.ts";
 import { openAIExplanationProvider } from "./explanation-openai.ts";
+import { geminiExplanationProvider } from "./explanation-gemini.ts";
 
 // La dirección y credencial son exclusivamente del servidor. Nunca provienen del navegador.
 export const configuredExplanationProvider: ExplanationProvider = async (input: ExplanationProviderInput) => {
+  if (process.env.GEMINI_API_KEY) return geminiExplanationProvider(input);
   if (process.env.OPENAI_API_KEY) return openAIExplanationProvider(input);
   const endpoint = process.env.APOYO_EXPLANATION_PROVIDER_URL;
   const token = process.env.APOYO_EXPLANATION_PROVIDER_TOKEN;

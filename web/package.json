@@ -13,7 +13,8 @@
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:browser": "node tests/browser-smoke.mjs",
     "test:diagnostic-browser": "node tests/diagnostic-account-browser.mjs",
-    "check:openai": "node --env-file=.env.local --experimental-strip-types scripts/check-openai-connection.mjs"
+    "check:openai": "node --env-file=.env.local --experimental-strip-types scripts/check-openai-connection.mjs",
+    "check:gemini": "node --env-file=.env.local --experimental-strip-types scripts/check-gemini-connection.mjs"
   },
   "dependencies": {
     "next": "16.3.8",

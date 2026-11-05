@@ -36,7 +36,7 @@ El envío está preparado para Resend y **no se activa sin una clave y un remite
 
 La comparación del panel usa las dos últimas sesiones terminadas **con respuestas** del mismo tema, entre las 200 sesiones recientes de la cuenta. Si hay cero o una, muestra un estado insuficiente. El porcentaje describe aciertos entre preguntas respondidas; no indica dominio académico. Las rondas nuevas evitan repetir inmediatamente las preguntas del mismo tema y cambian de nivel tras dos aciertos. Las cuentas de mayores de edad tienen una finalidad de estudio, aunque el contenido actual siga siendo provisional.
 
-Para preparar OpenAI en el servidor después, añade `OPENAI_API_KEY=...` a `.env.local` y reinicia el servidor. El modelo por defecto es `gpt-6-luna`; `APOYO_EXPLANATION_MODEL` permite configurarlo. ChatGPT y la API usan accesos y facturación separados. Mantén la clave fuera de `NEXT_PUBLIC_*` y del repositorio. La configuración no habilita contenido mientras falte aprobación curricular. Véase [`docs/26`](../docs/26-desarrollo-sprint-3-restaurado.md).
+Para preparar Gemini en el servidor, añade `GEMINI_API_KEY=...` a `.env.local` y reinicia el servidor. El modelo predeterminado es `gemini-3.5-flash-lite`; `APOYO_GEMINI_MODEL` permite cambiarlo. Cuando existen ambas claves, la app selecciona Gemini. Para comprobar la conexión con texto ficticio, ejecuta `npm.cmd run check:gemini`. OpenAI sigue disponible con `OPENAI_API_KEY` y `npm.cmd run check:openai`. Mantén ambas claves fuera de `NEXT_PUBLIC_*` y del repositorio. Configurar un proveedor no habilita las explicaciones mientras falte aprobación curricular. Véase [la integración y privacidad de Gemini](../docs/44-integracion-gemini.md).
 
 ## Comprobar
 
