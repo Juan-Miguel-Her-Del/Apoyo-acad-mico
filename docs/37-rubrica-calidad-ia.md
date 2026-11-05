@@ -28,7 +28,7 @@ El archivo es una lista de registros con esta forma. El siguiente es **solo un e
 [
   {
     "topicId": "G05-MAT", "caseId": "caso-01", "kind": "normal",
-    "sourceVersion": "version-fuente-revisada", "promptVersion": "version-prompt",
+    "sourceVersion": "version-fuente-revisada", "sourceStatus": "reviewed", "promptVersion": "version-prompt",
     "model": "modelo-y-version", "input": "entrada anonimizada",
     "output": "salida íntegra generada", "reviewer": "nombre del revisor",
     "reviewedAt": "2026-10-19T12:00:00Z",
@@ -38,4 +38,4 @@ El archivo es una lista de registros con esta forma. El siguiente es **solo un e
 ]
 ```
 
-Ejecuta `npm.cmd run review:ai -- ruta\revisiones.json` dentro de `web/`. El comando informa cobertura por combinación, campos inválidos y casos que bloquean. Su `reviewGatePassed` comprueba la **estructura y las decisiones registradas**, no autentica al revisor ni certifica el contenido curricular. El archivo con entradas/salidas reales puede contener información delicada: usa datos sintéticos y guárdalo fuera del repositorio hasta definir tratamiento y conservación con la abogada.
+Ejecuta `npm.cmd run review:ai -- ruta\revisiones.json` dentro de `web/`. El comando informa cobertura por combinación, campos inválidos y casos que bloquean. `reviewGatePassed` siempre bloquea fuentes con `sourceStatus: "provisional"`; comprueba la **estructura y las decisiones registradas**, no autentica al revisor ni certifica el contenido curricular. El archivo con entradas/salidas reales puede contener información delicada: usa datos sintéticos y guárdalo fuera del repositorio hasta definir tratamiento y conservación con la abogada.

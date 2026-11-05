@@ -14,6 +14,6 @@ export async function POST(request: Request) {
     catch (error) { if (error instanceof AuthError && error.status === 400) throw error;
       // La respuesta no revela si existía la cuenta o si falló el proveedor.
     }
-    return Response.json({ message: "Si existe una cuenta con ese correo, recibirás un enlace para restablecer la contraseña." }, { headers: noStore });
+    return Response.json({ message: "Si hay una cuenta asociada, enviaremos instrucciones para recuperar el acceso." }, { headers: noStore });
   } catch (error) { return apiError(error); }
 }

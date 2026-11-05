@@ -15,7 +15,7 @@ export default function RecoverPage() {
   }, []);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!token.current) { setMessage("Enlace no válido o vencido."); return; }
+    if (!token.current) { setMessage("El enlace ya no es válido. Solicita uno nuevo."); return; }
     setBusy(true);
     try {
       const response = await fetch("/api/auth/password-reset/confirm", { method: "POST",

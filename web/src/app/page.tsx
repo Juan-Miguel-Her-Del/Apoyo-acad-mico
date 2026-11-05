@@ -55,6 +55,8 @@ export default function Home() {
   const [demoMinorOpen, setDemoMinorOpen] = useState(false);
   const [welcomeNotice, setWelcomeNotice] = useState("");
   const [selectionNotice, setSelectionNotice] = useState("");
+  const [selectionSaveFailed, setSelectionSaveFailed] = useState(false);
+  const [selectionSaveRetry, setSelectionSaveRetry] = useState(0);
   const [view, setView] = useState<"study" | "progress" | "account">("study");
   const [step, setStep] = useState<"grade" | "subject" | "topic" | "ready">("grade");
   const selectionRevision = useRef(0);
@@ -67,6 +69,7 @@ export default function Home() {
   function changeSelection(next: Parameters<typeof setSelection>[0]) {
     selectionRevision.current += 1;
     setSelectionNotice("");
+    setSelectionSaveFailed(false);
     setSelection(next);
   }
   useEffect(() => {
@@ -150,13 +153,17 @@ export default function Home() {
   useEffect(() => {
     if (!accountId || !valid.topicId) return;
     const controller = new AbortController();
+    const revision = selectionRevision.current;
     const timer = window.setTimeout(() => {
       void fetch("/api/selection", { method: "PUT", credentials: "same-origin", signal: controller.signal,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gradeId: valid.gradeId, subjectId: valid.subjectId, topicId: valid.topicId }) });
+        body: JSON.stringify({ gradeId: valid.gradeId, subjectId: valid.subjectId, topicId: valid.topicId }) })
+        .then((response) => { if (!response.ok) throw new Error("No se pudo guardar el tema.");
+          if (!controller.signal.aborted && revision === selectionRevision.current) setSelectionSaveFailed(false); })
+        .catch(() => { if (!controller.signal.aborted && revision === selectionRevision.current) setSelectionSaveFailed(true); });
     }, 250);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [accountId, valid.gradeId, valid.subjectId, valid.topicId]);
+  }, [accountId, valid.gradeId, valid.subjectId, valid.topicId, selectionSaveRetry]);
   const grade = grades.find((item) => item.id === valid.gradeId);
   const subject = availableSubjects.find((item) => item.id === valid.subjectId);
   const topic = availableTopics.find((item) => item.id === valid.topicId);
@@ -210,6 +217,9 @@ export default function Home() {
         <button type="button" className={step === "topic" || step === "ready" ? "active" : ""} disabled={!subject} onClick={() => setStep("topic")}>{accountId ? "2" : "3"}. Tema <small>{topic?.name ?? "Por elegir"}</small></button>
       </nav>
       {selectionNotice && <p className="selection-notice" role="status">{selectionNotice}</p>}
+      {selectionSaveFailed && <p className="selection-notice" role="alert">No se pudo guardar tu último tema.
+        <button className="text-button" type="button" onClick={() => { setSelectionSaveFailed(false); setSelectionSaveRetry((current) => current + 1); }}>Reintentar</button>
+      </p>}
 
       {step === "grade" && !accountId && <section className="step-card" aria-labelledby="grade-title">
         <div className="step-intro"><span className="step-number">01</span><div><h3 id="grade-title">¿En qué grado estás?</h3><p>Elige el grado que cursas actualmente.</p></div></div>

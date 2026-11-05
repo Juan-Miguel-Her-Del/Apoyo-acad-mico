@@ -61,6 +61,7 @@ La prueba de navegador usa la compilación de producción. En una terminal ejecu
 - [Correcciones de práctica](docs/21-retroalimentacion-practica.md): regla de revisión antes de mostrar explicaciones.
 - [Cuentas estudiantiles](docs/22-cuentas-estudiantes-consentimiento.md): base técnica y decisiones formales pendientes.
 - [Desarrollo del Sprint 6](docs/36-desarrollo-sprint-6.md): funciones, configuración de correo, verificaciones y pendientes.
+- [Avance integral del Sprint 6](docs/46-avance-integral-sprint-6.md): 23 incidencias, 18 capturas reales de IA, hallazgos y criterios de cierre.
 - [Perfiles y preparación](docs/39-perfiles-y-preparacion.md): datos del perfil, recorrido y puntos que debe revisar la abogada.
 - [Bienvenida y verificación](docs/40-bienvenida-registro-verificacion.md): registro de mayores por pasos y configuración de correo pendiente.
 - [Rúbrica de IA](docs/37-rubrica-calidad-ia.md): criterios y muestreo de 18 explicaciones reales.

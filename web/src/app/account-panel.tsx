@@ -242,7 +242,7 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, o
       setProfile(null); setProfileStatus("loading");
       setRecommendation(null); setStreak(null); setDeleteOpen(false);
       setDeleteConfirmation(""); setDeletePassword("");
-      setMessage("Tu cuenta y sus datos guardados fueron eliminados.");
+      setMessage(body.message ?? "Recibimos tu solicitud de eliminación.");
       window.sessionStorage.setItem("ap-account-deleted", "1");
       window.dispatchEvent(new Event("ap-auth-changed"));
     } catch (cause) { setMessage(cause instanceof Error ? cause.message : "No se pudo eliminar la cuenta."); }
@@ -376,7 +376,7 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, o
             <label>Contraseña actual<input type="password" autoComplete="current-password" value={deletePassword}
               onChange={(event) => setDeletePassword(event.target.value)} required /></label>
             <button className="primary-button" type="submit" disabled={busy || deleteConfirmation !== "ELIMINAR"}>Eliminar cuenta y datos</button>
-            <button className="text-button" type="button" onClick={() => { setDeleteOpen(false); setDeletePassword(""); setDeleteConfirmation(""); }}>Cancelar</button>
+            <button className="text-button" type="button" onClick={() => { setDeleteOpen(false); setDeletePassword(""); setDeleteConfirmation(""); setMessage("No se eliminó tu cuenta."); }}>Cancelar</button>
           </form>}
       </div>
       </div>}

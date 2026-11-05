@@ -4,7 +4,7 @@ import { auditAiReviews, PILOT_TOPICS } from "../src/lib/ai-quality-review.ts";
 
 function synthetic(topicId, kind, index) {
   return { topicId, caseId: `synthetic-${index}`, kind,
-    sourceVersion: "source-test", promptVersion: "prompt-test", model: "model-test",
+    sourceVersion: "source-test", sourceStatus: "reviewed", promptVersion: "prompt-test", model: "model-test",
     input: "Entrada sintética", output: "Salida sintética", reviewer: "Revisor sintético",
     reviewedAt: "2026-10-19T12:00:00Z", scores: { accuracy: 4, gradeFit: 4, clarity: 4, safety: 4, sourceFidelity: 4 },
     severity: "none", decision: "accept", findings: "Sin defecto en este caso sintético" };
@@ -23,6 +23,13 @@ test("fallo grave o decisión de corrección bloquea publicación aunque haya co
   const records = PILOT_TOPICS.flatMap((topicId) => ["normal", "wrong-answer", "boundary"].map((kind, index) => synthetic(topicId, kind, index)));
   records[0].severity = "critical";
   records[0].decision = "block";
+  assert.equal(auditAiReviews(records).reviewGatePassed, false);
+  assert.deepEqual(auditAiReviews(records).blockers, ["G05-MAT:synthetic-0"]);
+});
+
+test("una fuente provisional bloquea la puerta aunque las 18 salidas tengan puntuación alta", () => {
+  const records = PILOT_TOPICS.flatMap((topicId) => ["normal", "wrong-answer", "boundary"].map((kind, index) => synthetic(topicId, kind, index)));
+  records[0].sourceStatus = "provisional";
   assert.equal(auditAiReviews(records).reviewGatePassed, false);
   assert.deepEqual(auditAiReviews(records).blockers, ["G05-MAT:synthetic-0"]);
 });

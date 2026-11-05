@@ -104,13 +104,29 @@ test("eliminación exige contraseña y borra cuenta, sesión, selección y regis
     VALUES (?,?,?,'helped',?)`).run(a.user.id, "G05-MAT", "study-draft-v1:G05-MAT", new Date().toISOString());
   db.prepare(`INSERT INTO practice_sessions(id,user_id,grade_id,subject_id,topic_id,status,total,started_at)
     VALUES ('practice-test',?,?,?,?,'open',2,?)`).run(a.user.id, "G05", "MAT", "G05-MAT", new Date().toISOString());
+  db.prepare(`INSERT INTO practice_answers(session_id,question_id,option_id,correct,correct_option_id,explanation,answered_at)
+    VALUES ('practice-test','q1','a',1,'a','Explicación ficticia',?)`).run(new Date().toISOString());
+  db.prepare(`INSERT INTO practice_session_questions(session_id,position,question_id,snapshot_json)
+    VALUES ('practice-test',0,'q1','{}')`).run();
+  db.prepare(`INSERT INTO diagnostic_attempt_answers(attempt_id,question_id,option_id,correct,skill,answered_at)
+    VALUES ('attempt-test','q1','a',1,'fracciones',?)`).run(new Date().toISOString());
+  db.prepare(`INSERT INTO diagnostic_attempt_questions(attempt_id,position,question_id,snapshot_json)
+    VALUES ('attempt-test',0,'q1','{}')`).run();
+  db.prepare(`INSERT INTO progress(user_id,grade_id,subject_id,topic_id,kind,completed,updated_at)
+    VALUES (?,?,?,?,'diagnostic',1,?)`).run(a.user.id, "G05", "MAT", "G05-MAT", new Date().toISOString());
   await assert.rejects(store.deleteOwnAccount(a.user.id, { confirmation: "ELIMINAR", password: "errónea" }),
     (error) => error instanceof AuthError && error.status === 401);
   assert.ok(store.sessionUser(a.token));
   await store.deleteOwnAccount(a.user.id, { confirmation: "ELIMINAR", password: "clave-segura-123" });
   assert.equal(store.sessionUser(a.token), null);
-  for (const table of ["diagnostic_attempts", "explanation_demo_feedback", "practice_sessions", "last_selections", "sessions"]) {
+  for (const table of ["diagnostic_attempts", "explanation_demo_feedback", "practice_sessions", "last_selections", "sessions", "progress"]) {
     assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE user_id=?`).get(a.user.id).n, 0, table);
+  }
+  for (const table of ["practice_answers", "practice_session_questions"]) {
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE session_id='practice-test'`).get().n, 0, table);
+  }
+  for (const table of ["diagnostic_attempt_answers", "diagnostic_attempt_questions"]) {
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE attempt_id='attempt-test'`).get().n, 0, table);
   }
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM last_selections WHERE user_id=?").get(a.user.id).n, 0);
   assert.deepEqual(store.sessionUser(b.token), b.user);

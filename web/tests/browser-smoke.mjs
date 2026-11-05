@@ -706,6 +706,10 @@ try {
   }
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await navigate();
+  if (!testAccounts) {
+    await waitFor(() => evaluate("document.querySelector('.welcome-intro button') !== null"), "inicio móvil");
+    await click(".welcome-intro button", "Explorar una vista previa");
+  }
   await waitFor(() => evaluate("document.querySelector('.main-nav') !== null"), "navegación móvil");
   assert.equal(await evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"), true, "la página móvil no debe desbordarse horizontalmente");
   assert.equal(await evaluate("[...document.querySelectorAll('.main-nav button')].every((item) => item.getBoundingClientRect().right <= window.innerWidth + 1)"), true, "las tres secciones deben quedar visibles en móvil");

@@ -4,7 +4,8 @@ import { DatabaseSync } from "node:sqlite";
 
 export type ExplanationReviewEvent = {
   topicId: string; subskillId: string; sourceVersion: string;
-  exampleIndex: number; reason: "invalid_provider_response" | "duplicate_example";
+  exampleIndex: number; reason: "invalid_provider_response" | "duplicate_example" |
+    "reported_inaccurate" | "reported_confusing" | "reported_inappropriate";
 };
 
 // Registra metadatos para revisión, nunca texto generado, credenciales ni identidad.

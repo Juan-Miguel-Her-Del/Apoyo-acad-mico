@@ -10,6 +10,8 @@
     "lint": "eslint",
     "coverage:practice": "node --experimental-strip-types scripts/practice-coverage.mjs",
     "review:ai": "node --experimental-strip-types scripts/ai-quality-report.mjs",
+    "capture:ai": "node --env-file=.env.local --experimental-strip-types scripts/capture-ai-quality.mjs",
+    "preaudit:ai": "node --experimental-strip-types scripts/preaudit-ai-quality.mjs",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:browser": "node tests/browser-smoke.mjs",
     "test:diagnostic-browser": "node tests/diagnostic-account-browser.mjs",

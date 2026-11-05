@@ -239,7 +239,7 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
     if (!body || typeof body !== "object" || Array.isArray(body) ||
         Object.keys(body).some((key) => key !== "token")) throw new AuthError(400, "Enlace no válido.");
     const token = (body as Record<string, unknown>).token;
-    if (typeof token !== "string" || !/^[0-9a-f]{64}$/.test(token)) throw new AuthError(400, "Enlace no válido o vencido.");
+    if (typeof token !== "string" || !/^[0-9a-f]{64}$/.test(token)) throw new AuthError(400, "El enlace ya no es válido. Solicita uno nuevo.");
     const tokenHash = sha256(token);
     const pending = db.prepare("SELECT * FROM pending_registrations WHERE token_hash=? AND expires_at>?")
       .get(tokenHash, now) as { email: string; salt: string; password_hash: string; display_name: string; grade_id: string } | undefined;
@@ -360,14 +360,14 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
     const row = db.prepare(`SELECT t.user_id AS userId,t.expires_at AS expiresAt FROM password_reset_tokens t
       JOIN users u ON u.id=t.user_id WHERE t.token_hash=? AND u.status='active'`).get(tokenHash) as
       { userId: string; expiresAt: number } | undefined;
-    if (!row || row.expiresAt <= now) throw new AuthError(400, "Enlace no válido o vencido.");
+    if (!row || row.expiresAt <= now) throw new AuthError(400, "El enlace ya no es válido. Solicita uno nuevo.");
     const salt = randomBytes(16).toString("hex");
     const hash = (await passwordHash(password, salt)).toString("hex");
     db.exec("BEGIN IMMEDIATE");
     try {
       const consumed = db.prepare("DELETE FROM password_reset_tokens WHERE token_hash=? AND expires_at>?")
         .run(tokenHash, now);
-      if (consumed.changes !== 1) throw new AuthError(400, "Enlace no válido o vencido.");
+      if (consumed.changes !== 1) throw new AuthError(400, "El enlace ya no es válido. Solicita uno nuevo.");
       db.prepare("UPDATE users SET salt=?,password_hash=? WHERE id=? AND status='active'").run(salt, hash, row.userId);
       db.prepare("DELETE FROM password_reset_tokens WHERE user_id=?").run(row.userId);
       db.prepare("DELETE FROM sessions WHERE user_id=?").run(row.userId);
@@ -386,6 +386,8 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
     db.exec("BEGIN IMMEDIATE");
     try {
       db.prepare("DELETE FROM password_reset_limits WHERE email_hash=?").run(sha256(row.email));
+      db.prepare("DELETE FROM email_verification_limits WHERE email_hash=?").run(sha256(row.email));
+      db.prepare("DELETE FROM pending_registrations WHERE email=?").run(row.email);
       if (db.prepare("DELETE FROM users WHERE id=? AND status='active'").run(userId).changes !== 1) {
         throw new AuthError(401, "Sesión no válida.");
       }

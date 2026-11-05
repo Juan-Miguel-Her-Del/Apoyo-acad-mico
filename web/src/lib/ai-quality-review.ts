@@ -1,7 +1,7 @@
 export const PILOT_TOPICS = ["G05-MAT", "G05-ESP", "G10-MAT", "G10-ESP", "G10-FIS", "G10-QUI"] as const;
 export type ReviewCase = {
   topicId: string; caseId: string; kind: "normal" | "wrong-answer" | "boundary";
-  sourceVersion: string; promptVersion: string; model: string;
+  sourceVersion: string; sourceStatus: "reviewed" | "provisional"; promptVersion: string; model: string;
   input: string; output: string; reviewer: string; reviewedAt: string;
   scores: { accuracy: number; gradeFit: number; clarity: number; safety: number; sourceFidelity: number };
   severity: "none" | "minor" | "major" | "critical";
@@ -22,6 +22,7 @@ export function auditAiReviews(value: unknown) {
     const scores = row.scores && scoreNames.map((name) => row.scores?.[name]);
     if (!PILOT_TOPICS.some((id) => id === row.topicId) ||
       !["normal", "wrong-answer", "boundary"].includes(row.kind ?? "") ||
+      !["reviewed", "provisional"].includes(row.sourceStatus ?? "") ||
       strings.some((field) => typeof field !== "string" || !field.trim()) ||
       !scores || scores.some((score) => typeof score !== "number" || !Number.isInteger(score) || score < 0 || score > 4) ||
       !["none", "minor", "major", "critical"].includes(row.severity ?? "") ||
@@ -42,7 +43,8 @@ export function auditAiReviews(value: unknown) {
       complete: items.length >= 3 && items.some((item) => item.kind === "wrong-answer") &&
         items.some((item) => item.kind === "boundary") };
   });
-  const blockers = valid.filter((item) => item.severity === "critical" || item.severity === "major" || item.decision !== "accept");
+  const blockers = valid.filter((item) => item.sourceStatus !== "reviewed" ||
+    item.severity === "critical" || item.severity === "major" || item.decision !== "accept");
   return { reviewed: valid.length, required: PILOT_TOPICS.length * 3, coverage, invalid,
     blockers: blockers.map((item) => `${item.topicId}:${item.caseId}`),
     reviewGatePassed: invalid.length === 0 && coverage.every((item) => item.complete) && blockers.length === 0 };
