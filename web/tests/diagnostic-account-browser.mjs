@@ -4,6 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "nod
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { openAuthStore } from "../src/lib/auth.ts";
+import { getAdaptiveDiagnosticBank } from "../src/lib/diagnostic-adaptive.ts";
 
 const browser = process.env.CHROME_PATH ?? (process.platform === "win32"
   ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" : "google-chrome");
@@ -80,6 +81,20 @@ try {
     await click(".topic-choice", "Razones y funciones");
     await click(".diagnostic-card .primary-button", "Empezar a estudiar");
   }
+  const diagnosticBank = getAdaptiveDiagnosticBank("G10", "MAT", "G10-MAT");
+  async function chooseIncorrectAnswer() {
+    const questionId = await evaluate("document.querySelector('.diagnostic-account-attempt .answer-option input').name");
+    const question = diagnosticBank.find((item) => item.id === questionId);
+    assert.ok(question, `pregunta ${questionId} dentro del banco`);
+    const wrong = question.options.find((option) => option.id !== question.correctOptionId);
+    await evaluate(`document.querySelector('.diagnostic-account-attempt .answer-option input[value=${JSON.stringify(wrong.id)}]').click()`);
+  }
+  async function chooseCorrectAnswer() {
+    const questionId = await evaluate("document.querySelector('.diagnostic-account-attempt .answer-option input').name");
+    const question = diagnosticBank.find((item) => item.id === questionId);
+    assert.ok(question, `pregunta ${questionId} dentro del banco`);
+    await evaluate(`document.querySelector('.diagnostic-account-attempt .answer-option input[value=${JSON.stringify(question.correctOptionId)}]').click()`);
+  }
 
   await send("Page.enable");
   await send("Runtime.enable");
@@ -118,7 +133,7 @@ try {
   const published = await evaluate("fetch('/api/diagnostic/attempt/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({gradeId:'G10',subjectId:'MAT',topicId:'G10-MAT',mode:'published'}) }).then((response) => response.status)");
   assert.equal(published, 409, "el modo publicado sigue bloqueado");
   await evaluate("window.__diagnosticPosts = 0; const original = window.fetch; window.fetch = (...args) => { if (String(args[0]).endsWith('/api/diagnostic/attempt/answer')) window.__diagnosticPosts++; return original(...args); }");
-  await evaluate("document.querySelector('.diagnostic-account-attempt .answer-option input').click()");
+  await chooseIncorrectAnswer();
   await evaluate("const button = document.querySelector('.diagnostic-account-attempt .primary-button'); button.click(); button.click()");
   await text(".diagnostic-account-attempt .answer-feedback", "Explicación pendiente de revisión docente");
   assert.equal(await evaluate("window.__diagnosticPosts"), 1, "doble clic envía una sola respuesta");
@@ -133,12 +148,16 @@ try {
   assert.equal(invalid, 400, "opción ajena no se cuenta");
   for (let current = 2; current <= 4; current += 1) {
     await text(".question-progress", `Pregunta ${current} de 4`);
-    await evaluate("document.querySelector('.diagnostic-account-attempt .answer-option input').click()");
+    await chooseIncorrectAnswer();
     await click(".diagnostic-account-attempt .primary-button", "Revisar respuesta");
     await text(".diagnostic-account-attempt .answer-feedback", "Explicación pendiente de revisión docente");
     await click(".diagnostic-account-attempt .answer-feedback .primary-button", current === 4 ? "Ver resumen" : "Siguiente pregunta");
   }
   await text(".diagnostic-account-attempt .diagnostic-panel", "Terminaste la demostración");
+  await text(".diagnostic-account-attempt .provisional-explanation", "G10-MAT:seno");
+  await waitFor(() => evaluate("[...document.querySelectorAll('.diagnostic-account-attempt .provisional-explanation .explanation-followup button')].some((button) => button.textContent.includes('Sí, me ayudó') && !button.disabled)"), "valoración disponible");
+  await click(".diagnostic-account-attempt .provisional-explanation .explanation-followup button", "Sí, me ayudó");
+  await text(".diagnostic-account-attempt .provisional-explanation .explanation-followup", "Valoración guardada en tu cuenta");
   const final = await evaluate(`fetch('/api/diagnostic/attempt?attemptId=${attemptId}').then((response) => response.json())`);
   assert.equal(final.attempt.status, "completed");
   assert.equal(final.attempt.answered, 4);
@@ -154,6 +173,15 @@ try {
   await selectTopic();
   await text(".diagnostic-account-attempt", "Intento recuperado desde el servidor");
   await text(".diagnostic-account-attempt", "Terminaste la demostración");
+  await click(".diagnostic-account-attempt button", "Iniciar otro intento");
+  await text(".diagnostic-account-attempt", "Pregunta 1 de 4");
+  for (let current = 1; current <= 4; current += 1) {
+    await chooseCorrectAnswer();
+    await click(".diagnostic-account-attempt .primary-button", "Revisar respuesta");
+    await text(".diagnostic-account-attempt .answer-feedback", "Respuesta correcta");
+    await click(".diagnostic-account-attempt .answer-feedback .primary-button", current === 4 ? "Ver resumen" : "Siguiente pregunta");
+  }
+  await text(".diagnostic-account-attempt .skill-strengths", "G10-MAT:seno");
   console.log("OK: intento de cuenta adulta, reanudación, respuesta única, entrada inválida, fin y resumen persistido.");
 } finally {
   socket?.close();

@@ -1,4 +1,4 @@
-import { getDiagnostic } from "./diagnostic.ts";
+import { demoDiagnosticSkills } from "./diagnostic-skills.ts";
 import { explanationLevelForGrade, words } from "./explanation-adaptation.ts";
 import type { ExplanationProviderInput } from "./explanation-service.ts";
 import { getStudyDemo, pickStudyChapter } from "./study-demo.ts";
@@ -20,8 +20,7 @@ export function provisionalExplanationInput(
   gradeId: string, subjectId: string, topicId: string, subskillId: string,
   exampleIndex = 0,
 ): ExplanationProviderInput | null {
-  const diagnostic = getDiagnostic(gradeId, subjectId, topicId, "demo");
-  if (diagnostic.status !== 200 || !diagnostic.questions.some((question) => question.skill === subskillId)) return null;
+  if (!demoDiagnosticSkills(gradeId, subjectId, topicId)?.has(subskillId)) return null;
   const lesson = getStudyDemo(gradeId, subjectId, topicId);
   const level = explanationLevelForGrade(gradeId);
   if (!lesson || !level) return null;

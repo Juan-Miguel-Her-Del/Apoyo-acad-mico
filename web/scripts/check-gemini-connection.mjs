@@ -1,6 +1,7 @@
 import { geminiExplanationProvider } from "../src/lib/explanation-gemini.ts";
 import { explanationLevelForGrade } from "../src/lib/explanation-adaptation.ts";
 import { getDiagnostic } from "../src/lib/diagnostic.ts";
+import { getAdaptiveDiagnosticBank } from "../src/lib/diagnostic-adaptive.ts";
 import { provisionalExplanationInput } from "../src/lib/provisional-explanation.ts";
 
 const level = explanationLevelForGrade("G05");
@@ -15,11 +16,13 @@ const fixtureInput = {
   reference: "Prueba técnica local; no es material aprobado", level, exampleIndex: 0,
 };
 const alternate = process.argv.includes("--alternate");
+const savedSkill = process.argv.includes("--saved-skill");
 const firstSkill = getDiagnostic("G05", "MAT", "G05-MAT", "demo").questions[0].skill;
-const input = alternate
-  ? provisionalExplanationInput("G05", "MAT", "G05-MAT", firstSkill, 1)
+const selectedSkill = savedSkill ? getAdaptiveDiagnosticBank("G05", "MAT", "G05-MAT")[0].skill : firstSkill;
+const input = alternate || savedSkill
+  ? provisionalExplanationInput("G05", "MAT", "G05-MAT", selectedSkill, alternate ? 1 : 0)
   : fixtureInput;
-if (!input) throw new Error("No se encontró el segundo ejemplo provisional de prueba");
+if (!input) throw new Error("No se encontró la fuente provisional de prueba");
 
 if (!process.env.GEMINI_API_KEY) {
   console.error("Falta GEMINI_API_KEY en web/.env.local.");
@@ -52,7 +55,9 @@ if (!process.env.GEMINI_API_KEY) {
       typeof output.explanation === "string" && input.explanation.includes(output.explanation) &&
       typeof output.example === "string" && input.example.includes(output.example);
     if (!valid) throw new Error("La respuesta no coincide con la fuente de prueba");
-    console.log(alternate
+    console.log(savedSkill
+      ? "OK: Gemini respondió con un subtema del diagnóstico guardado y fragmentos provisionales válidos."
+      : alternate
       ? "OK: Gemini respondió con un segundo ejemplo provisional válido."
       : "OK: Gemini respondió con fragmentos de prueba válidos.");
   } catch (error) {

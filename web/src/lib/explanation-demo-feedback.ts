@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { AuthError } from "./auth.ts";
 import { topics } from "./catalog.ts";
 import { getStudyDemo, pickStudyChapter } from "./study-demo.ts";
-import { getDiagnostic } from "./diagnostic.ts";
+import { demoDiagnosticSkills } from "./diagnostic-skills.ts";
 import { demoExplanationId } from "./explanation-id.ts";
 import type { ExplanationRating } from "./explanation-followup.ts";
 
@@ -29,9 +29,9 @@ function validExplanationId(topicId: string, explanationId: unknown): string {
   if (explanationId === demoExplanationId(topicId)) return explanationId;
   const topic = topics.find((item) => item.id === topicId)!;
   const lesson = getStudyDemo(topic.gradeId, topic.subjectId, topicId)!;
-  const diagnostic = getDiagnostic(topic.gradeId, topic.subjectId, topicId, "demo");
-  if (diagnostic.status !== 200) throw new AuthError(400, "Valoración no válida.");
-  for (const skill of new Set(diagnostic.questions.map((question) => question.skill))) {
+  const skills = demoDiagnosticSkills(topic.gradeId, topic.subjectId, topicId);
+  if (!skills) throw new AuthError(400, "Valoración no válida.");
+  for (const skill of skills) {
     if (explanationId === demoExplanationId(topicId, skill, 0)) return explanationId;
     const chapter = pickStudyChapter(lesson, skill);
     if (chapter.alternateExample && explanationId === demoExplanationId(topicId, skill, 1)) return explanationId;

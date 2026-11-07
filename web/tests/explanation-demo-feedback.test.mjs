@@ -8,6 +8,7 @@ import { openAuthStore, SESSION_COOKIE } from "../src/lib/auth.ts";
 import { demoExplanationId, openDemoFeedbackStore } from "../src/lib/explanation-demo-feedback.ts";
 import { handleDemoFeedback } from "../src/lib/explanation-demo-feedback-http.ts";
 import { getDiagnostic } from "../src/lib/diagnostic.ts";
+import { getAdaptiveDiagnosticBank } from "../src/lib/diagnostic-adaptive.ts";
 
 test("la valoración de una explicación se actualiza una sola vez y queda aislada por cuenta", async () => {
   const directory = mkdtempSync(path.join(tmpdir(), "apoyo-feedback-"));
@@ -41,6 +42,13 @@ test("la valoración de una explicación se actualiza una sola vez y queda aisla
     assert.equal((await second.json()).feedback.value, "confused");
     assert.equal((await (await handleDemoFeedback(request(bob.token, "GET"), deps)).json()).feedback, null);
     assert.equal((await (await handleDemoFeedback(request(alice.token, "GET"), deps)).json()).feedback.value, "confused");
+
+    const savedSkill = getAdaptiveDiagnosticBank("G05", "MAT", topicId)[0].skill;
+    const savedSkillId = demoExplanationId(topicId, savedSkill, 0);
+    assert.equal((await handleDemoFeedback(request(alice.token, "POST",
+      { topicId, explanationId: savedSkillId, value: "helped" }), deps)).status, 200);
+    assert.equal((await (await handleDemoFeedback(request(alice.token, "GET", null,
+      "http://localhost:3000", savedSkillId), deps)).json()).feedback.value, "helped");
 
     const skill = getDiagnostic("G05", "MAT", topicId, "demo").questions[0].skill;
     const firstExampleId = demoExplanationId(topicId, skill, 0);

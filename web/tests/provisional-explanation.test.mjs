@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { topics } from "../src/lib/catalog.ts";
 import { getDiagnostic } from "../src/lib/diagnostic.ts";
+import { getAdaptiveDiagnosticBank } from "../src/lib/diagnostic-adaptive.ts";
 import { handleProvisionalExplanationRequest } from "../src/lib/provisional-explanation-http.ts";
 import { provisionalExplanationInput, validateProvisionalExplanation } from "../src/lib/provisional-explanation.ts";
 
@@ -22,6 +23,27 @@ test("cada tema de prueba tiene fuente provisional vinculada a un subtema real",
     assert.ok(source.explanation.length >= 20 && source.example.length >= 20);
     assert.equal(provisionalExplanationInput(topic.gradeId, topic.subjectId, topic.id, "subtema-inventado"), null);
   }
+});
+
+test("el subtema del diagnóstico guardado también recibe explicación y rechaza uno ajeno", async () => {
+  for (const topic of topics.filter((item) => item.active && item.pilotCandidate)) {
+    const bank = getAdaptiveDiagnosticBank(topic.gradeId, topic.subjectId, topic.id);
+    for (const skillId of new Set(bank.map((question) => question.skill))) {
+      assert.ok(provisionalExplanationInput(topic.gradeId, topic.subjectId, topic.id, skillId),
+        `${topic.id}: ${skillId}`);
+    }
+  }
+  const skill = getAdaptiveDiagnosticBank("G10", "MAT", "G10-MAT")[0].skill;
+  const input = provisionalExplanationInput("G10", "MAT", "G10-MAT", skill);
+  assert.ok(input);
+  assert.equal(input.subskillId, skill);
+  const response = await handleProvisionalExplanationRequest(request({ gradeId: "G10", subjectId: "MAT",
+    topicId: "G10-MAT", subskillId: skill }), { enabled: true, consumeQuota: () => true,
+    provider: async (source) => ({ topicId: source.topicId, subskillId: source.subskillId,
+      sourceVersion: source.sourceVersion, explanation: source.explanation, example: source.example }) });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).subskillId, skill);
+  assert.equal(provisionalExplanationInput("G05", "MAT", "G05-MAT", skill), null);
 });
 
 test("respuesta Gemini provisional usa solo fragmentos de la fuente y no se marca aprobada", async () => {
@@ -62,6 +84,13 @@ test("proveedor caído deja la explicación local y ruta deshabilitada no consum
     consumeQuota: () => true, provider: async () => { throw new Error("secreto"); } });
   assert.equal(failed.status, 503);
   assert.equal(JSON.stringify(await failed.json()).includes("secreto"), false);
+  const invented = await handleProvisionalExplanationRequest(request(body), { enabled: true,
+    consumeQuota: () => true, provider: async (source) => ({ topicId: source.topicId,
+      subskillId: source.subskillId, sourceVersion: source.sourceVersion,
+      explanation: "Esta explicación fue inventada por el proveedor y no está en la fuente.",
+      example: source.example }) });
+  assert.equal(invented.status, 503);
+  assert.equal(JSON.stringify(await invented.json()).includes("Esta explicación fue inventada"), false);
 });
 
 test("seis temas piloto ofrecen un segundo ejemplo distinto; sin alternativa no llama a Gemini", async () => {
