@@ -47,6 +47,7 @@ La fuente funcional vigente es el [proyecto AP de Jira](https://juanmiguelsworks
 | [Estado y cierre del Sprint 3](43-estado-sprint-3-y-pasos-de-cierre.md) | Nueve incidencias abiertas, avance verificable y pasos para preparar OpenAI y el contenido aprobado |
 | [Integración Gemini](44-integracion-gemini.md) | Configuración, prueba con texto ficticio y condiciones de privacidad del proveedor |
 | [Explicaciones provisionales](45-explicaciones-provisionales.md) | Explicación tras dificultad del diagnóstico, selección opcional con Gemini y evidencia de pruebas |
+| [Avance del Sprint 4: ejemplos y comprobación](47-avance-sprint-4-ejemplos-y-comprobacion.md) | Segundo ejemplo, valoración por variante, comprobación breve, pruebas y pendientes para cerrar el alcance original |
 | [Corrección explicada](21-retroalimentacion-practica.md) | Contrato y puerta de revisión docente de correcciones |
 | [Cuentas estudiantiles](22-cuentas-estudiantes-consentimiento.md) | Base técnica interna, autorización y decisiones pendientes |
 | [Criterios de aceptación](criterios-aceptacion.md) | Escenarios comprobables para las historias |

@@ -1,10 +1,12 @@
 import { geminiExplanationProvider } from "../src/lib/explanation-gemini.ts";
 import { explanationLevelForGrade } from "../src/lib/explanation-adaptation.ts";
+import { getDiagnostic } from "../src/lib/diagnostic.ts";
+import { provisionalExplanationInput } from "../src/lib/provisional-explanation.ts";
 
 const level = explanationLevelForGrade("G05");
 if (!level) throw new Error("No se encontró el grado de prueba");
 
-const input = {
+const fixtureInput = {
   gradeId: "G05", subjectId: "MAT", topicId: "G05-MAT",
   topicName: "Fracciones de prueba", subskillId: "suma-fracciones-prueba",
   sourceVersion: "conexion-prueba-v1",
@@ -12,6 +14,12 @@ const input = {
   example: "Un medio más un medio son dos medios, que equivalen a una unidad completa. Esta oración es solo material ficticio para comprobar la conexión.",
   reference: "Prueba técnica local; no es material aprobado", level, exampleIndex: 0,
 };
+const alternate = process.argv.includes("--alternate");
+const firstSkill = getDiagnostic("G05", "MAT", "G05-MAT", "demo").questions[0].skill;
+const input = alternate
+  ? provisionalExplanationInput("G05", "MAT", "G05-MAT", firstSkill, 1)
+  : fixtureInput;
+if (!input) throw new Error("No se encontró el segundo ejemplo provisional de prueba");
 
 if (!process.env.GEMINI_API_KEY) {
   console.error("Falta GEMINI_API_KEY en web/.env.local.");
@@ -32,7 +40,9 @@ if (!process.env.GEMINI_API_KEY) {
       typeof output.explanation === "string" && input.explanation.includes(output.explanation) &&
       typeof output.example === "string" && input.example.includes(output.example);
     if (!valid) throw new Error("La respuesta no coincide con la fuente de prueba");
-    console.log("OK: Gemini respondió con fragmentos de prueba válidos.");
+    console.log(alternate
+      ? "OK: Gemini respondió con un segundo ejemplo provisional válido."
+      : "OK: Gemini respondió con fragmentos de prueba válidos.");
   } catch (error) {
     console.error(`Falló la prueba de Gemini: ${error instanceof Error ? error.message : "error desconocido"}`);
     if (responseStatus) console.error(`Respuesta de la API: HTTP ${responseStatus}.`);

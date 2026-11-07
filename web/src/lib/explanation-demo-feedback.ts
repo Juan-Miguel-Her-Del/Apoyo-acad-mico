@@ -3,7 +3,9 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { AuthError } from "./auth.ts";
 import { topics } from "./catalog.ts";
-import { getStudyDemo } from "./study-demo.ts";
+import { getStudyDemo, pickStudyChapter } from "./study-demo.ts";
+import { getDiagnostic } from "./diagnostic.ts";
+import { demoExplanationId } from "./explanation-id.ts";
 import type { ExplanationRating } from "./explanation-followup.ts";
 
 export type DemoFeedback = {
@@ -13,13 +15,28 @@ export type DemoFeedback = {
   updatedAt: string;
 };
 
-export function demoExplanationId(topicId: string) { return `study-draft-v1:${topicId}`; }
+export { demoExplanationId } from "./explanation-id.ts";
 
 function validDemoTopic(topicId: unknown): string {
   if (typeof topicId !== "string" || topicId.length > 80) throw new AuthError(400, "Tema no válido.");
   const topic = topics.find((item) => item.id === topicId);
   if (!topic || !getStudyDemo(topic.gradeId, topic.subjectId, topic.id)) throw new AuthError(400, "Tema no válido.");
   return topicId;
+}
+
+function validExplanationId(topicId: string, explanationId: unknown): string {
+  if (typeof explanationId !== "string" || explanationId.length > 240) throw new AuthError(400, "Valoración no válida.");
+  if (explanationId === demoExplanationId(topicId)) return explanationId;
+  const topic = topics.find((item) => item.id === topicId)!;
+  const lesson = getStudyDemo(topic.gradeId, topic.subjectId, topicId)!;
+  const diagnostic = getDiagnostic(topic.gradeId, topic.subjectId, topicId, "demo");
+  if (diagnostic.status !== 200) throw new AuthError(400, "Valoración no válida.");
+  for (const skill of new Set(diagnostic.questions.map((question) => question.skill))) {
+    if (explanationId === demoExplanationId(topicId, skill, 0)) return explanationId;
+    const chapter = pickStudyChapter(lesson, skill);
+    if (chapter.alternateExample && explanationId === demoExplanationId(topicId, skill, 1)) return explanationId;
+  }
+  throw new AuthError(400, "Valoración no válida.");
 }
 
 export function openDemoFeedbackStore(dbPath = process.env.APOYO_DB_PATH || path.join(process.cwd(), "data", "apoyo.sqlite")) {
@@ -42,13 +59,15 @@ export function openDemoFeedbackStore(dbPath = process.env.APOYO_DB_PATH || path
       throw new AuthError(401, "Sesión requerida.");
     }
   }
-  function get(userId: string, topicId: unknown): DemoFeedback | null {
+  function get(userId: string, topicId: unknown, explanationId?: unknown): DemoFeedback | null {
     adult(userId);
     const validatedTopic = validDemoTopic(topicId);
+    const validatedExplanationId = validExplanationId(validatedTopic,
+      explanationId === undefined || explanationId === null ? demoExplanationId(validatedTopic) : explanationId);
     const row = db.prepare(`SELECT topic_id AS topicId,explanation_id AS explanationId,
       value,updated_at AS updatedAt FROM explanation_demo_feedback
       WHERE user_id=? AND topic_id=? AND explanation_id=?`)
-      .get(userId, validatedTopic, demoExplanationId(validatedTopic)) as DemoFeedback | undefined;
+      .get(userId, validatedTopic, validatedExplanationId) as DemoFeedback | undefined;
     return row ?? null;
   }
   function put(userId: string, body: unknown): DemoFeedback {
@@ -56,15 +75,16 @@ export function openDemoFeedbackStore(dbPath = process.env.APOYO_DB_PATH || path
     if (!body || typeof body !== "object" || Array.isArray(body)) throw new AuthError(400, "Valoración no válida.");
     const { topicId, explanationId, value } = body as Record<string, unknown>;
     const validatedTopic = validDemoTopic(topicId);
-    if (explanationId !== demoExplanationId(validatedTopic) || (value !== "helped" && value !== "confused")) {
+    const validatedExplanationId = validExplanationId(validatedTopic, explanationId);
+    if (value !== "helped" && value !== "confused") {
       throw new AuthError(400, "Valoración no válida.");
     }
     const updatedAt = new Date().toISOString();
     db.prepare(`INSERT INTO explanation_demo_feedback(user_id,topic_id,explanation_id,value,updated_at)
       VALUES (?,?,?,?,?) ON CONFLICT(user_id,explanation_id)
       DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at`)
-      .run(userId, validatedTopic, explanationId, value, updatedAt);
-    return get(userId, validatedTopic)!;
+      .run(userId, validatedTopic, validatedExplanationId, value, updatedAt);
+    return get(userId, validatedTopic, validatedExplanationId)!;
   }
   return { get, put, close: () => db.close() };
 }

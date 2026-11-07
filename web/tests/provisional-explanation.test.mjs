@@ -63,3 +63,34 @@ test("proveedor caído deja la explicación local y ruta deshabilitada no consum
   assert.equal(failed.status, 503);
   assert.equal(JSON.stringify(await failed.json()).includes("secreto"), false);
 });
+
+test("seis temas piloto ofrecen un segundo ejemplo distinto; sin alternativa no llama a Gemini", async () => {
+  for (const topicId of ["G05-MAT", "G05-ESP", "G10-MAT", "G10-ESP", "G10-FIS", "G10-QUI"]) {
+    const gradeId = topicId.slice(0, 3);
+    const subjectId = topicId.slice(4);
+    const diagnostic = getDiagnostic(gradeId, subjectId, topicId, "demo");
+    const subskillId = diagnostic.questions[0].skill;
+    const first = provisionalExplanationInput(gradeId, subjectId, topicId, subskillId);
+    const second = provisionalExplanationInput(gradeId, subjectId, topicId, subskillId, 1);
+    assert.ok(first && second, topicId);
+    assert.notEqual(first.example, second.example, topicId);
+    assert.equal(second.exampleIndex, 1);
+    const response = await handleProvisionalExplanationRequest(request({ gradeId, subjectId,
+      topicId, subskillId, exampleIndex: 1 }), { enabled: true, consumeQuota: () => true,
+      provider: async (input) => ({ topicId: input.topicId, subskillId: input.subskillId,
+        sourceVersion: input.sourceVersion, explanation: input.explanation, example: input.example }) });
+    assert.equal(response.status, 200, topicId);
+    const body = await response.json();
+    assert.equal(body.exampleIndex, 1);
+    assert.equal(body.hasAnotherExample, false);
+    assert.equal(body.example, second.example);
+  }
+  const missing = { gradeId: "G01", subjectId: "MAT", topicId: "G01-MAT",
+    subskillId: getDiagnostic("G01", "MAT", "G01-MAT", "demo").questions[0].skill, exampleIndex: 1 };
+  let quotaCalls = 0;
+  const absent = await handleProvisionalExplanationRequest(request(missing), { enabled: true,
+    consumeQuota: () => { quotaCalls += 1; return true; }, provider: async () => { throw new Error("no debe llamar"); } });
+  assert.equal(absent.status, 409);
+  assert.equal(quotaCalls, 0);
+  assert.match((await absent.json()).error, /No hay otro ejemplo/);
+});

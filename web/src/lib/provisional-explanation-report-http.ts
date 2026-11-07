@@ -16,17 +16,18 @@ export async function handleProvisionalExplanationReport(request: Request, deps:
     if (!deps.authenticated(request)) throw new AuthError(401, "Inicia sesión para enviar el reporte.");
     const body = await readJson(request);
     if (!body || typeof body !== "object" || Array.isArray(body) ||
-      Object.keys(body).some((key) => !["gradeId", "subjectId", "topicId", "subskillId", "sourceVersion", "reason"].includes(key))) {
+      Object.keys(body).some((key) => !["gradeId", "subjectId", "topicId", "subskillId", "exampleIndex", "sourceVersion", "reason"].includes(key))) {
       throw new AuthError(400, "Reporte no válido.");
     }
-    const { gradeId, subjectId, topicId, subskillId, sourceVersion, reason } = body as Record<string, unknown>;
+    const { gradeId, subjectId, topicId, subskillId, exampleIndex = 0, sourceVersion, reason } = body as Record<string, unknown>;
     if (typeof gradeId !== "string" || typeof subjectId !== "string" ||
       typeof topicId !== "string" || typeof subskillId !== "string" ||
       sourceVersion !== "study-draft-v1" || !reasons.includes(reason as ReportReason) ||
-      !provisionalExplanationInput(gradeId, subjectId, topicId, subskillId)) {
+      !Number.isInteger(exampleIndex) || (exampleIndex !== 0 && exampleIndex !== 1) ||
+      !provisionalExplanationInput(gradeId, subjectId, topicId, subskillId, exampleIndex as number)) {
       throw new AuthError(400, "Reporte no válido.");
     }
-    deps.record({ topicId, subskillId, sourceVersion, exampleIndex: 0,
+    deps.record({ topicId, subskillId, sourceVersion, exampleIndex: exampleIndex as number,
       reason: `reported_${reason as ReportReason}` });
     return Response.json({ message: "Gracias. Ocultamos esta respuesta y registramos el problema para revisión." }, { headers: noStore });
   } catch (error) { return apiError(error); }

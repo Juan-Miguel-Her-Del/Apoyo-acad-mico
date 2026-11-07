@@ -1,6 +1,7 @@
 // Borradores originales de apoyo. Son ejemplos para estudiar, no secuencias
 // curriculares aprobadas ni transcripciones de los DBA del MEN.
-export type StudyChapter = { title: string; explanation: string; example: string };
+export type StudyChapter = { title: string; explanation: string; example: string;
+  alternateExample?: string; shortCheck?: { prompt: string; referenceAnswer: string } };
 type Pair = readonly [StudyChapter, StudyChapter];
 
 export const additionalChapters: Readonly<Record<string, Pair>> = {

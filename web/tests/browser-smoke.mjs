@@ -201,8 +201,13 @@ try {
   }
   await waitText(".provisional-explanation", "Explicación de prueba");
   await waitText(".provisional-explanation", "Borrador sin revisión docente");
+  await click(".provisional-explanation button", "Ver otro ejemplo");
+  await waitText(".provisional-explanation", "5/13");
+  await waitText(".provisional-explanation .explanation-followup", "Comprueba lo que entendiste");
+  await click(".provisional-explanation button", "Volver al primer ejemplo");
+  await waitText(".provisional-explanation", "3/5");
   const provisionalAiAvailable = await evaluate("fetch('/api/explanation/provisional').then((response) => response.json()).then((body) => body.available)");
-  if (provisionalAiAvailable) await waitText(".provisional-explanation button", "Gemini");
+  if (provisionalAiAvailable) await waitFor(() => evaluate("[...document.querySelectorAll('.provisional-explanation button')].some((button) => button.textContent.includes('Gemini'))"), "botón de Gemini");
   await click(".main-nav button", "Perfil");
   await click(".demo-profile-details button", "Borrar este perfil ficticio");
   await click(".demo-profile-picker button", "Volver al inicio");

@@ -7,6 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 import { openAuthStore, SESSION_COOKIE } from "../src/lib/auth.ts";
 import { demoExplanationId, openDemoFeedbackStore } from "../src/lib/explanation-demo-feedback.ts";
 import { handleDemoFeedback } from "../src/lib/explanation-demo-feedback-http.ts";
+import { getDiagnostic } from "../src/lib/diagnostic.ts";
 
 test("la valoración de una explicación se actualiza una sola vez y queda aislada por cuenta", async () => {
   const directory = mkdtempSync(path.join(tmpdir(), "apoyo-feedback-"));
@@ -27,8 +28,8 @@ test("la valoración de una explicación se actualiza una sola vez y queda aisla
         return auth.sessionUser(token)?.id ?? null;
       }, get: feedback.get, put: feedback.put,
     };
-    const request = (token, method, body, origin = "http://localhost:3000") => new Request(
-      `http://localhost:3000/api/explanation/demo-feedback?topicId=${topicId}`,
+    const request = (token, method, body, origin = "http://localhost:3000", requestedId) => new Request(
+      `http://localhost:3000/api/explanation/demo-feedback?topicId=${topicId}${requestedId ? `&explanationId=${encodeURIComponent(requestedId)}` : ""}`,
       { method, headers: { host: "localhost:3000", origin, cookie: token ? `${SESSION_COOKIE}=${token}` : "",
         ...(body ? { "Content-Type": "application/json" } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}) },
@@ -40,6 +41,22 @@ test("la valoración de una explicación se actualiza una sola vez y queda aisla
     assert.equal((await second.json()).feedback.value, "confused");
     assert.equal((await (await handleDemoFeedback(request(bob.token, "GET"), deps)).json()).feedback, null);
     assert.equal((await (await handleDemoFeedback(request(alice.token, "GET"), deps)).json()).feedback.value, "confused");
+
+    const skill = getDiagnostic("G05", "MAT", topicId, "demo").questions[0].skill;
+    const firstExampleId = demoExplanationId(topicId, skill, 0);
+    const secondExampleId = demoExplanationId(topicId, skill, 1);
+    assert.notEqual(firstExampleId, secondExampleId);
+    assert.equal((await handleDemoFeedback(request(alice.token, "POST",
+      { topicId, explanationId: firstExampleId, value: "helped" }), deps)).status, 200);
+    assert.equal((await handleDemoFeedback(request(alice.token, "POST",
+      { topicId, explanationId: secondExampleId, value: "confused" }), deps)).status, 200);
+    assert.equal((await (await handleDemoFeedback(request(alice.token, "GET", null,
+      "http://localhost:3000", firstExampleId), deps)).json()).feedback.value, "helped");
+    assert.equal((await (await handleDemoFeedback(request(alice.token, "GET", null,
+      "http://localhost:3000", secondExampleId), deps)).json()).feedback.value, "confused");
+    assert.equal((await (await handleDemoFeedback(request(alice.token, "GET"), deps)).json()).feedback.value, "confused");
+    assert.equal((await handleDemoFeedback(request(alice.token, "POST",
+      { topicId, explanationId: demoExplanationId(topicId, "habilidad-inventada", 0), value: "helped" }), deps)).status, 400);
 
     const readOnly = new DatabaseSync(dbPath);
     try {

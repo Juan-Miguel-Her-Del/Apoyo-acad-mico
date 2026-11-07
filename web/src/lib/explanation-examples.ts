@@ -10,7 +10,7 @@ export type ExampleChoice =
 
 // Los ejemplos alternativos se revisan junto con la explicación. La IA solo
 // puede extraer un fragmento literal del ejemplo seleccionado.
-export function selectReviewedExample(source: ReviewedExplanationSource, index: number): ExampleChoice {
+export function selectReviewedExample(source: Pick<ReviewedExplanationSource, "example" | "alternateExamples">, index: number): ExampleChoice {
   if (!Number.isInteger(index) || index < 0 || index > 1) {
     return { status: "unavailable", reason: "invalid_index" };
   }

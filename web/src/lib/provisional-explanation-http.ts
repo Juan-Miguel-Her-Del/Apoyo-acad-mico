@@ -13,15 +13,21 @@ export async function handleProvisionalExplanationRequest(request: Request, deps
     if (!deps.enabled) return Response.json({ error: "La explicación con IA no está disponible en esta instalación." }, { status: 503, headers: noStore });
     const body = await readJson(request);
     if (!body || typeof body !== "object" || Array.isArray(body) ||
-        Object.keys(body).some((key) => !["gradeId", "subjectId", "topicId", "subskillId"].includes(key))) {
+        Object.keys(body).some((key) => !["gradeId", "subjectId", "topicId", "subskillId", "exampleIndex"].includes(key))) {
       throw new AuthError(400, "Solicitud no válida.");
     }
-    const { gradeId, subjectId, topicId, subskillId } = body as Record<string, unknown>;
+    const { gradeId, subjectId, topicId, subskillId, exampleIndex = 0 } = body as Record<string, unknown>;
     if (![gradeId, subjectId, topicId, subskillId].every((value) => typeof value === "string" && value.length > 0 && value.length <= 120)) {
       throw new AuthError(400, "Selección no válida.");
     }
-    const input = provisionalExplanationInput(gradeId as string, subjectId as string, topicId as string, subskillId as string);
-    if (!input) throw new AuthError(400, "El subtema no pertenece a este diagnóstico de prueba.");
+    if (!Number.isInteger(exampleIndex) || (exampleIndex !== 0 && exampleIndex !== 1)) {
+      throw new AuthError(400, "Índice de ejemplo no válido.");
+    }
+    const baseInput = provisionalExplanationInput(gradeId as string, subjectId as string, topicId as string, subskillId as string);
+    if (!baseInput) throw new AuthError(400, "El subtema no pertenece a este diagnóstico de prueba.");
+    const input = exampleIndex === 0 ? baseInput : provisionalExplanationInput(gradeId as string,
+      subjectId as string, topicId as string, subskillId as string, 1);
+    if (!input) throw new AuthError(409, "No hay otro ejemplo disponible para este subtema.");
     if (!deps.consumeQuota()) return Response.json({ error: "Límite de pruebas con IA alcanzado. Sigue con la explicación local." }, { status: 429, headers: noStore });
     let output: unknown;
     try { output = await deps.provider(input); }

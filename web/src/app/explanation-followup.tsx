@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { evaluateShortCheck, prepareShortCheck, updateRating,
   type ExplanationRating, type RatingState, type ShortCheckSource } from "@/lib/explanation-followup";
 
-export default function ExplanationFollowup({ explanationId, topicId, question, mode }: {
+export default function ExplanationFollowup({ explanationId, topicId, question, mode, showCheck = true }: {
   explanationId: string;
   topicId?: string;
   question?: ShortCheckSource | null;
   mode: "demo" | "published";
+  showCheck?: boolean;
 }) {
   const [rating, setRating] = useState<RatingState>(null);
   const [accountAvailable, setAccountAvailable] = useState(false);
@@ -30,7 +31,7 @@ export default function ExplanationFollowup({ explanationId, topicId, question, 
       const epoch = ++authEpoch.current;
       setRatingLoading(true);
       try {
-        const response = await fetch(`/api/explanation/demo-feedback?topicId=${encodeURIComponent(topicId!)}`,
+        const response = await fetch(`/api/explanation/demo-feedback?topicId=${encodeURIComponent(topicId!)}&explanationId=${encodeURIComponent(explanationId)}`,
           { cache: "no-store", credentials: "same-origin" });
         if (!mounted || epoch !== authEpoch.current) return;
         if (response.status === 401) {
@@ -100,7 +101,7 @@ export default function ExplanationFollowup({ explanationId, topicId, question, 
     {currentRating && <p role="status">Valoración de esta explicación: {currentRating === "helped" ? "me ayudó" : "todavía estoy confundido"}. Puedes cambiarla.</p>}
     {ratingMessage && <p role="status">{ratingMessage}</p>}
 
-    <h4>Comprueba lo que entendiste</h4>
+    {showCheck && <><h4>Comprueba lo que entendiste</h4>
     {!validQuestion && <p>La pregunta de comprobación requiere revisión académica antes de publicarse.</p>}
     {validQuestion && check.status === "invalid-source" && <p>La pregunta de esta explicación todavía no está disponible.</p>}
     {validQuestion && check.status === "missing-reference" && <p>La pregunta no tiene solución de referencia; no se puede calificar.</p>}
@@ -115,6 +116,6 @@ export default function ExplanationFollowup({ explanationId, topicId, question, 
           ? `No coincide con la respuesta de referencia: ${result.referenceAnswer}.`
           : "No se puede comprobar esta respuesta."}
         {mode === "demo" && " Esta comparación es provisional; no es una calificación académica."}</p>}
-    </form>}
+    </form>}</>}
   </section>;
 }

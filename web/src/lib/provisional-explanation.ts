@@ -2,6 +2,7 @@ import { getDiagnostic } from "./diagnostic.ts";
 import { explanationLevelForGrade, words } from "./explanation-adaptation.ts";
 import type { ExplanationProviderInput } from "./explanation-service.ts";
 import { getStudyDemo, pickStudyChapter } from "./study-demo.ts";
+import { selectReviewedExample } from "./explanation-examples.ts";
 
 export type ProvisionalExplanation = {
   topicId: string;
@@ -10,11 +11,14 @@ export type ProvisionalExplanation = {
   explanation: string;
   example: string;
   sourceVersion: string;
+  exampleIndex: number;
+  hasAnotherExample: boolean;
   provisional: true;
 };
 
 export function provisionalExplanationInput(
   gradeId: string, subjectId: string, topicId: string, subskillId: string,
+  exampleIndex = 0,
 ): ExplanationProviderInput | null {
   const diagnostic = getDiagnostic(gradeId, subjectId, topicId, "demo");
   if (diagnostic.status !== 200 || !diagnostic.questions.some((question) => question.skill === subskillId)) return null;
@@ -22,12 +26,15 @@ export function provisionalExplanationInput(
   const level = explanationLevelForGrade(gradeId);
   if (!lesson || !level) return null;
   const chapter = pickStudyChapter(lesson, subskillId);
+  const chosen = selectReviewedExample({ example: chapter.example,
+    alternateExamples: chapter.alternateExample ? [chapter.alternateExample] : [] }, exampleIndex);
+  if (chosen.status !== "ready") return null;
   return {
     gradeId, subjectId, topicId, topicName: lesson.title, subskillId,
     sourceVersion: "study-draft-v1", sourceStatus: "provisional",
     explanation: chapter.explanation,
-    example: chapter.example,
-    reference: "Borrador local de Apoyo académico", level, exampleIndex: 0,
+    example: chosen.example,
+    reference: "Borrador local de Apoyo académico", level, exampleIndex: chosen.index,
   };
 }
 
@@ -44,6 +51,8 @@ export function validateProvisionalExplanation(output: unknown, input: Explanati
   return {
     topicId: input.topicId, subskillId: input.subskillId, gradeId: input.gradeId,
     explanation: data.explanation, example: data.example,
-    sourceVersion: input.sourceVersion, provisional: true,
+    sourceVersion: input.sourceVersion, exampleIndex: input.exampleIndex,
+    hasAnotherExample: input.exampleIndex === 0 && !!provisionalExplanationInput(input.gradeId,
+      input.subjectId, input.topicId, input.subskillId, 1), provisional: true,
   };
 }

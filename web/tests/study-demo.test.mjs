@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { topics } from "../src/lib/catalog.ts";
 import { checkStudyAnswer, getStudyDemo } from "../src/lib/study-demo.ts";
+import { prepareShortCheck, evaluateShortCheck } from "../src/lib/explanation-followup.ts";
+import { demoExplanationId } from "../src/lib/explanation-id.ts";
 
 test("las 26 combinaciones tienen tres partes de estudio y una pregunta definida", () => {
   assert.equal(topics.length, 26);
@@ -37,4 +39,22 @@ test("no mezcla un tema con otro grado o materia ni acepta respuestas inválidas
   const lesson = getStudyDemo("G10", "QUI", "G10-QUI");
   assert.ok(lesson);
   for (const value of [-1, 3, 1.5, Number.NaN]) assert.equal(checkStudyAnswer(lesson, value), null);
+});
+
+test("las seis combinaciones piloto tienen otro ejemplo y una comprobación breve por capítulo", () => {
+  for (const topicId of ["G05-MAT", "G05-ESP", "G10-MAT", "G10-ESP", "G10-FIS", "G10-QUI"]) {
+    const lesson = getStudyDemo(topicId.slice(0, 3), topicId.slice(4), topicId);
+    for (const [index, chapter] of lesson.chapters.entries()) {
+      assert.ok(chapter.alternateExample?.length > 20, `${topicId}:${index}`);
+      assert.notEqual(chapter.alternateExample, chapter.example, `${topicId}:${index}`);
+      assert.ok(chapter.shortCheck?.prompt && chapter.shortCheck.referenceAnswer, `${topicId}:${index}`);
+      const explanationId = demoExplanationId(topicId, `habilidad-${index}`, 0);
+      const check = prepareShortCheck({ id: `${explanationId}:check`, explanationId,
+        ...chapter.shortCheck, validation: "demo-unreviewed" }, explanationId);
+      assert.equal(check.status, "ready");
+      assert.equal(evaluateShortCheck(check, chapter.shortCheck.referenceAnswer).status, "correct");
+      assert.equal(prepareShortCheck({ id: "ajeno", explanationId: "otro",
+        ...chapter.shortCheck, validation: "demo-unreviewed" }, explanationId).status, "invalid-source");
+    }
+  }
 });

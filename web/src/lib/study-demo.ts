@@ -53,6 +53,74 @@ const drafts: Readonly<Record<string, Draft>> = {
   "G11-QUI": ["En química orgánica se estudian compuestos basados en carbono. Un grupo funcional ayuda a reconocer familias de compuestos y algunas de sus propiedades.", "El etanol, CH₃CH₂OH, contiene un grupo hidroxilo (−OH) y pertenece a la familia de los alcoholes.", "¿Qué grupo funcional muestra el etanol?", ["−OH", "−COOH", "−NH₂"], 0, "En la fórmula CH₃CH₂OH aparece el grupo −OH."],
 };
 
+// Alternativas redactadas para probar el recorrido de AP-152. Continúan siendo
+// borradores; cada índice corresponde al capítulo del mismo índice.
+const pilotAlternateExamples: Readonly<Record<string, readonly [string, string, string]>> = {
+  "G05-MAT": [
+    "1/2 + 1/6 = 3/6 + 1/6 = 4/6 = 2/3.",
+    "3/4 + 1/8 = 6/8 + 1/8 = 7/8.",
+    "Se usa 1/3 de una cinta y luego 1/6. En total se usa 2/6 + 1/6 = 3/6; queda 1/2.",
+  ],
+  "G05-ESP": [
+    "Para informar sobre las abejas, puedes presentar el tema y después explicar cómo transportan polen.",
+    "Para informar sobre el reciclaje: inicio, qué es; desarrollo, cómo separar materiales; cierre, por qué se hace.",
+    "Borrador: «Las plantas necesitan luz». Revisión: agrega un dato que explique para qué la necesitan y verifica el título.",
+  ],
+  "G10-MAT": [
+    "Si el cateto opuesto mide 5 y la hipotenusa 13, sen(ángulo) = 5/13.",
+    "En el círculo unitario, al girar 90° se llega al punto (0, 1): coseno = 0 y seno = 1.",
+    "Una temperatura que oscila entre 18 °C y 22 °C tiene valor central 20 °C y amplitud 2 °C. Si el ciclo se repite cada 24 h, su período es 24 h.",
+  ],
+  "G10-ESP": [
+    "«El colegio debería reducir residuos, porque así usaría menos recursos» plantea una tesis y una razón que aún requieren evidencia.",
+    "Tesis: reducir residuos. Razón: disminuye el desperdicio. Evidencia posible: un registro medido de residuos antes y después de una campaña.",
+    "Una encuesta de ocho personas no basta por sí sola para afirmar qué piensa toda la comunidad escolar; haría falta una muestra más amplia y bien descrita.",
+  ],
+  "G10-FIS": [
+    "Si la masa es 4 kg y la aceleración 2 m/s², la fuerza neta es 8 N.",
+    "Una fuerza de 12 N hacia la derecha y otra de 5 N hacia la izquierda producen 7 N netos hacia la derecha.",
+    "Un objeto en reposo con fuerzas equilibradas tiene fuerza neta cero. También puede tenerla un objeto que se mueve en línea recta a velocidad constante.",
+  ],
+  "G10-QUI": [
+    "N₂ + 3 H₂ → 2 NH₃ conserva 2 átomos de N y 6 de H en cada lado.",
+    "En 3 CO₂ hay 3 átomos de carbono y 6 de oxígeno; el coeficiente 3 multiplica toda la fórmula.",
+    "4 Fe + 3 O₂ → 2 Fe₂O₃ conserva 4 átomos de Fe y 6 de O en cada lado.",
+  ],
+};
+
+const pilotShortChecks: Readonly<Record<string, readonly [readonly [string, string], readonly [string, string], readonly [string, string]]>> = {
+  "G05-MAT": [
+    ["¿Cuánto es 1/2 + 1/4? Escribe la fracción.", "3/4"],
+    ["¿Cuánto es 3/4 + 1/8? Escribe la fracción.", "7/8"],
+    ["Si se usa 1/4 y luego 1/2 de una cinta, ¿qué fracción queda?", "1/4"],
+  ],
+  "G05-ESP": [
+    ["¿Qué tipo de texto comunica información sobre un tema?", "Texto informativo"],
+    ["¿Qué parte de un texto informativo desarrolla los datos del tema?", "Desarrollo"],
+    ["¿Qué parte del texto debe corresponder con el contenido al revisar?", "Título"],
+  ],
+  "G10-MAT": [
+    ["Si el cateto opuesto mide 5 y la hipotenusa 13, ¿cuánto vale el seno?", "5/13"],
+    ["En el círculo unitario a 90°, ¿cuánto vale el seno? Escribe un número.", "1"],
+    ["Una temperatura oscila entre 18 °C y 22 °C. ¿Cuántos grados mide su amplitud? Escribe solo el número.", "2"],
+  ],
+  "G10-ESP": [
+    ["En «El colegio debería reducir residuos, porque así usaría menos recursos», ¿cuál es la tesis?", "El colegio debería reducir residuos"],
+    ["¿Cómo se llama un dato verificable que apoya una razón?", "Evidencia"],
+    ["¿Basta una sola opinión para generalizar a toda la comunidad? Responde sí o no.", "No"],
+  ],
+  "G10-FIS": [
+    ["Una masa de 4 kg acelera a 2 m/s². ¿Cuántos newtons de fuerza neta hay? Escribe solo el número.", "8"],
+    ["Actúan 12 N a la derecha y 5 N a la izquierda. ¿Cuántos newtons netos hay hacia la derecha? Escribe solo el número.", "7"],
+    ["Un objeto se mueve en línea recta a velocidad constante. ¿Cuántos newtons de fuerza neta tiene? Escribe solo el número.", "0"],
+  ],
+  "G10-QUI": [
+    ["En N₂ + 3 H₂ → 2 NH₃, ¿cuántos átomos de H hay en cada lado? Escribe solo el número.", "6"],
+    ["En 3 CO₂, ¿cuántos átomos de O hay? Escribe solo el número.", "6"],
+    ["En 4 Fe + 3 O₂ → 2 Fe₂O₃, ¿cuántos átomos de Fe hay en cada lado? Escribe solo el número.", "4"],
+  ],
+};
+
 export function getStudyDemo(gradeId: string, subjectId: string, topicId: string): StudyDemo | null {
   const topic = topics.find((item) => item.id === topicId && item.gradeId === gradeId && item.subjectId === subjectId && item.active && item.pilotCandidate);
   const draft = topic && drafts[topic.id];
@@ -67,7 +135,12 @@ export function getStudyDemo(gradeId: string, subjectId: string, topicId: string
     title: topic.name,
     explanation,
     example,
-    chapters: [{ title: "Primer acercamiento", explanation, example }, ...chapters],
+    chapters: ([{ title: "Primer acercamiento", explanation, example }, ...chapters] as StudyChapter[])
+      .map((chapter, index) => ({ ...chapter,
+        alternateExample: pilotAlternateExamples[topic.id]?.[index],
+        shortCheck: pilotShortChecks[topic.id]?.[index]
+          ? { prompt: pilotShortChecks[topic.id][index][0], referenceAnswer: pilotShortChecks[topic.id][index][1] }
+          : undefined })),
     question: { prompt, options, correctIndex, feedback },
     provisional: true,
   };
