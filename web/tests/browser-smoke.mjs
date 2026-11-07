@@ -367,6 +367,12 @@ try {
     await click(".practice-session .answer-feedback .primary-button", "Ver resultado");
     await waitText(".practice-result", "Práctica terminada");
     await click(".main-nav button", "Mi progreso");
+    await waitText(".study-summary", "Tu siguiente paso");
+    await waitText(".study-summary", "Racha de práctica: 1 día");
+    const studySummary = await evaluate("fetch('/api/study/summary').then((response) => response.json())");
+    assert.ok(studySummary.recommendation?.reason);
+    await waitText(".study-summary", studySummary.recommendation.reason);
+    assert.equal(await evaluate("document.querySelector('.study-summary button')?.textContent?.includes('Ir al tema recomendado')"), true);
     await click(".screen-card-grid button", "Evolución");
     await waitText(".domain-summary", "Indeterminado");
     assert.equal(await evaluate("document.querySelectorAll('.skill-overview li').length"), 2);
