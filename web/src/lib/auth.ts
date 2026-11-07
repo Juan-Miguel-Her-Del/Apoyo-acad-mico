@@ -615,6 +615,21 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
       ORDER BY started_at DESC,id DESC LIMIT 200`).all(userId) as PracticeSessionRow[];
     return rows.map(sessionFromRow);
   }
+  function listPracticeComparisonSessions(userId: string) {
+    activeUser(userId);
+    return db.prepare(`WITH scored AS (
+      SELECT s.id, s.grade_id AS gradeId, s.subject_id AS subjectId,
+        s.topic_id AS topicId, s.completed_at AS completedAt,
+        COUNT(a.question_id) AS answered, COALESCE(SUM(a.correct),0) AS correctCount
+      FROM practice_sessions s LEFT JOIN practice_answers a ON a.session_id=s.id
+      WHERE s.user_id=? AND s.status='completed' AND s.completed_at IS NOT NULL
+      GROUP BY s.id HAVING COUNT(a.question_id)>0
+    ), ranked AS (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY topicId ORDER BY completedAt DESC,id DESC) AS position FROM scored
+    )
+    SELECT id,gradeId,subjectId,topicId,'completed' AS status,completedAt,answered,correctCount
+    FROM ranked WHERE position<=2 ORDER BY completedAt DESC,id DESC`).all(userId);
+  }
   function listPracticeSkillTotals(userId: string): {
     skillId: string; completeAttempts: number; answered: number; correctCount: number
   }[] {
@@ -642,6 +657,7 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
     deleteOwnAccount, saveProgress, listProgress,
     getLastSelection, saveLastSelection, studySummary,
     startPractice, answerPractice, finishPractice, getPracticeSession, listPracticeSessions,
+    listPracticeComparisonSessions,
     listPracticeSkillTotals, close: () => db.close() };
 }
 

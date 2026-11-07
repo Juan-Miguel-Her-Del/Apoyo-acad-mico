@@ -230,6 +230,42 @@ test("diagnósticos comparan dos sesiones del mismo tema sin inventar mejora con
   assert.equal(compareCompletedSessions(items, "G05-MAT").status, "insufficient");
 });
 
+test("comparación de práctica consulta sesiones antiguas aunque el historial visible termine en 200", async (t) => {
+  const directory = mkdtempSync(path.join(tmpdir(), "apoyo-practice-comparison-"));
+  const dbPath = path.join(directory, "test.sqlite");
+  const store = openAuthStore(dbPath);
+  t.after(() => { store.close(); rmSync(directory, { recursive: true, force: true }); });
+  const { user } = await store.register({ email: "old-practice@example.test",
+    password: "clave-segura-123", adultConfirmed: true });
+  const db = new DatabaseSync(dbPath);
+  try {
+    const insertSession = db.prepare(`INSERT INTO practice_sessions
+      (id,user_id,grade_id,subject_id,topic_id,status,total,started_at,completed_at)
+      VALUES (?,?,?,?,?,'completed',1,?,?)`);
+    const insertAnswer = db.prepare(`INSERT INTO practice_answers
+      (session_id,question_id,option_id,correct,correct_option_id,explanation,answered_at)
+      VALUES (?,'q','a',?,'a','',?)`);
+    db.exec("BEGIN");
+    for (let index = 0; index < 202; index += 1) {
+      const id = index.toString(16).padStart(32, "0");
+      const subjectId = index < 2 ? "MAT" : "ESP";
+      const topicId = `G05-${subjectId}`;
+      const date = new Date(Date.UTC(2026, 10, 1, 0, index)).toISOString();
+      insertSession.run(id, user.id, "G05", subjectId, topicId, date, date);
+      insertAnswer.run(id, index === 0 ? 1 : 0, date);
+    }
+    db.exec("COMMIT");
+  } finally { db.close(); }
+  assert.equal(store.listPracticeSessions(user.id).some((item) => item.topicId === "G05-MAT"), false);
+  const comparison = compareCompletedSessions(store.listPracticeComparisonSessions(user.id), "G05-MAT");
+  assert.equal(comparison.status, "ready");
+  assert.equal(comparison.deltaPoints, -100);
+  assert.equal(store.listPracticeComparisonSessions(user.id).length, 4);
+  const other = await store.register({ email: "other-practice@example.test",
+    password: "clave-segura-123", adultConfirmed: true });
+  assert.deepEqual(store.listPracticeComparisonSessions(other.user.id), []);
+});
+
 test("rondas nuevas evitan repetición inmediata y suben de nivel tras dos aciertos", async (t) => {
   const open = fixture(t);
   const store = open();

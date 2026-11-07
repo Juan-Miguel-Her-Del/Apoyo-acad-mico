@@ -141,6 +141,21 @@ export function openDiagnosticAttemptStore(
       return { ...attempt, answers: saved };
     });
   }
+  function listComparisonSessions(userId: string) {
+    activeUser(userId);
+    return db.prepare(`WITH scored AS (
+      SELECT d.id, d.grade_id AS gradeId, d.subject_id AS subjectId,
+        d.topic_id AS topicId, d.completed_at AS completedAt,
+        COUNT(a.question_id) AS answered, COALESCE(SUM(a.correct),0) AS correctCount
+      FROM diagnostic_attempts d LEFT JOIN diagnostic_attempt_answers a ON a.attempt_id=d.id
+      WHERE d.user_id=? AND d.status='completed' AND d.completed_at IS NOT NULL
+      GROUP BY d.id HAVING COUNT(a.question_id)>0
+    ), ranked AS (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY topicId ORDER BY completedAt DESC,id DESC) AS position FROM scored
+    )
+    SELECT id,gradeId,subjectId,topicId,'completed' AS status,completedAt,answered,correctCount
+    FROM ranked WHERE position<=2 ORDER BY completedAt DESC,id DESC`).all(userId);
+  }
   function latestOpen(userId: string, gradeId: unknown, subjectId: unknown, topicId: unknown) {
     activeUser(userId);
     if (![gradeId, subjectId, topicId].every((value) => typeof value === "string" && value.length > 0)) {
@@ -194,7 +209,7 @@ export function openDiagnosticAttemptStore(
       return { ...view(ownedRow(userId, row.id)), feedback };
     } catch (error) { db.exec("ROLLBACK"); throw error; }
   }
-  return { start, get, list, latestOpen, answer, close: () => db.close() };
+  return { start, get, list, listComparisonSessions, latestOpen, answer, close: () => db.close() };
 }
 
 let singleton: ReturnType<typeof openDiagnosticAttemptStore> | undefined;

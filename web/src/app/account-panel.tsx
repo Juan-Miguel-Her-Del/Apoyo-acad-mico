@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import Link from "next/link";
 import { grades, subjects, topics } from "@/lib/catalog";
 import type { AccountProfile } from "@/lib/profile";
-import { compareCompletedSessions, comparePracticeSessions, type PracticeHistoryItem } from "@/lib/practice-history";
+import { compareCompletedSessions, type ComparisonSession, type PracticeHistoryItem } from "@/lib/practice-history";
 import { diagnosticSkillInsights } from "@/lib/diagnostic-analysis";
 import type { SkillTotal } from "@/lib/progress-insights";
 import type { Recommendation, StudyStreak } from "@/lib/study-planning";
@@ -40,8 +40,10 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, o
   const [displayName, setDisplayName] = useState("");
   const [profileGradeId, setProfileGradeId] = useState("");
   const [diagnosticItems, setDiagnosticItems] = useState<DiagnosticHistoryItem[]>([]);
+  const [diagnosticComparisonItems, setDiagnosticComparisonItems] = useState<ComparisonSession[]>([]);
   const [selectedDiagnosticId, setSelectedDiagnosticId] = useState("");
   const [practiceItems, setPracticeItems] = useState<PracticeHistoryItem[]>([]);
+  const [practiceComparisonItems, setPracticeComparisonItems] = useState<ComparisonSession[]>([]);
   const [skillTotals, setSkillTotals] = useState<SkillTotal[] | null>(null);
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [streak, setStreak] = useState<StudyStreak | null>(null);
@@ -93,7 +95,9 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, o
       if (epoch !== authEpoch.current) return;
       if (!diagnosticResponse.ok || !practiceResponse.ok) {
         setDiagnosticItems([]);
+        setDiagnosticComparisonItems([]);
         setPracticeItems([]);
+        setPracticeComparisonItems([]);
         setSkillTotals(null);
         setRecommendation(null);
         setStreak(null);
@@ -105,7 +109,9 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, o
       ]);
       if (epoch !== authEpoch.current) return;
       setDiagnosticItems(Array.isArray(diagnosticBody.items) ? diagnosticBody.items : []);
+      setDiagnosticComparisonItems(Array.isArray(diagnosticBody.comparisonItems) ? diagnosticBody.comparisonItems : []);
       setPracticeItems(Array.isArray(practiceBody.items) ? practiceBody.items : []);
+      setPracticeComparisonItems(Array.isArray(practiceBody.comparisonItems) ? practiceBody.comparisonItems : []);
       setSkillTotals(Array.isArray(practiceBody.skillTotals) ? practiceBody.skillTotals : null);
       setRecommendation(summaryBody?.recommendation ?? null);
       setStreak(summaryBody?.streak ?? null);
@@ -199,8 +205,10 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, o
       setProfile(null);
       setProfileStatus("loading");
       setDiagnosticItems([]);
+      setDiagnosticComparisonItems([]);
       setSelectedDiagnosticId("");
       setPracticeItems([]);
+      setPracticeComparisonItems([]);
       setSkillTotals(null);
       setRecommendation(null);
       setStreak(null);
@@ -238,7 +246,8 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, o
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "No se pudo eliminar la cuenta.");
       authEpoch.current += 1;
-      setAccount(null); setDiagnosticItems([]); setPracticeItems([]); setSkillTotals(null);
+      setAccount(null); setDiagnosticItems([]); setDiagnosticComparisonItems([]);
+      setPracticeItems([]); setPracticeComparisonItems([]); setSkillTotals(null);
       setAccountScreen("profile"); setProgressScreen("overview");
       setProfile(null); setProfileStatus("loading");
       setRecommendation(null); setStreak(null); setDeleteOpen(false);
@@ -278,14 +287,14 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, o
     finally { setBusy(false); }
   }
 
-  const completedTopics = [...new Set(practiceItems.filter((item) => item.status === "completed").map((item) => item.topicId))];
+  const completedTopics = [...new Set(practiceComparisonItems.map((item) => item.topicId))];
   const comparisonTopic = completedTopics.includes(selectedTopic) ? selectedTopic : completedTopics[0] ?? "";
-  const comparison = comparisonTopic ? comparePracticeSessions(practiceItems, comparisonTopic) : null;
-  const completedDiagnosticTopics = [...new Set(diagnosticItems.filter((item) => item.status === "completed").map((item) => item.topicId))];
+  const comparison = comparisonTopic ? compareCompletedSessions(practiceComparisonItems, comparisonTopic) : null;
+  const completedDiagnosticTopics = [...new Set(diagnosticComparisonItems.map((item) => item.topicId))];
   const diagnosticComparisonTopic = completedDiagnosticTopics.includes(selectedDiagnosticTopic)
     ? selectedDiagnosticTopic : completedDiagnosticTopics[0] ?? "";
   const diagnosticComparison = diagnosticComparisonTopic
-    ? compareCompletedSessions(diagnosticItems, diagnosticComparisonTopic) : null;
+    ? compareCompletedSessions(diagnosticComparisonItems, diagnosticComparisonTopic) : null;
   const selectedDiagnostic = diagnosticItems.find((item) => item.id === selectedDiagnosticId);
   const diagnosticAnalysis = selectedDiagnostic?.status === "completed" && Array.isArray(selectedDiagnostic.answers)
     ? diagnosticSkillInsights(selectedDiagnostic.answers.map((answer) => ({ id: answer.questionId, skill: answer.skill })), selectedDiagnostic.answers)
@@ -331,7 +340,7 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, o
       {completedDiagnosticTopics.length > 0 && <label className="comparison-label">Tema
         <select value={diagnosticComparisonTopic} onChange={(event) => setSelectedDiagnosticTopic(event.target.value)}>
           {completedDiagnosticTopics.map((topicId) => {
-            const item = diagnosticItems.find((value) => value.topicId === topicId)!;
+            const item = diagnosticComparisonItems.find((value) => value.topicId === topicId)!;
             return <option key={topicId} value={topicId}>{topicLabel(item)}</option>;
           })}
         </select>
@@ -358,7 +367,7 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, o
       {completedTopics.length > 0 && <label className="comparison-label">Tema
         <select value={comparisonTopic} onChange={(event) => setSelectedTopic(event.target.value)}>
           {completedTopics.map((topicId) => {
-            const item = practiceItems.find((value) => value.topicId === topicId)!;
+            const item = practiceComparisonItems.find((value) => value.topicId === topicId)!;
             return <option key={topicId} value={topicId}>{topicLabel(item)}</option>;
           })}
         </select>

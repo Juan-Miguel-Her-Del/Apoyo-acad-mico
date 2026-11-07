@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import path from "node:path";
 import { tmpdir } from "node:os";
+import { DatabaseSync } from "node:sqlite";
 import { openAuthStore, AuthError } from "../src/lib/auth.ts";
 import { openDiagnosticAttemptStore } from "../src/lib/diagnostic-attempts.ts";
 import { getAdaptiveDiagnosticBank } from "../src/lib/diagnostic-adaptive.ts";
@@ -20,6 +21,36 @@ async function account(auth, prefix) {
   return (await auth.register({ email: `${prefix}@example.test`, password: "clave-segura-123", adultConfirmed: true })).user;
 }
 const selection = { gradeId: "G05", subjectId: "MAT", topicId: "G05-MAT", mode: "demo" };
+
+test("comparación diagnóstica conserva dos intentos de un tema fuera del historial visible", async (t) => {
+  const { auth, store, dbPath } = fixture(t);
+  const user = await account(auth, "old-diagnostic");
+  const db = new DatabaseSync(dbPath);
+  try {
+    const insertAttempt = db.prepare(`INSERT INTO diagnostic_attempts
+      (id,user_id,grade_id,subject_id,topic_id,status,started_at,completed_at)
+      VALUES (?,?,?,?,?,'completed',?,?)`);
+    const insertAnswer = db.prepare(`INSERT INTO diagnostic_attempt_answers
+      (attempt_id,question_id,option_id,correct,skill,answered_at)
+      VALUES (?,'q','a',?,'skill',?)`);
+    db.exec("BEGIN");
+    for (let index = 0; index < 102; index += 1) {
+      const id = index.toString(16).padStart(32, "0");
+      const subjectId = index < 2 ? "MAT" : "ESP";
+      const date = new Date(Date.UTC(2026, 10, 1, 0, index)).toISOString();
+      insertAttempt.run(id, user.id, "G05", subjectId, `G05-${subjectId}`, date, date);
+      insertAnswer.run(id, index === 0 ? 1 : 0, date);
+    }
+    db.exec("COMMIT");
+  } finally { db.close(); }
+  assert.equal(store.list(user.id).some((item) => item.topicId === "G05-MAT"), false);
+  const matched = store.listComparisonSessions(user.id).filter((item) => item.topicId === "G05-MAT");
+  assert.equal(matched.length, 2);
+  assert.deepEqual(matched.map((item) => item.correctCount), [0, 1]);
+  assert.equal(store.listComparisonSessions(user.id).length, 4);
+  const other = await account(auth, "other-diagnostic");
+  assert.deepEqual(store.listComparisonSessions(other.id), []);
+});
 
 test("intento diagnóstico de cuatro preguntas guarda respuestas y resultado sin publicar explicaciones", async (t) => {
   const { auth, store, dbPath } = fixture(t);

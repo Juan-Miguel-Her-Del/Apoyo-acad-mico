@@ -9,6 +9,8 @@ export function GET(request: Request) {
     ensureAccountsEnabled(request);
     const user = authStore().sessionUser(requestToken(request));
     if (!user) throw new AuthError(401, "Sesión requerida.");
-    return Response.json({ items: diagnosticAttemptStore().list(user.id) }, { headers: noStore });
+    const store = diagnosticAttemptStore();
+    return Response.json({ items: store.list(user.id), comparisonItems: store.listComparisonSessions(user.id) },
+      { headers: noStore });
   } catch (error) { return apiError(error); }
 }

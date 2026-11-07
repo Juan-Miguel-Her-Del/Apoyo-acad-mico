@@ -14,6 +14,7 @@ export type PracticeHistoryItem = {
 
 export type ComparableSession = Pick<PracticeHistoryItem,
   "id" | "topicId" | "status" | "answered" | "correctCount" | "completedAt">;
+export type ComparisonSession = ComparableSession & Pick<PracticeHistoryItem, "gradeId" | "subjectId">;
 
 export function compareCompletedSessions<T extends ComparableSession>(items: readonly T[], topicId: string) {
   const completed = items.filter((item) => item.topicId === topicId && item.status === "completed" && item.completedAt);
