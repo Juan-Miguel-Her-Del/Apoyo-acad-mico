@@ -92,3 +92,29 @@ test("borrador provisional se identifica como no revisado ante Gemini", async ()
     else process.env.GEMINI_API_KEY = oldKey;
   }
 });
+
+test("Gemini reintenta un 503 temporal y no reintenta errores permanentes", async () => {
+  const oldKey = process.env.GEMINI_API_KEY;
+  const oldFetch = globalThis.fetch;
+  try {
+    process.env.GEMINI_API_KEY = "server-gemini-test-key";
+    let requests = 0;
+    globalThis.fetch = async () => {
+      requests += 1;
+      return requests === 1
+        ? Response.json({ error: { code: 503 } }, { status: 503 })
+        : Response.json({ status: "completed", steps: [
+          { type: "model_output", content: [{ type: "text", text: JSON.stringify(modelOutput) }] },
+        ] });
+    };
+    assert.deepEqual(await geminiExplanationProvider(input), modelOutput);
+    assert.equal(requests, 2);
+    globalThis.fetch = async () => { requests += 1; return Response.json({ error: { code: 403 } }, { status: 403 }); };
+    await assert.rejects(geminiExplanationProvider(input), /Gemini unavailable/);
+    assert.equal(requests, 3);
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = oldKey;
+  }
+});

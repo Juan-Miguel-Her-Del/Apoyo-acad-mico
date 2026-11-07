@@ -2,6 +2,8 @@
 
 **Fecha:** 5 de noviembre de 2026. La integración está implementada y hay una clave local configurada. Una prueba de conexión obtuvo una respuesta válida; otras solicitudes devolvieron HTTP 503. La clave no se guarda en Git.
 
+**Actualización del 7 de noviembre:** se comprobó que el `fetch failed` de una prueba se debía al bloqueo de red `EACCES` del entorno de ejecución. Con acceso a la red, la API respondió HTTP 503 de forma intermitente y después entregó una respuesta válida para el segundo ejemplo provisional. El adaptador ahora reintenta hasta dos veces más, con esperas breves, solo ante HTTP 503. Si persiste el error, la aplicación mantiene la explicación local. `npm.cmd run check:gemini -- --alternate` terminó correctamente con la clave local; también pasaron 112 pruebas, lint y build. No se envió información personal.
+
 ## Configuración local
 
 1. Crea una clave de Gemini API en [Google AI Studio](https://aistudio.google.com/app/apikey). La [guía oficial](https://ai.google.dev/gemini-api/docs/get-started) explica el registro y las claves.

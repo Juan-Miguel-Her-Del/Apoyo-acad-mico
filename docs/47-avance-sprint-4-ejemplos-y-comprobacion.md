@@ -16,13 +16,13 @@ Este avance conserva las 25 incidencias del Sprint 4. Las historias y tareas que
 
 Desde `web/`, ejecuta `npm.cmd run dev` y abre `http://localhost:3000`. Inicia sesión con una cuenta adulta, escoge uno de los seis temas piloto y realiza el diagnóstico hasta que aparezca una explicación por dificultad. Pulsa **Ver otro ejemplo**, responde la comprobación y marca si la explicación te ayudó. Vuelve al primer ejemplo y comprueba que la valoración de cada uno se conserva por separado. En temas fuera del piloto se informa que aún no hay otro ejemplo.
 
-`npm.cmd test` aprobó **111/111** pruebas. `npm.cmd run lint`, `npm.cmd run build` y el recorrido automatizado en navegador pasaron. La prueba directa `npm.cmd run check:gemini -- --alternate` terminó en `fetch failed` desde este entorno, por lo que la respuesta real del proveedor para la alternativa no quedó verificada aquí; el recorrido local usa el borrador cuando Gemini no responde.
+La verificación inicial aprobó **111/111** pruebas, lint, build y el recorrido automatizado en navegador. Después se diagnosticó el error de Gemini: un `fetch failed` era un bloqueo de red `EACCES` del entorno; con red disponible, hubo un HTTP 503 intermitente de Google. Se añadieron reintentos breves solo para HTTP 503 y una prueba de regresión. La verificación final aprobó **112/112** pruebas, lint y build; `npm.cmd run check:gemini -- --alternate` obtuvo una respuesta real válida. El recorrido local sigue usando el borrador cuando Gemini no responde.
 
 ## Para cerrar el Sprint 4 en Jira
 
 1. Incorporar explicaciones, ejemplos alternativos, preguntas y soluciones **revisadas** para las combinaciones y subtemas que se vayan a publicar. Registrar la fuente, versión y decisión curricular en AP-314/AP-316. Una conformidad verbal o un borrador no prueban esa revisión.
 2. Repetir los casos de AP-138/145/152/159/166 con material publicado, una cuenta estudiantil autorizada y evidencia de uso; verificar nivel, correspondencia del concepto, ausencia de duplicados, persistencia y comparación con referencia.
 3. Cerrar AP-304/AP-257 con documentos jurídicos definitivos, verificación del representante y pruebas de seguridad antes de activar AP-267/268/271/274 para menores reales.
-4. Probar la ruta real de Gemini con conexión disponible y la clave configurada solo en servidor; documentar el resultado sin enviar datos personales.
+4. Verificar la ruta real de Gemini con material curricular aprobado cuando exista. La conexión y el segundo ejemplo provisional ya se probaron con una clave solo de servidor, sin enviar datos personales.
 
 No se cambian los estados de esas incidencias a **Listo** con esta entrega porque sus criterios completos aún requieren las evidencias anteriores.

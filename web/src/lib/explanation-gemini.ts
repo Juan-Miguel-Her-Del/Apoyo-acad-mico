@@ -25,8 +25,8 @@ export async function geminiExplanationProvider(input: ExplanationProviderInput)
   const model = process.env.APOYO_GEMINI_MODEL || "gemini-3.5-flash-lite";
   if (!/^gemini-[a-zA-Z0-9._-]{1,70}$/.test(model)) throw new Error("Invalid Gemini model");
 
-  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
-    method: "POST", cache: "no-store", signal: AbortSignal.timeout(12000),
+  const request = {
+    method: "POST", cache: "no-store" as const,
     headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       model, store: false,
@@ -43,7 +43,18 @@ export async function geminiExplanationProvider(input: ExplanationProviderInput)
       }),
       response_format: { type: "text", mime_type: "application/json", schema },
     }),
-  });
+  };
+  let response: Response | undefined;
+  // Un 503 indica indisponibilidad temporal del proveedor. Los reintentos son
+  // acotados para no bloquear demasiado tiempo la explicación local.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+      ...request, signal: AbortSignal.timeout(12000),
+    });
+    if (response.status !== 503 || attempt === 2) break;
+    await new Promise((resolve) => setTimeout(resolve, 300 * 2 ** attempt));
+  }
+  if (!response) throw new Error("Gemini unavailable");
   if (!response.ok || Number(response.headers.get("content-length") ?? 0) > 8192) throw new Error("Gemini unavailable");
   const raw = await response.text();
   if (raw.length > 8192) throw new Error("Gemini response too large");

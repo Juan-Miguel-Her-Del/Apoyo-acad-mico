@@ -27,9 +27,21 @@ if (!process.env.GEMINI_API_KEY) {
 } else {
   const originalFetch = globalThis.fetch;
   let responseStatus;
+  let providerError;
   globalThis.fetch = async (...args) => {
     const response = await originalFetch(...args);
-    if (String(args[0]) === "https://generativelanguage.googleapis.com/v1beta/interactions") responseStatus = response.status;
+    if (String(args[0]) === "https://generativelanguage.googleapis.com/v1beta/interactions") {
+      responseStatus = response.status;
+      if (!response.ok) {
+        const body = await response.clone().json().catch(() => null);
+        const details = body?.error;
+        if (details && typeof details === "object") {
+          providerError = [details.status, details.code,
+            typeof details.message === "string" ? details.message.replaceAll(process.env.GEMINI_API_KEY, "[clave oculta]").slice(0, 300) : null]
+            .filter((value) => value !== undefined && value !== null).join(" · ");
+        }
+      }
+    }
     return response;
   };
   try {
@@ -46,6 +58,10 @@ if (!process.env.GEMINI_API_KEY) {
   } catch (error) {
     console.error(`Falló la prueba de Gemini: ${error instanceof Error ? error.message : "error desconocido"}`);
     if (responseStatus) console.error(`Respuesta de la API: HTTP ${responseStatus}.`);
+    if (providerError) console.error(`Detalle de la API: ${providerError}`);
+    if (!responseStatus && error instanceof Error && error.cause && typeof error.cause === "object" && "code" in error.cause) {
+      console.error(`Causa de red: ${String(error.cause.code)}`);
+    }
     process.exitCode = 1;
   } finally {
     globalThis.fetch = originalFetch;
