@@ -1,10 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { topics } from "../src/lib/catalog.ts";
 import { getDiagnostic } from "../src/lib/diagnostic.ts";
 import { getAdaptiveDiagnosticBank } from "../src/lib/diagnostic-adaptive.ts";
 import { handleProvisionalExplanationRequest } from "../src/lib/provisional-explanation-http.ts";
 import { provisionalExplanationInput, validateProvisionalExplanation } from "../src/lib/provisional-explanation.ts";
+import { openExplanationReviewStore } from "../src/lib/explanation-review.ts";
 
 function request(body) {
   return new Request("http://localhost:3000/api/explanation/provisional", {
@@ -91,6 +95,37 @@ test("proveedor caído deja la explicación local y ruta deshabilitada no consum
       example: source.example }) });
   assert.equal(invented.status, 503);
   assert.equal(JSON.stringify(await invented.json()).includes("Esta explicación fue inventada"), false);
+});
+
+test("salida provisional inválida se bloquea y registra solo metadatos de revisión", async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "apoyo-provisional-review-"));
+  const store = openExplanationReviewStore(path.join(directory, "review.sqlite"));
+  try {
+    const input = provisionalExplanationInput("G10", "MAT", "G10-MAT", "razón trigonométrica", 1);
+    assert.ok(input);
+    const response = await handleProvisionalExplanationRequest(request({
+      gradeId: input.gradeId, subjectId: input.subjectId, topicId: input.topicId,
+      subskillId: input.subskillId, exampleIndex: 1,
+    }), { enabled: true, consumeQuota: () => true, review: (event) => store.record(event),
+      provider: async (source) => ({ topicId: source.topicId, subskillId: source.subskillId,
+        sourceVersion: source.sourceVersion, explanation: source.explanation,
+        example: "Un ejemplo inventado que no pertenece a la fuente." }) });
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).error.includes("ejemplo inventado"), false);
+    const rows = store.list();
+    assert.equal(rows.length, 1);
+    assert.deepEqual({ topicId: rows[0].topicId, subskillId: rows[0].subskillId,
+      sourceVersion: rows[0].sourceVersion, exampleIndex: rows[0].exampleIndex,
+      reason: rows[0].reason }, {
+      topicId: input.topicId, subskillId: input.subskillId,
+      sourceVersion: input.sourceVersion, exampleIndex: 1,
+      reason: "invalid_provider_response",
+    });
+    assert.equal(JSON.stringify(rows).includes("ejemplo inventado"), false);
+  } finally {
+    store.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("seis temas piloto ofrecen un segundo ejemplo distinto; sin alternativa no llama a Gemini", async () => {

@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { openAuthStore } from "../src/lib/auth.ts";
 import { getAdaptiveDiagnosticBank } from "../src/lib/diagnostic-adaptive.ts";
+import { getStudyDemo, pickStudyChapter } from "../src/lib/study-demo.ts";
 
 const browser = process.env.CHROME_PATH ?? (process.platform === "win32"
   ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" : "google-chrome");
@@ -158,6 +159,21 @@ try {
   await waitFor(() => evaluate("[...document.querySelectorAll('.diagnostic-account-attempt .provisional-explanation .explanation-followup button')].some((button) => button.textContent.includes('Sí, me ayudó') && !button.disabled)"), "valoración disponible");
   await click(".diagnostic-account-attempt .provisional-explanation .explanation-followup button", "Sí, me ayudó");
   await text(".diagnostic-account-attempt .provisional-explanation .explanation-followup", "Valoración guardada en tu cuenta");
+  const explanationSelector = ".diagnostic-account-attempt .provisional-explanation";
+  const firstExample = await evaluate(`document.querySelector('${explanationSelector} strong').parentElement.textContent`);
+  await click(`${explanationSelector} button`, "Ver otro ejemplo");
+  await text(explanationSelector, "Otro ejemplo:");
+  const alternateExample = await evaluate(`document.querySelector('${explanationSelector} strong').parentElement.textContent`);
+  assert.notEqual(alternateExample, firstExample, "el segundo ejemplo debe ser distinto");
+  await waitFor(() => evaluate(`[...document.querySelectorAll('${explanationSelector} .explanation-followup button')].some((button) => button.textContent.includes('Todavía estoy confundido') && !button.disabled)`), "valoración del segundo ejemplo");
+  await click(`${explanationSelector} .explanation-followup button`, "Todavía estoy confundido");
+  await text(`${explanationSelector} .explanation-followup`, "Valoración guardada en tu cuenta");
+  const shortCheck = pickStudyChapter(getStudyDemo("G10", "MAT", "G10-MAT"), "G10-MAT:seno").shortCheck;
+  assert.ok(shortCheck?.referenceAnswer, "la pregunta breve debe tener referencia");
+  await evaluate(`document.querySelector('${explanationSelector} .explanation-followup input').focus()`);
+  await send("Input.insertText", { text: shortCheck.referenceAnswer });
+  await click(`${explanationSelector} .explanation-followup button`, "Comprobar respuesta");
+  await text(`${explanationSelector} .explanation-followup`, "Coincide con la respuesta de referencia");
   const final = await evaluate(`fetch('/api/diagnostic/attempt?attemptId=${attemptId}').then((response) => response.json())`);
   assert.equal(final.attempt.status, "completed");
   assert.equal(final.attempt.answered, 4);
@@ -173,6 +189,8 @@ try {
   await selectTopic();
   await text(".diagnostic-account-attempt", "Intento recuperado desde el servidor");
   await text(".diagnostic-account-attempt", "Terminaste la demostración");
+  await click(`${explanationSelector} button`, "Ver otro ejemplo");
+  await text(`${explanationSelector} .explanation-followup`, "todavía estoy confundido");
   await click(".diagnostic-account-attempt button", "Iniciar otro intento");
   await text(".diagnostic-account-attempt", "Pregunta 1 de 4");
   for (let current = 1; current <= 4; current += 1) {
@@ -182,7 +200,7 @@ try {
     await click(".diagnostic-account-attempt .answer-feedback .primary-button", current === 4 ? "Ver resumen" : "Siguiente pregunta");
   }
   await text(".diagnostic-account-attempt .skill-strengths", "G10-MAT:seno");
-  console.log("OK: intento de cuenta adulta, reanudación, respuesta única, entrada inválida, fin y resumen persistido.");
+  console.log("OK: diagnóstico, otro ejemplo, valoración persistida, pregunta breve y resumen de cuenta adulta.");
 } finally {
   socket?.close();
   chrome.kill();

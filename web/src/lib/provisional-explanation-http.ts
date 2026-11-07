@@ -1,12 +1,14 @@
 import { AuthError } from "./auth.ts";
 import { apiError, ensureSameOrigin, noStore, readJson } from "./auth-http.ts";
 import type { ExplanationProvider } from "./explanation-service.ts";
+import type { ExplanationReviewEvent } from "./explanation-review.ts";
 import { provisionalExplanationInput, validateProvisionalExplanation } from "./provisional-explanation.ts";
 
 export async function handleProvisionalExplanationRequest(request: Request, deps: {
   enabled: boolean;
   provider: ExplanationProvider;
   consumeQuota: () => boolean;
+  review?: (event: ExplanationReviewEvent) => void;
 }) {
   try {
     ensureSameOrigin(request);
@@ -33,7 +35,17 @@ export async function handleProvisionalExplanationRequest(request: Request, deps
     try { output = await deps.provider(input); }
     catch { return Response.json({ error: "Gemini no respondió. Puedes continuar con la explicación local." }, { status: 503, headers: noStore }); }
     const result = validateProvisionalExplanation(output, input);
-    if (!result) return Response.json({ error: "La respuesta de Gemini no pasó la comprobación. Continúa con la explicación local." }, { status: 503, headers: noStore });
+    if (!result) {
+      try {
+        deps.review?.({ topicId: input.topicId, subskillId: input.subskillId,
+          sourceVersion: input.sourceVersion, exampleIndex: input.exampleIndex,
+          reason: "invalid_provider_response" });
+      } catch {
+        return Response.json({ error: "No pudimos registrar la revisión de la respuesta de Gemini. Continúa con la explicación local." },
+          { status: 503, headers: noStore });
+      }
+      return Response.json({ error: "La respuesta de Gemini no pasó la comprobación. Continúa con la explicación local." }, { status: 503, headers: noStore });
+    }
     return Response.json(result, { headers: noStore });
   } catch (error) { return apiError(error); }
 }

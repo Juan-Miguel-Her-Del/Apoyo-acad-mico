@@ -1,5 +1,6 @@
 import { noStore } from "@/lib/auth-http";
 import { geminiExplanationProvider } from "@/lib/explanation-gemini";
+import { explanationReviewStore } from "@/lib/explanation-review";
 import { handleProvisionalExplanationRequest } from "@/lib/provisional-explanation-http";
 
 export const runtime = "nodejs";
@@ -25,5 +26,6 @@ export async function GET() {
 export async function POST(request: Request) {
   return handleProvisionalExplanationRequest(request, {
     enabled: enabled(), provider: geminiExplanationProvider, consumeQuota: consumeDemoQuota,
+    review: (event) => explanationReviewStore().record(event),
   });
 }
