@@ -107,7 +107,13 @@ export function openDiagnosticAttemptStore(
     }
     const bank = bankReader(gradeId, subjectId, topicId);
     if (!bank) throw new AuthError(400, "Tema inactivo o selección no válida.");
-    if (bank.length < MAX_QUESTIONS || selectNextDiagnosticQuestion({ questions: bank, answers: noAnswers, startDifficulty: 1 }).status !== "selected") {
+    let usableBank = false;
+    if (bank.length >= MAX_QUESTIONS) {
+      try {
+        usableBank = selectNextDiagnosticQuestion({ questions: bank, answers: noAnswers, startDifficulty: 1 }).status === "selected";
+      } catch { /* Un banco incompleto o corrupto no debe abrir un intento. */ }
+    }
+    if (!usableBank) {
       throw new AuthError(409, "No hay preguntas suficientes para iniciar un diagnóstico.");
     }
     const id = randomBytes(16).toString("hex");

@@ -70,7 +70,10 @@ try {
     await waitFor(() => evaluate("document.readyState === 'complete'"), "página cargada");
   }
   async function selectTopic() {
-    await click(".route-steps button", "1. Materia");
+    await waitFor(async () => {
+      await click(".route-steps button", "1. Materia");
+      return evaluate("Boolean(document.querySelector('.subject-grid'))");
+    }, "selector de materia interactivo");
     await text(".subject-grid", "Matemáticas");
     await click(".subject-choice", "Matemáticas");
     await text(".topic-list", "Razones y funciones");

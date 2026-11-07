@@ -149,3 +149,15 @@ test("banco insuficiente devuelve conflicto sin abrir intento ni inventar progre
     (error) => error instanceof AuthError && error.status === 404);
   assert.deepEqual(auth.listProgress(user.id), []);
 });
+
+test("banco corrupto tampoco abre intento ni devuelve un error interno", async (t) => {
+  const bank = getAdaptiveDiagnosticBank("G05", "MAT", "G05-MAT");
+  const invalid = [...bank];
+  invalid[1] = { ...invalid[1], id: invalid[0].id };
+  const { auth, store } = fixture(t, () => invalid);
+  const user = await account(auth, "banco-corrupto");
+  assert.throws(() => store.start(user.id, selection),
+    (error) => error instanceof AuthError && error.status === 409 && /preguntas suficientes/.test(error.message));
+  assert.deepEqual(store.list(user.id), []);
+  assert.deepEqual(auth.listProgress(user.id), []);
+});

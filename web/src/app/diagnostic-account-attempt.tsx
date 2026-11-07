@@ -36,6 +36,7 @@ export default function DiagnosticAccountAttempt({ selection, onExit }: { select
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [studying, setStudying] = useState(false);
+  const [retryPreparation, setRetryPreparation] = useState(0);
   const sending = useRef(false);
   const controller = useRef<AbortController | null>(null);
   const topicId = selection.topicId!;
@@ -104,7 +105,7 @@ export default function DiagnosticAccountAttempt({ selection, onExit }: { select
     return () => { live = false; controller.current?.abort(); };
     // El componente se monta de nuevo al cambiar la selección.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topicId]);
+  }, [topicId, retryPreparation]);
 
   async function submit() {
     if (!attempt || !question || feedback || sending.current) return;
@@ -197,6 +198,9 @@ export default function DiagnosticAccountAttempt({ selection, onExit }: { select
       <button className="text-button" type="button" onClick={restart} disabled={busy}>Iniciar otro intento</button>
     </div>}
     {attempt?.status === "open" && !question && !feedback && !busy && <p role="alert">No hay una pregunta disponible para continuar. Recupera el intento o informa este error.</p>}
+    {!attempt && !busy && error && <button className="text-button" type="button" onClick={() => {
+      setBusy(true); setError(""); setRetryPreparation((value) => value + 1);
+    }}>Reintentar preparación</button>}
     {error && <p className="diagnostic-error" role="alert">{error} {attempt?.status === "open" && <button className="text-button" type="button" onClick={() => { setError(""); void load(attempt.id).catch(() => setError("No se pudo recuperar el intento.")); }}>Recuperar intento</button>}</p>}
     <button className="text-button" type="button" onClick={onExit}>Salir del diagnóstico</button>
   </div>;
