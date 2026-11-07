@@ -200,7 +200,13 @@ try {
     await click(".diagnostic-account-attempt .answer-feedback .primary-button", current === 4 ? "Ver resumen" : "Siguiente pregunta");
   }
   await text(".diagnostic-account-attempt .skill-strengths", "G10-MAT:seno");
-  console.log("OK: diagnóstico, otro ejemplo, valoración persistida, pregunta breve y resumen de cuenta adulta.");
+  await click(".main-nav button", "Mi progreso");
+  await text(".screen-card-grid", "Diagnósticos");
+  await click(".screen-card-grid button", "Diagnósticos");
+  await text(".diagnostic-comparison", "Anterior:");
+  await text(".diagnostic-comparison", "Reciente:");
+  await text(".diagnostic-comparison", "Subiste 100 puntos porcentuales");
+  console.log("OK: diagnóstico, otro ejemplo, valoración persistida, pregunta breve y comparación de dos sesiones.");
 } finally {
   socket?.close();
   chrome.kill();

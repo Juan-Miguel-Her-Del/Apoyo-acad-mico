@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import Link from "next/link";
 import { grades, subjects, topics } from "@/lib/catalog";
 import type { AccountProfile } from "@/lib/profile";
-import { comparePracticeSessions, type PracticeHistoryItem } from "@/lib/practice-history";
+import { compareCompletedSessions, comparePracticeSessions, type PracticeHistoryItem } from "@/lib/practice-history";
 import { diagnosticSkillInsights } from "@/lib/diagnostic-analysis";
 import type { SkillTotal } from "@/lib/progress-insights";
 import type { Recommendation, StudyStreak } from "@/lib/study-planning";
@@ -46,6 +46,7 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, o
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [streak, setStreak] = useState<StudyStreak | null>(null);
   const [selectedTopic, setSelectedTopic] = useState("");
+  const [selectedDiagnosticTopic, setSelectedDiagnosticTopic] = useState("");
   const [progressScreen, setProgressScreen] = useState<"overview" | "diagnostics" | "practice" | "insights">("overview");
   const [accountScreen, setAccountScreen] = useState<"profile" | "security">("profile");
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -280,6 +281,11 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, o
   const completedTopics = [...new Set(practiceItems.filter((item) => item.status === "completed").map((item) => item.topicId))];
   const comparisonTopic = completedTopics.includes(selectedTopic) ? selectedTopic : completedTopics[0] ?? "";
   const comparison = comparisonTopic ? comparePracticeSessions(practiceItems, comparisonTopic) : null;
+  const completedDiagnosticTopics = [...new Set(diagnosticItems.filter((item) => item.status === "completed").map((item) => item.topicId))];
+  const diagnosticComparisonTopic = completedDiagnosticTopics.includes(selectedDiagnosticTopic)
+    ? selectedDiagnosticTopic : completedDiagnosticTopics[0] ?? "";
+  const diagnosticComparison = diagnosticComparisonTopic
+    ? compareCompletedSessions(diagnosticItems, diagnosticComparisonTopic) : null;
   const selectedDiagnostic = diagnosticItems.find((item) => item.id === selectedDiagnosticId);
   const diagnosticAnalysis = selectedDiagnostic?.status === "completed" && Array.isArray(selectedDiagnostic.answers)
     ? diagnosticSkillInsights(selectedDiagnostic.answers.map((answer) => ({ id: answer.questionId, skill: answer.skill })), selectedDiagnostic.answers)
@@ -321,6 +327,27 @@ export default function AccountPanel({ section, onOpenAccount, onProfileSaved, o
         {diagnosticAnalysis?.skills.length ? <ul>{diagnosticAnalysis.skills.map((skill) => <li key={skill.skill}>{skill.skill}: {skill.correct}/{skill.answered} correctas · {skill.strength ? "fortaleza observada" : skill.status === "dificultad-demo" ? "señal de dificultad" : "evidencia indeterminada"} · confianza {skill.confidence === null ? "insuficiente" : `${skill.confidence} %`}.</li>)}</ul> : <p>No hay suficientes respuestas por subtema para analizar.</p>}
         <p>Resumen provisional basado en las respuestas guardadas de esta cuenta; no es una evaluación académica validada.</p>
       </div>}
+      <h3>Comparar diagnósticos de un tema</h3>
+      {completedDiagnosticTopics.length > 0 && <label className="comparison-label">Tema
+        <select value={diagnosticComparisonTopic} onChange={(event) => setSelectedDiagnosticTopic(event.target.value)}>
+          {completedDiagnosticTopics.map((topicId) => {
+            const item = diagnosticItems.find((value) => value.topicId === topicId)!;
+            return <option key={topicId} value={topicId}>{topicLabel(item)}</option>;
+          })}
+        </select>
+      </label>}
+      {!diagnosticComparison || diagnosticComparison.status === "insufficient"
+        ? <p>Aún no hay sesiones suficientes para comparar tu progreso.</p>
+        : <div className="comparison-result diagnostic-comparison" role="status">
+          <p>Anterior: {diagnosticComparison.previous.correctCount}/{diagnosticComparison.previous.answered} correctas · {dateLabel(diagnosticComparison.previous.completedAt)}.</p>
+          <p>Reciente: {diagnosticComparison.latest.correctCount}/{diagnosticComparison.latest.answered} correctas · {dateLabel(diagnosticComparison.latest.completedAt)}.</p>
+          <strong>{diagnosticComparison.deltaPoints > 0 ? `Subiste ${diagnosticComparison.deltaPoints} puntos porcentuales`
+            : diagnosticComparison.deltaPoints < 0 ? `Bajaste ${Math.abs(diagnosticComparison.deltaPoints)} puntos porcentuales`
+              : "Mismo porcentaje de aciertos"}.</strong>
+          <p>Comparación orientativa de diagnósticos con preguntas provisionales.</p>
+        </div>}
+      {diagnosticComparison?.status === "insufficient" && diagnosticComparison.latest &&
+        <p>Último intento con respuestas: {diagnosticComparison.latest.correctCount}/{diagnosticComparison.latest.answered} correctas · {dateLabel(diagnosticComparison.latest.completedAt)}.</p>}
       </div>}
       {progressScreen === "practice" && <div className="progress-detail-screen">
       <h3>Historial de práctica</h3>

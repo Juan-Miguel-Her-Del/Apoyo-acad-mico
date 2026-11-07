@@ -9,7 +9,7 @@ import { topics } from "../src/lib/catalog.ts";
 import { getDiagnostic } from "../src/lib/diagnostic.ts";
 import { getPracticeBank, practiceBankCoverage, publicPracticeQuestions } from "../src/lib/practice.ts";
 import { getPracticeSkills } from "../src/lib/practice-skills.ts";
-import { comparePracticeSessions } from "../src/lib/practice-history.ts";
+import { compareCompletedSessions, comparePracticeSessions } from "../src/lib/practice-history.ts";
 
 function fixture(t) {
   const dir = mkdtempSync(path.join(tmpdir(), "apoyo-practice-test-"));
@@ -208,6 +208,26 @@ test("la comparación usa solo intentos respondidos del mismo tema", async (t) =
   assert.equal(comparison.previous.id, first.session.id);
   assert.equal(comparePracticeSessions(items, "G05-ESP").status, "insufficient");
   assert.equal(comparePracticeSessions(items, "G10-FIS").status, "insufficient");
+});
+
+test("diagnósticos comparan dos sesiones del mismo tema sin inventar mejora con una sola", () => {
+  const base = { status: "completed", answered: 4, completedAt: "2026-11-01T12:00:00.000Z" };
+  const items = [
+    { ...base, id: "a", topicId: "G10-MAT", correctCount: 1 },
+    { ...base, id: "b", topicId: "G10-ESP", correctCount: 4 },
+    { ...base, id: "c", topicId: "G10-MAT", correctCount: 3, completedAt: "2026-11-02T12:00:00.000Z" },
+    { ...base, id: "d", topicId: "G10-MAT", correctCount: 0, answered: 0,
+      completedAt: "2026-11-03T12:00:00.000Z" },
+  ];
+  const comparison = compareCompletedSessions(items, "G10-MAT");
+  assert.equal(comparison.status, "ready");
+  assert.equal(comparison.previous.id, "a");
+  assert.equal(comparison.latest.id, "c");
+  assert.equal(comparison.deltaPoints, 50);
+  assert.deepEqual(compareCompletedSessions(items, "G10-ESP"), {
+    status: "insufficient", latest: items[1], previous: null, deltaPoints: null,
+  });
+  assert.equal(compareCompletedSessions(items, "G05-MAT").status, "insufficient");
 });
 
 test("rondas nuevas evitan repetición inmediata y suben de nivel tras dos aciertos", async (t) => {
