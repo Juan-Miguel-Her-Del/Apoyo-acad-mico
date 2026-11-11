@@ -6,16 +6,37 @@ import path from "node:path";
 import { topics } from "../src/lib/catalog.ts";
 import { getDiagnostic } from "../src/lib/diagnostic.ts";
 import { getAdaptiveDiagnosticBank } from "../src/lib/diagnostic-adaptive.ts";
-import { handleProvisionalExplanationRequest } from "../src/lib/provisional-explanation-http.ts";
+import { handleProvisionalExplanationRequest as handleRequest } from "../src/lib/provisional-explanation-http.ts";
 import { provisionalExplanationInput, validateProvisionalExplanation } from "../src/lib/provisional-explanation.ts";
 import { openExplanationReviewStore } from "../src/lib/explanation-review.ts";
 
 function request(body) {
   return new Request("http://localhost:3000/api/explanation/provisional", {
     method: "POST", headers: { "Content-Type": "application/json", Origin: "http://localhost:3000" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ attemptId: "a".repeat(32), ...body }),
   });
 }
+
+async function handleProvisionalExplanationRequest(incoming, deps) {
+  const body = await incoming.clone().json();
+  return handleRequest(incoming, { ...deps,
+    evidence: deps.evidence ?? (() => ({ gradeId: body.gradeId, subjectId: body.subjectId,
+      topicId: body.topicId, subskillId: body.subskillId, correction: "Corrección local del ejercicio." })) });
+}
+
+test("sin evidencia del diagnóstico no consume cuota ni llama al proveedor", async () => {
+  let quota = 0;
+  let provider = 0;
+  const response = await handleRequest(request({ gradeId: "G10", subjectId: "MAT",
+    topicId: "G10-MAT", subskillId: "G10-MAT:modelacion-periodica" }), {
+    enabled: true, evidence: () => null,
+    consumeQuota: () => { quota += 1; return true; },
+    provider: async () => { provider += 1; return {}; },
+  });
+  assert.equal(response.status, 409);
+  assert.equal(quota, 0);
+  assert.equal(provider, 0);
+});
 
 test("cada tema de prueba tiene fuente provisional vinculada a un subtema real", () => {
   for (const topic of topics.filter((item) => item.active && item.pilotCandidate)) {

@@ -20,7 +20,7 @@ function fixture(t) {
 }
 
 test("26 temas tienen seis preguntas provisionales, dos niveles y subtemas coherentes, sin clave pública", () => {
-  assert.equal(topics.length, 26);
+  assert.equal(topics.length, 52);
   const ids = new Set();
   for (const topic of topics) {
     const bank = getPracticeBank(topic.gradeId, topic.subjectId, topic.id);
@@ -43,7 +43,7 @@ test("26 temas tienen seis preguntas provisionales, dos niveles y subtemas coher
       assert.deepEqual(Object.keys(publicPracticeQuestions([question])[0]).sort(), ["difficulty", "id", "options", "prompt", "skillId"]);
     }
   }
-  assert.equal(ids.size, 156);
+  assert.equal(ids.size, 312);
   assert.equal(getPracticeBank("G05", "FIS", "G05-MAT"), null);
   assert.equal(getPracticeBank("G05", "MAT", "G05-MAT", {}), null, "sin segunda pregunta no debe mezclar otro tema");
   const shortBank = getPracticeBank("G05", "MAT", "G05-MAT").slice(0, 3);
@@ -62,12 +62,17 @@ test("correcciones técnicas del piloto conservan IDs y claves mientras ajustan 
   const question = (topic, number) => banks[topic][number - 1];
   assert.equal(question("G05-MAT", 1).skillId, "G05-MAT:suma-distinto-denominador");
   assert.equal(question("G05-ESP", 1).skillId, "G05-ESP:frase-introductoria");
-  assert.equal(question("G10-MAT", 2).skillId, "G10-MAT:seno");
-  assert.match(question("G10-MAT", 4).prompt, /ángulo agudo formado por el cateto de 8 y la hipotenusa/);
-  assert.equal(question("G10-MAT", 4).options.find((option) => option.id === question("G10-MAT", 4).correctOptionId).text, "8/10");
+  assert.equal(question("G10-MAT", 2).skillId, "G10-MAT:modelacion-periodica");
+  assert.equal(question("G10-MAT", 1).skillId, "G10-MAT:modelacion-periodica");
+  assert.match(question("G10-MAT", 1).prompt, /período/);
+  assert.match(question("G10-MAT", 4).prompt, /modelo corresponde/);
+  assert.equal(question("G10-MAT", 4).skillId, "G10-MAT:modelacion-periodica");
+  assert.equal(question("G10-MAT", 4).options.find((option) => option.id === question("G10-MAT", 4).correctOptionId).text, "h(t) = 4 + 2·sen(2πt/10)");
   assert.equal(question("G10-ESP", 2).skillId, "G10-ESP:identificar-razon");
   assert.equal(question("G10-QUI", 1).skillId, "G10-QUI:balanceo-coeficientes");
   assert.equal(question("G10-QUI", 2).skillId, "G10-QUI:atomos-en-formulas");
+  assert.equal(question("G10-FIS", 4).skillId, "G10-FIS:leyes-de-newton");
+  assert.equal(question("G10-QUI", 4).skillId, "G10-QUI:conservacion-de-atomos");
   const physics = getDiagnostic("G10", "FIS", "G10-FIS", "demo");
   const chemistry = getDiagnostic("G10", "QUI", "G10-QUI", "demo");
   assert.match(physics.questions[0].prompt, /misma dirección y el mismo sentido/);
@@ -106,6 +111,44 @@ test("respuestas y sesiones antiguas conservan su clave y actualizan el subtema 
   store = openAuthStore(dbPath);
   assert.equal(store.getPracticeSession(user.id, started.session.id).answers[0].skillId,
     "G05-MAT:suma-distinto-denominador");
+  store.close();
+});
+
+test("la nueva modelación no reclasifica respuestas históricas de seno", async (t) => {
+  const dir = mkdtempSync(path.join(tmpdir(), "apoyo-bank-version-"));
+  const dbPath = path.join(dir, "practice.sqlite");
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  let store = openAuthStore(dbPath);
+  const { user } = await store.register({ email: "bank-version@example.test", password: "clave-segura-123", adultConfirmed: true });
+  const old = store.startPractice(user.id, { gradeId: "G10", subjectId: "MAT", topicId: "G10-MAT" });
+  store.close();
+  const db = new DatabaseSync(dbPath);
+  db.prepare("UPDATE practice_sessions SET bank_version=? WHERE id=?").run("demo-2026-10-v3", old.session.id);
+  const oldQuestion = {
+    id: "practice-g10-mat-02", topicId: "G10-MAT",
+    prompt: "En un triángulo rectángulo, si el cateto opuesto mide 5 y la hipotenusa 13, ¿cuál es el seno?",
+    options: [{ id: "a", text: "5/13" }, { id: "b", text: "13/5" }, { id: "c", text: "12/13" }],
+    correctOptionId: "a", explanation: "Seno es opuesto dividido entre hipotenusa.",
+    difficulty: 1, skillId: "G10-MAT:coseno", provisional: true,
+  };
+  db.prepare("UPDATE practice_session_questions SET snapshot_json=? WHERE session_id=? AND question_id=?")
+    .run(JSON.stringify(oldQuestion), old.session.id, oldQuestion.id);
+  db.close();
+  store = openAuthStore(dbPath);
+  store.answerPractice(user.id, { sessionId: old.session.id, questionId: oldQuestion.id, optionId: "a" });
+  assert.equal(store.getPracticeSession(user.id, old.session.id).answers[0].skillId, "G10-MAT:seno");
+  store.close();
+  store = openAuthStore(dbPath);
+  assert.equal(store.getPracticeSession(user.id, old.session.id).answers[0].skillId, "G10-MAT:seno");
+  store.close();
+  const noSnapshot = new DatabaseSync(dbPath);
+  noSnapshot.prepare("DELETE FROM practice_session_questions WHERE session_id=?").run(old.session.id);
+  noSnapshot.close();
+  store = openAuthStore(dbPath);
+  const restored = store.getPracticeSession(user.id, old.session.id);
+  assert.match(restored.questions[0].prompt, /seno/);
+  assert.match(restored.questions[1].prompt, /seno/);
+  assert.equal(restored.answers[0].skillId, "G10-MAT:seno");
   store.close();
 });
 

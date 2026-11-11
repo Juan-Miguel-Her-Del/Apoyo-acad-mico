@@ -24,7 +24,7 @@ test("las 26 combinaciones ofrecen dos preguntas demo únicas y sin soluciones e
       }
     }
   }
-  assert.equal(allQuestionIds.size, 52);
+  assert.equal(allQuestionIds.size, 104);
 });
 
 test("no permite combinaciones cruzadas, grado desconocido ni modo desconocido", () => {

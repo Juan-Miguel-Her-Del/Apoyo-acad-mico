@@ -1,3 +1,5 @@
+import { expandedTopics } from "./expanded-content.ts";
+
 export type SubjectId = "MAT" | "ESP" | "FIS" | "QUI";
 export type GradeGroup = "Primaria" | "Bachillerato";
 
@@ -146,6 +148,9 @@ const topicDrafts: readonly TopicDraft[] = [
     dba: null,
     pilotCandidate: true,
   },
+  ...expandedTopics.map(({ id, gradeId, subjectId, name }): TopicDraft => ({
+    id, gradeId, subjectId, name, dba: null, pilotCandidate: true,
+  })),
 ];
 
 export const topics: readonly Topic[] = topicDrafts.map((topic, index) => ({

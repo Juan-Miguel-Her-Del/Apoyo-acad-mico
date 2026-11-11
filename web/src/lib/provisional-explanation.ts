@@ -4,6 +4,8 @@ import type { ExplanationProviderInput } from "./explanation-service.ts";
 import { getStudyDemo, pickStudyChapter } from "./study-demo.ts";
 import { selectReviewedExample } from "./explanation-examples.ts";
 
+export const STUDY_SOURCE_VERSION = "study-draft-v2-2026-11-10";
+
 export type ProvisionalExplanation = {
   topicId: string;
   subskillId: string;
@@ -30,7 +32,7 @@ export function provisionalExplanationInput(
   if (chosen.status !== "ready") return null;
   return {
     gradeId, subjectId, topicId, topicName: lesson.title, subskillId,
-    sourceVersion: "study-draft-v1", sourceStatus: "provisional",
+    sourceVersion: STUDY_SOURCE_VERSION, sourceStatus: "provisional",
     explanation: chapter.explanation,
     example: chosen.example,
     reference: "Borrador local de Apoyo académico", level, exampleIndex: chosen.index,

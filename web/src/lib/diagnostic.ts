@@ -1,4 +1,5 @@
 import { getDemoTopics, getPublishedTopics, type SubjectId } from "./catalog.ts";
+import { expandedTopics } from "./expanded-content.ts";
 
 export type QuestionView = {
   id: string;
@@ -93,7 +94,22 @@ const additionalDemoBank: readonly DemoQuestion[] = additionalDemoDrafts.map((dr
   };
 });
 
-const demoBank: readonly DemoQuestion[] = [...pilotDemoBank, ...additionalDemoBank];
+const expandedDemoBank: readonly DemoQuestion[] = expandedTopics.flatMap((topic) => [0, 2].map((questionIndex, index) => {
+  const [prompt, answers, correctIndex, explanation] = topic.questions[questionIndex];
+  return {
+    id: `demo-${topic.id.toLowerCase()}-${String(index + 1).padStart(2, "0")}`,
+    topicId: topic.id,
+    skill: topic.skills[index][0],
+    difficulty: "inicial" as const,
+    prompt,
+    options: answers.map((text, optionIndex) => ({ id: ["a", "b", "c"][optionIndex], text })),
+    correctOptionId: ["a", "b", "c"][correctIndex],
+    explanation,
+    validation: "demo-unreviewed" as const,
+  };
+}));
+
+const demoBank: readonly DemoQuestion[] = [...pilotDemoBank, ...additionalDemoBank, ...expandedDemoBank];
 
 export function createDiagnosticReader(bank: readonly DemoQuestion[]) {
   return function getDiagnostic(gradeId: string, subjectId: string, topicId: string, mode: string) {

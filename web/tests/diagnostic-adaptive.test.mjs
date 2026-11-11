@@ -34,7 +34,7 @@ test("26 temas tienen un banco diagnóstico provisional con dos niveles e IDs pr
       ids.add(item.id);
     }
   }
-  assert.equal(ids.size, 156);
+  assert.equal(ids.size, 312);
   assert.equal(getAdaptiveDiagnosticBank("G05", "FIS", "G05-MAT"), null);
   assert.equal(getAdaptiveDiagnosticBank("G12", "MAT", "G12-MAT"), null);
 });

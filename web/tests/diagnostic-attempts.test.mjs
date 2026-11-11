@@ -52,7 +52,7 @@ test("comparación diagnóstica conserva dos intentos de un tema fuera del histo
   assert.deepEqual(store.listComparisonSessions(other.id), []);
 });
 
-test("intento diagnóstico de cuatro preguntas guarda respuestas y resultado sin publicar explicaciones", async (t) => {
+test("intento diagnóstico de cuatro preguntas da explicación local provisional y guarda resultado", async (t) => {
   const { auth, store, dbPath } = fixture(t);
   const user = await account(auth, "uno");
   let state = store.start(user.id, selection);
@@ -70,7 +70,7 @@ test("intento diagnóstico de cuatro preguntas guarda respuestas y resultado sin
     seen.add(question.id);
     state = store.answer(user.id, { attemptId: state.attempt.id, questionId: question.id, optionId: question.options[0].id });
     assert.equal(state.feedback.questionId, question.id);
-    assert.equal(state.feedback.explanation, null);
+    assert.ok(typeof state.feedback.explanation === "string" && state.feedback.explanation.length > 0);
     assert.equal(state.feedback.explanationStatus, "pending-review");
     assert.equal(state.attempt.answered, n + 1);
   }
@@ -81,6 +81,29 @@ test("intento diagnóstico de cuatro preguntas guarda respuestas y resultado sin
   try {
     assert.deepEqual(reopened.get(user.id, state.attempt.id), { attempt: state.attempt, question: null, answers: state.answers });
   } finally { reopened.close(); }
+});
+
+test("corrección de un error usa el intento propio y la clave guardada, sin pedir respuestas a Gemini", async (t) => {
+  const { auth, store } = fixture(t);
+  const user = await account(auth, "evidencia-ia");
+  const other = await account(auth, "otra-evidencia-ia");
+  const subject = { gradeId: "G10", subjectId: "MAT", topicId: "G10-MAT", mode: "demo" };
+  let state = store.start(user.id, subject);
+  const attemptId = state.attempt.id;
+  assert.equal(store.explanationEvidence(user.id, attemptId, "G10-MAT:modelacion-periodica"), null);
+  const bank = getAdaptiveDiagnosticBank("G10", "MAT", "G10-MAT");
+  for (let index = 0; index < 4; index += 1) {
+    const question = state.question;
+    const saved = bank.find((item) => item.id === question.id);
+    const wrong = question.options.find((option) => option.id !== saved.correctOptionId);
+    state = store.answer(user.id, { attemptId, questionId: question.id, optionId: wrong.id });
+  }
+  const correction = store.explanationEvidence(user.id, attemptId, "G10-MAT:modelacion-periodica");
+  assert.match(correction.correction, /período|amplitud/i);
+  assert.equal(correction.topicId, "G10-MAT");
+  assert.equal(store.explanationEvidence(user.id, attemptId, "G10-MAT:seno"), null);
+  assert.throws(() => store.explanationEvidence(other.id, attemptId, "G10-MAT:modelacion-periodica"),
+    (error) => error instanceof AuthError && error.status === 404);
 });
 
 test("propiedad, orden, formato y doble respuesta se validan en servidor", async (t) => {

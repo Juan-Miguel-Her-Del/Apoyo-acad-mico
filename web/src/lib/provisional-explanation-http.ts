@@ -8,6 +8,9 @@ export async function handleProvisionalExplanationRequest(request: Request, deps
   enabled: boolean;
   provider: ExplanationProvider;
   consumeQuota: () => boolean;
+  evidence: (request: Request, attemptId: string, subskillId: string) => {
+    gradeId: string; subjectId: string; topicId: string; subskillId: string; correction: string;
+  } | null;
   review?: (event: ExplanationReviewEvent) => void;
 }) {
   try {
@@ -15,15 +18,23 @@ export async function handleProvisionalExplanationRequest(request: Request, deps
     if (!deps.enabled) return Response.json({ error: "La explicación con IA no está disponible en esta instalación." }, { status: 503, headers: noStore });
     const body = await readJson(request);
     if (!body || typeof body !== "object" || Array.isArray(body) ||
-        Object.keys(body).some((key) => !["gradeId", "subjectId", "topicId", "subskillId", "exampleIndex"].includes(key))) {
+        Object.keys(body).some((key) => !["gradeId", "subjectId", "topicId", "subskillId", "exampleIndex", "attemptId"].includes(key))) {
       throw new AuthError(400, "Solicitud no válida.");
     }
-    const { gradeId, subjectId, topicId, subskillId, exampleIndex = 0 } = body as Record<string, unknown>;
+    const { gradeId, subjectId, topicId, subskillId, attemptId, exampleIndex = 0 } = body as Record<string, unknown>;
     if (![gradeId, subjectId, topicId, subskillId].every((value) => typeof value === "string" && value.length > 0 && value.length <= 120)) {
       throw new AuthError(400, "Selección no válida.");
     }
     if (!Number.isInteger(exampleIndex) || (exampleIndex !== 0 && exampleIndex !== 1)) {
       throw new AuthError(400, "Índice de ejemplo no válido.");
+    }
+    if (typeof attemptId !== "string" || !/^[0-9a-f]{32}$/.test(attemptId)) {
+      throw new AuthError(400, "Intento no válido.");
+    }
+    const evidence = deps.evidence(request, attemptId, subskillId as string);
+    if (!evidence || evidence.gradeId !== gradeId || evidence.subjectId !== subjectId ||
+        evidence.topicId !== topicId || evidence.subskillId !== subskillId) {
+      throw new AuthError(409, "El diagnóstico aún no ofrece evidencia suficiente para consultar la IA.");
     }
     const baseInput = provisionalExplanationInput(gradeId as string, subjectId as string, topicId as string, subskillId as string);
     if (!baseInput) throw new AuthError(400, "El subtema no pertenece a este diagnóstico de prueba.");
@@ -46,6 +57,6 @@ export async function handleProvisionalExplanationRequest(request: Request, deps
       }
       return Response.json({ error: "La respuesta de Gemini no pasó la comprobación. Continúa con la explicación local." }, { status: 503, headers: noStore });
     }
-    return Response.json(result, { headers: noStore });
+    return Response.json({ ...result, correction: evidence.correction }, { headers: noStore });
   } catch (error) { return apiError(error); }
 }

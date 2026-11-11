@@ -169,14 +169,16 @@ export default function DiagnosticAccountAttempt({ selection, onExit }: { select
       {!feedback && <button className="primary-button" type="button" onClick={submit} disabled={busy}>{busy ? "Guardando…" : "Revisar respuesta"}</button>}
       {feedback && <div className={`answer-feedback ${feedback.correct ? "correct" : "incorrect"}`} role="status">
         <strong>{feedback.correct ? "Respuesta correcta" : "Respuesta incorrecta"}</strong>
-        <p>{feedback.explanationStatus === "pending-review" ? "Explicación pendiente de revisión docente." : feedback.explanation}</p>
+        <p>{feedback.explanation ?? "Consulta la respuesta de referencia para revisar el ejercicio."}</p>
+        {feedback.explanationStatus === "pending-review" && <p className="content-status">Explicación provisional, pendiente de revisión docente.</p>}
         {!feedback.correct && <p>Respuesta de referencia: {question.options.find((option) => option.id === feedback.correctOptionId)?.text}.</p>}
         <button className="primary-button" type="button" onClick={advance}>Siguiente pregunta</button>
       </div>}
     </div>}
     {attempt?.status === "completed" && feedback && question && <div className={`answer-feedback ${feedback.correct ? "correct" : "incorrect"}`} role="status">
       <strong>{feedback.correct ? "Respuesta correcta" : "Respuesta incorrecta"}</strong>
-      <p>{feedback.explanationStatus === "pending-review" ? "Explicación pendiente de revisión docente." : feedback.explanation}</p>
+      <p>{feedback.explanation ?? "Consulta la respuesta de referencia para revisar el ejercicio."}</p>
+      {feedback.explanationStatus === "pending-review" && <p className="content-status">Explicación provisional, pendiente de revisión docente.</p>}
       {!feedback.correct && <p>Respuesta de referencia: {question.options.find((option) => option.id === feedback.correctOptionId)?.text}.</p>}
       <button className="primary-button" type="button" onClick={advance} disabled={busy}>{busy ? "Cargando resumen…" : "Ver resumen"}</button>
     </div>}
@@ -188,7 +190,7 @@ export default function DiagnosticAccountAttempt({ selection, onExit }: { select
       <p>Regla provisional: se necesitan al menos {MIN_DIAGNOSTIC_SKILL_ANSWERS} respuestas del mismo subtema. El porcentaje de confianza describe cantidad y consistencia de respuestas de este intento; no mide probabilidad de dominio. Una mezcla equilibrada de aciertos y errores da 0 % y deja el resultado indeterminado.</p>
       {analysis.skills.length > 0 ? <ul className="skill-results">{analysis.skills.map((result) => <li key={result.skill}>
         <strong>{result.skill}</strong>: {result.strength ? "fortaleza observada (demo)" : result.status === "dificultad-demo" ? "señal de dificultad (demo)" : "indeterminado: evidencia insuficiente o resultado mixto"}. {result.correct}/{result.answered} aciertos. Confianza en la señal: {result.confidence === null ? "insuficiente por pocas respuestas" : `${result.confidence} % (${result.confidenceLevel})`}.
-        {result.status === "dificultad-demo" && <ProvisionalExplanationPanel key={`${attempt.id}/${result.skill}`} selection={selection} subskillId={result.skill} canReport />}
+        {result.status === "dificultad-demo" && <ProvisionalExplanationPanel key={`${attempt.id}/${result.skill}`} selection={selection} subskillId={result.skill} attemptId={attempt.id} canReport />}
       </li>)}</ul> : <p>No hay respuestas por subtema para analizar.</p>}
       <h4>Fortalezas observadas</h4>
       {analysis.strengths.length > 0 ? <ul className="skill-strengths">{analysis.strengths.map((result) => <li key={result.skill}>{result.skill} · {result.correct}/{result.answered} aciertos · confianza {result.confidence} %</li>)}</ul>

@@ -1,4 +1,6 @@
-import { noStore } from "@/lib/auth-http";
+import { noStore, requestToken } from "@/lib/auth-http";
+import { authStore } from "@/lib/auth";
+import { diagnosticAttemptStore } from "@/lib/diagnostic-attempts";
 import { geminiExplanationProvider } from "@/lib/explanation-gemini";
 import { explanationReviewStore } from "@/lib/explanation-review";
 import { handleProvisionalExplanationRequest } from "@/lib/provisional-explanation-http";
@@ -26,6 +28,10 @@ export async function GET() {
 export async function POST(request: Request) {
   return handleProvisionalExplanationRequest(request, {
     enabled: enabled(), provider: geminiExplanationProvider, consumeQuota: consumeDemoQuota,
+    evidence: (incoming, attemptId, subskillId) => {
+      const userId = authStore().sessionUser(requestToken(incoming))?.id;
+      return userId ? diagnosticAttemptStore().explanationEvidence(userId, attemptId, subskillId) : null;
+    },
     review: (event) => explanationReviewStore().record(event),
   });
 }

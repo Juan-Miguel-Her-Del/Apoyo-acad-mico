@@ -22,9 +22,10 @@ export async function handleProvisionalExplanationReport(request: Request, deps:
     const { gradeId, subjectId, topicId, subskillId, exampleIndex = 0, sourceVersion, reason } = body as Record<string, unknown>;
     if (typeof gradeId !== "string" || typeof subjectId !== "string" ||
       typeof topicId !== "string" || typeof subskillId !== "string" ||
-      sourceVersion !== "study-draft-v1" || !reasons.includes(reason as ReportReason) ||
+      typeof sourceVersion !== "string" ||
+      !reasons.includes(reason as ReportReason) ||
       !Number.isInteger(exampleIndex) || (exampleIndex !== 0 && exampleIndex !== 1) ||
-      !provisionalExplanationInput(gradeId, subjectId, topicId, subskillId, exampleIndex as number)) {
+      provisionalExplanationInput(gradeId, subjectId, topicId, subskillId, exampleIndex as number)?.sourceVersion !== sourceVersion) {
       throw new AuthError(400, "Reporte no válido.");
     }
     deps.record({ topicId, subskillId, sourceVersion, exampleIndex: exampleIndex as number,

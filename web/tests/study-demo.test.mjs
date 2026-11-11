@@ -6,7 +6,7 @@ import { prepareShortCheck, evaluateShortCheck } from "../src/lib/explanation-fo
 import { demoExplanationId } from "../src/lib/explanation-id.ts";
 
 test("las 26 combinaciones tienen tres partes de estudio y una pregunta definida", () => {
-  assert.equal(topics.length, 26);
+  assert.equal(topics.length, 52);
   for (const topic of topics) {
     const lesson = getStudyDemo(topic.gradeId, topic.subjectId, topic.id);
     assert.ok(lesson, topic.id);

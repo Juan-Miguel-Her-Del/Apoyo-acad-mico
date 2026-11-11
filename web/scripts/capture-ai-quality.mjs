@@ -1,63 +1,94 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { getDiagnostic } from "../src/lib/diagnostic.ts";
+import { getAdaptiveDiagnosticBank } from "../src/lib/diagnostic-adaptive.ts";
 import { PILOT_TOPICS } from "../src/lib/ai-quality-review.ts";
 import { provisionalExplanationInput, validateProvisionalExplanation } from "../src/lib/provisional-explanation.ts";
+import { handleProvisionalExplanationRequest } from "../src/lib/provisional-explanation-http.ts";
 import { geminiExplanationProvider } from "../src/lib/explanation-gemini.ts";
 
 if (!process.env.GEMINI_API_KEY) throw new Error("Falta GEMINI_API_KEY.");
-const filename = path.resolve(process.argv[2] ?? "data/ai-quality-captures.json");
+const filename = path.resolve(process.argv[2] ?? "data/ai-quality-captures-v2.json");
 mkdirSync(path.dirname(filename), { recursive: true });
 let captures = [];
 try { captures = JSON.parse(readFileSync(filename, "utf8")); }
 catch (error) { if (error?.code !== "ENOENT") throw error; }
 if (!Array.isArray(captures)) throw new Error("El archivo de capturas no es una lista.");
 
-const scenarios = ["normal", "wrong-answer", "boundary"];
+function correction(question) {
+  const correct = question.options.find((option) => option.id === question.correctOptionId);
+  if (!correct) throw new Error(`Clave incompleta: ${question.id}`);
+  return `En «${question.prompt}», la respuesta de referencia es «${correct.text}». ${question.explanation}`;
+}
+
 for (const topicId of PILOT_TOPICS) {
   const gradeId = topicId.slice(0, 3);
   const subjectId = topicId.slice(4);
-  const diagnostic = getDiagnostic(gradeId, subjectId, topicId, "demo");
-  if (diagnostic.status !== 200 || !diagnostic.questions.length) throw new Error(`Falta diagnóstico: ${topicId}`);
-  const question = diagnostic.questions[0];
-  for (const [index, kind] of scenarios.entries()) {
-    const caseId = `${topicId}-${kind}`;
-    if (captures.some((item) => item.caseId === caseId && item.status === "captured")) continue;
-    const input = provisionalExplanationInput(gradeId, subjectId, topicId, question.skill);
+  const bank = getAdaptiveDiagnosticBank(gradeId, subjectId, topicId);
+  if (!bank?.length) throw new Error(`Falta banco diagnóstico: ${topicId}`);
+  const subskillId = bank.find((question) => bank.filter((item) => item.skill === question.skill).length >= 2)?.skill;
+  if (!subskillId) throw new Error(`Falta un subtema con dos preguntas: ${topicId}`);
+  const sameSkill = bank.filter((question) => question.skill === subskillId);
+  if (sameSkill.length < 2) throw new Error(`Faltan dos preguntas del subtema: ${topicId}:${subskillId}`);
+  for (const kind of ["normal", "wrong-answer", "boundary", "no-evidence"]) {
+    const caseId = `${topicId}-${kind}-v2`;
+    if (captures.some((item) => item.caseId === caseId &&
+      item.status === (kind === "no-evidence" ? "blocked" : "captured"))) continue;
+    const exampleIndex = kind === "wrong-answer" || kind === "boundary" ? 1 : 0;
+    const input = provisionalExplanationInput(gradeId, subjectId, topicId, subskillId, exampleIndex);
     if (!input) throw new Error(`Falta fuente provisional: ${caseId}`);
-    input.exampleIndex = index;
-    // Las respuestas del diagnóstico no se transmiten al proveedor en el producto.
-    // La captura permite evaluar esta limitación sin enviar datos de estudiantes.
-    const scenario = kind === "wrong-answer"
-      ? "Dos respuestas diagnósticas ficticias erróneas activan esta habilidad; el proveedor solo ve la habilidad."
-      : kind === "boundary"
-        ? "Caso límite: sin evidencia suficiente el producto debe bloquear la llamada; esta salida directa mide el proveedor, no el flujo publicado."
-        : "Selección válida y fuente provisional local.";
+    const syntheticCorrection = correction(sameSkill[kind === "wrong-answer" ? 1 : 0]);
     let result;
     for (let attempt = 1; attempt <= 3; attempt++) {
+      let providerCalls = 0;
+      let providerOutput;
       try {
-        const output = await geminiExplanationProvider(input);
-        result = { caseId, topicId, kind, scenario, providerSawScenario: false,
-          sourceVersion: input.sourceVersion, promptVersion: "gemini-literal-extract-v1",
+        const request = new Request("http://localhost:3000/api/explanation/provisional", {
+          method: "POST", headers: { Origin: "http://localhost:3000", "Content-Type": "application/json" },
+          body: JSON.stringify({ gradeId, subjectId, topicId, subskillId,
+            attemptId: "a".repeat(32), exampleIndex }),
+        });
+        const response = await handleProvisionalExplanationRequest(request, {
+          enabled: true, consumeQuota: () => true,
+          evidence: () => kind === "no-evidence" ? null : { gradeId, subjectId, topicId, subskillId,
+            correction: syntheticCorrection },
+          provider: async (source) => {
+            providerCalls += 1;
+            providerOutput = await geminiExplanationProvider(source);
+            return providerOutput;
+          },
+        });
+        const output = await response.json();
+        if (kind === "no-evidence" ? response.status !== 409 || providerCalls !== 0
+          : response.status !== 200 || providerCalls !== 1 ||
+            !validateProvisionalExplanation(providerOutput, input) || output.correction !== syntheticCorrection) {
+          throw new Error(`Resultado inesperado: HTTP ${response.status}, llamadas ${providerCalls}`);
+        }
+        result = { caseId, topicId, kind, scenario: kind === "no-evidence"
+          ? "Diagnóstico ficticio sin evidencia suficiente; no debe llamar a Gemini."
+          : kind === "boundary" ? "Último ejemplo disponible de la fuente; no debe ofrecer un tercero inexistente."
+          : kind === "wrong-answer" ? "Segundo error ficticio del mismo subtema; corrección local distinta."
+            : "Primer error ficticio del mismo subtema tras completar el diagnóstico.",
+          sourceVersion: input.sourceVersion, sourceStatus: "provisional",
+          promptVersion: "gemini-literal-extract-v1+local-correction-v2",
           model: process.env.APOYO_GEMINI_MODEL || "gemini-3.5-flash-lite",
-          capturedAt: new Date().toISOString(), status: "captured",
-          input: { gradeId, subjectId, topicId, subskillId: question.skill,
-            explanation: input.explanation, example: input.example, exampleIndex: index },
-          output, passedStructuralValidation: !!validateProvisionalExplanation(output, input) };
+          capturedAt: new Date().toISOString(), status: kind === "no-evidence" ? "blocked" : "captured",
+          input: { gradeId, subjectId, topicId, subskillId,
+            explanation: input.explanation, example: input.example, exampleIndex },
+          output, providerOutput, providerCalls,
+          passedStructuralValidation: kind === "no-evidence" || !!validateProvisionalExplanation(providerOutput, input) };
         break;
       } catch (error) {
-        if (attempt === 3) result = { caseId, topicId, kind, scenario,
-          capturedAt: new Date().toISOString(), status: "error",
-          error: error instanceof Error ? error.message : "Error desconocido" };
+        if (attempt === 3) result = { caseId, topicId, kind, capturedAt: new Date().toISOString(),
+          status: "error", error: error instanceof Error ? error.message : "Error desconocido" };
         else await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
       }
     }
     captures = captures.filter((item) => item.caseId !== caseId);
     captures.push(result);
     writeFileSync(filename, `${JSON.stringify(captures, null, 2)}\n`, "utf8");
-    console.log(`${caseId}: ${result.status}${result.status === "captured" ? result.passedStructuralValidation ? " (estructura válida)" : " (estructura inválida)" : ""}`);
+    console.log(`${caseId}: ${result.status}`);
   }
 }
-const successful = captures.filter((item) => item.status === "captured").length;
-console.log(`Capturas reales: ${successful}/18. Archivo local: ${filename}`);
-if (successful < 18) process.exitCode = 1;
+const valid = captures.filter((item) => item.status === "captured" || item.status === "blocked");
+console.log(`Casos completos: ${valid.length}/24; llamadas reales a Gemini: ${valid.reduce((sum, item) => sum + item.providerCalls, 0)}. Archivo: ${filename}`);
+if (valid.length !== 24) process.exitCode = 1;

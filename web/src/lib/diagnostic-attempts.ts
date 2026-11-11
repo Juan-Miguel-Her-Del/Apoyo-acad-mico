@@ -5,6 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import { AuthError } from "./auth.ts";
 import { getAdaptiveDiagnosticBank, selectNextDiagnosticQuestion, type AdaptiveDiagnosticQuestion } from "./diagnostic-adaptive.ts";
 import { PRACTICE_BANK_VERSION } from "./practice.ts";
+import { analyzeDemoSkills } from "./diagnostic-analysis.ts";
 
 const MAX_QUESTIONS = 4;
 const noAnswers = [] as { questionId: string; correct: boolean }[];
@@ -97,6 +98,23 @@ export function openDiagnosticAttemptStore(
       mode: "demo" as const, validation: "demo-unreviewed" as const };
     return { attempt, question, answers: saved };
   }
+  function explanationEvidence(userId: string, attemptId: unknown, subskillId: string) {
+    const row = ownedRow(userId, attemptId);
+    if (row.status !== "completed") return null;
+    const saved = answers(row.id);
+    const bank = questions(row.id);
+    const analysis = analyzeDemoSkills(bank.map((question) => ({ id: question.id, skill: question.skill })), saved);
+    if (analysis.results.find((item) => item.skill === subskillId)?.status !== "dificultad-demo") return null;
+    const wrong = saved.find((answer) => answer.skill === subskillId && !answer.correct);
+    const question = bank.find((item) => item.id === wrong?.questionId);
+    if (!wrong || !question || question.skill !== subskillId) return null;
+    const correct = question.options.find((option) => option.id === question.correctOptionId);
+    if (!correct) return null;
+    // La respuesta elegida queda en SQLite; solo se devuelve la corrección al dueño de la sesión.
+    const correction = `En «${question.prompt}», la respuesta de referencia es «${correct.text}». ${question.explanation || "Compara la respuesta con la explicación del tema y vuelve a intentarlo."}`;
+    return { gradeId: row.grade_id, subjectId: row.subject_id, topicId: row.topic_id,
+      subskillId, correction };
+  }
   function start(userId: string, body: unknown) {
     activeUser(userId);
     if (!body || typeof body !== "object" || Array.isArray(body)) throw new AuthError(400, "Selección no válida.");
@@ -171,7 +189,7 @@ export function openDiagnosticAttemptStore(
     if (!body || typeof body !== "object" || Array.isArray(body)) throw new AuthError(400, "Respuesta no válida.");
     const { attemptId, questionId, optionId } = body as Record<string, unknown>;
     if (typeof questionId !== "string" || typeof optionId !== "string") throw new AuthError(400, "Respuesta no válida.");
-    let feedback: { questionId: string; correct: boolean; correctOptionId: string; explanation: null; explanationStatus: "pending-review" };
+    let feedback: { questionId: string; correct: boolean; correctOptionId: string; explanation: string | null; explanationStatus: "pending-review" };
     db.exec("BEGIN IMMEDIATE");
     try {
       const row = ownedRow(userId, attemptId);
@@ -204,12 +222,12 @@ export function openDiagnosticAttemptStore(
           .run(userId, row.grade_id, row.subject_id, row.topic_id, now);
       }
       feedback = { questionId, correct, correctOptionId: selected.question.correctOptionId,
-        explanation: null, explanationStatus: "pending-review" };
+        explanation: selected.question.explanation?.trim() || null, explanationStatus: "pending-review" };
       db.exec("COMMIT");
       return { ...view(ownedRow(userId, row.id)), feedback };
     } catch (error) { db.exec("ROLLBACK"); throw error; }
   }
-  return { start, get, list, listComparisonSessions, latestOpen, answer, close: () => db.close() };
+  return { start, get, explanationEvidence, list, listComparisonSessions, latestOpen, answer, close: () => db.close() };
 }
 
 let singleton: ReturnType<typeof openDiagnosticAttemptStore> | undefined;

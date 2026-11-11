@@ -13,8 +13,8 @@ test("catálogo colombiano: 11 grados y 26 combinaciones válidas", () => {
   assert.deepEqual(grades.map((grade) => grade.number), Array.from({ length: 11 }, (_, index) => index + 1));
   assert.equal(grades.filter((grade) => grade.group === "Primaria").length, 5);
   assert.equal(grades.filter((grade) => grade.group === "Bachillerato").length, 6);
-  assert.equal(topics.length, 26);
-  assert.equal(new Set(topics.map((topic) => topic.id)).size, 26);
+  assert.equal(topics.length, 52);
+  assert.equal(new Set(topics.map((topic) => topic.id)).size, 52);
   for (const topic of topics) {
     const grade = grades.find((item) => item.id === topic.gradeId);
     const subject = subjects.find((item) => item.id === topic.subjectId);
@@ -34,8 +34,8 @@ test("demo: grados 1.º a 11.º; Física y Química solo desde 10.º", () => {
   assert.deepEqual(getDemoSubjects("G11").map((subject) => subject.id), ["MAT", "ESP", "FIS", "QUI"]);
   assert.equal(getDemoTopics("G05", "FIS").length, 0);
   assert.equal(getDemoTopics("G09", "QUI").length, 0);
-  assert.equal(getDemoTopics("G11", "QUI").length, 1);
-  assert.equal(topics.filter((topic) => topic.pilotCandidate).length, 26);
+  assert.equal(getDemoTopics("G11", "QUI").length, 2);
+  assert.equal(topics.filter((topic) => topic.pilotCandidate).length, 52);
   assert.equal(getDemoTopics("G05", "ESP")[0].name, "Planear y producir un texto informativo");
   assert.equal(getDemoTopics("G10", "ESP")[0].name, "Comprensión crítica y argumentación sobre textos");
 });

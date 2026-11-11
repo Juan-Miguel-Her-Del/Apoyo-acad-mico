@@ -4,7 +4,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { DatabaseSync } from "node:sqlite";
 import { topics } from "./catalog.ts";
-import { getPracticeBank, publicPracticeQuestions, PRACTICE_BANK_VERSION, PRACTICE_SKILL_CORRECTIONS, type PracticeQuestion } from "./practice.ts";
+import { getPracticeBank, publicPracticeQuestions, PRACTICE_BANK_VERSION, PRACTICE_SKILL_CORRECTIONS, CURRENT_PRACTICE_SKILL_CORRECTIONS, type PracticeQuestion } from "./practice.ts";
 import { correctionExplanation } from "./practice-feedback.ts";
 import { availableSelection, recommendStudy, studyStreak, type SavedSelection } from "./study-planning.ts";
 import { profileInput, type AccountProfile } from "./profile.ts";
@@ -490,26 +490,53 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
     if (rows.length) return rows.map((row) => JSON.parse(row.snapshot_json) as PracticeQuestion);
     // Sesiones creadas antes de este esquema: conservar sus dos preguntas
     // originales (los IDs 01 y 02), nunca ampliar una sesión ya iniciada.
-    const legacy = getPracticeBank(session.gradeId, session.subjectId, session.topicId)?.slice(0, session.total);
+    const oldMath10: PracticeQuestion[] = [
+      { id: "practice-g10-mat-01", topicId: "G10-MAT",
+        prompt: "¿Cuánto vale el seno si el opuesto es 3 y la hipotenusa 5?",
+        options: [{ id: "a", text: "3/5" }, { id: "b", text: "5/3" }, { id: "c", text: "4/5" }],
+        correctOptionId: "a", explanation: "El seno compara el cateto opuesto con la hipotenusa: 3 dividido entre 5.",
+        difficulty: 1, skillId: "G10-MAT:seno", provisional: true },
+      { id: "practice-g10-mat-02", topicId: "G10-MAT",
+        prompt: "En un triángulo rectángulo, si el cateto opuesto mide 5 y la hipotenusa 13, ¿cuál es el seno?",
+        options: [{ id: "a", text: "5/13" }, { id: "b", text: "13/5" }, { id: "c", text: "12/13" }],
+        correctOptionId: "a", explanation: "El seno se calcula como opuesto dividido entre hipotenusa.",
+        difficulty: 1, skillId: "G10-MAT:seno", provisional: true },
+    ];
+    const legacy = session.bankVersion !== PRACTICE_BANK_VERSION && session.topicId === "G10-MAT" && session.total === 2
+      ? oldMath10 : getPracticeBank(session.gradeId, session.subjectId, session.topicId)?.slice(0, session.total);
     if (!legacy || legacy.length !== session.total) throw new AuthError(409, "El banco original de esta práctica ya no está disponible.");
     const insert = db.prepare("INSERT OR IGNORE INTO practice_session_questions(session_id,position,question_id,snapshot_json) VALUES (?,?,?,?)");
     legacy.forEach((question, index) => insert.run(session.id, index, question.id, JSON.stringify(question)));
     return legacy;
   }
-  const oldAnswers = db.prepare(`SELECT a.session_id,a.question_id,s.grade_id,s.subject_id,s.topic_id
-    FROM practice_answers a JOIN practice_sessions s ON s.id=a.session_id WHERE a.skill_id=''`)
-    .all() as { session_id: string; question_id: string; grade_id: string; subject_id: string; topic_id: string }[];
+  const oldAnswers = db.prepare(`SELECT a.session_id,a.question_id,s.grade_id,s.subject_id,s.topic_id,s.bank_version,q.snapshot_json
+    FROM practice_answers a JOIN practice_sessions s ON s.id=a.session_id
+    LEFT JOIN practice_session_questions q ON q.session_id=a.session_id AND q.question_id=a.question_id
+    WHERE a.skill_id=''`)
+    .all() as { session_id: string; question_id: string; grade_id: string; subject_id: string; topic_id: string;
+      bank_version: string; snapshot_json: string | null }[];
+  const oldMathSkills: Readonly<Record<string, string>> = {
+    "practice-g10-mat-01": "G10-MAT:seno", "practice-g10-mat-02": "G10-MAT:seno",
+    "practice-g10-mat-03": "G10-MAT:seno", "practice-g10-mat-04": "G10-MAT:coseno",
+    "practice-g10-mat-05": "G10-MAT:seno", "practice-g10-mat-06": "G10-MAT:coseno",
+  };
   for (const answer of oldAnswers) {
-    const skillId = getPracticeBank(answer.grade_id, answer.subject_id, answer.topic_id)
-      ?.find((question) => question.id === answer.question_id)?.skillId;
+    const isCurrent = answer.bank_version === PRACTICE_BANK_VERSION;
+    const snapshotSkill = answer.snapshot_json ? (JSON.parse(answer.snapshot_json) as PracticeQuestion).skillId : null;
+    const skillId = (isCurrent ? CURRENT_PRACTICE_SKILL_CORRECTIONS : PRACTICE_SKILL_CORRECTIONS)[answer.question_id]
+      ?? (isCurrent ? snapshotSkill : oldMathSkills[answer.question_id] ?? snapshotSkill)
+      ?? getPracticeBank(answer.grade_id, answer.subject_id, answer.topic_id)
+        ?.find((question) => question.id === answer.question_id)?.skillId;
     if (skillId) db.prepare("UPDATE practice_answers SET skill_id=? WHERE session_id=? AND question_id=?")
       .run(skillId, answer.session_id, answer.question_id);
   }
   // Corrige solo la clasificación histórica: conserva la pregunta, la clave y
   // la respuesta originales que quedaron guardadas en cada sesión.
-  const reclassify = db.prepare("UPDATE practice_answers SET skill_id=? WHERE question_id=? AND skill_id<>?");
+  const reclassify = db.prepare(`UPDATE practice_answers SET skill_id=? WHERE question_id=? AND skill_id<>?
+    AND (?<>'practice-g10-mat-02' OR EXISTS (
+      SELECT 1 FROM practice_sessions s WHERE s.id=practice_answers.session_id AND s.bank_version<>?))`);
   for (const [questionId, skillId] of Object.entries(PRACTICE_SKILL_CORRECTIONS)) {
-    reclassify.run(skillId, questionId, skillId);
+    reclassify.run(skillId, questionId, skillId, questionId, PRACTICE_BANK_VERSION);
   }
   function startPractice(userId: string, body: unknown) {
     activeUser(userId);
@@ -590,7 +617,9 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
       db.prepare(`INSERT INTO practice_answers(session_id,question_id,option_id,correct,correct_option_id,explanation,skill_id,answered_at)
         VALUES (?,?,?,?,?,?,?,?)`).run(session.id, question.id, optionId, correct ? 1 : 0,
         question.correctOptionId, question.explanation,
-        PRACTICE_SKILL_CORRECTIONS[question.id] ?? question.skillId, answeredAt);
+        (session.bankVersion === PRACTICE_BANK_VERSION
+          ? CURRENT_PRACTICE_SKILL_CORRECTIONS[question.id]
+          : PRACTICE_SKILL_CORRECTIONS[question.id]) ?? question.skillId, answeredAt);
       const answered = Number((db.prepare("SELECT COUNT(*) AS count FROM practice_answers WHERE session_id=?").get(session.id) as { count: number }).count);
       if (answered === session.total) {
         db.prepare("UPDATE practice_sessions SET status='completed',completed_at=? WHERE id=?").run(answeredAt, session.id);

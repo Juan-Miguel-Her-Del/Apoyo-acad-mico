@@ -1,5 +1,6 @@
 import { topics, type SubjectId } from "./catalog.ts";
 import { additionalChapters, type StudyChapter } from "./study-chapters.ts";
+import { expandedTopics } from "./expanded-content.ts";
 
 export type StudyQuestion = {
   prompt: string;
@@ -34,13 +35,13 @@ const drafts: Readonly<Record<string, Draft>> = {
   "G07-MAT": ["Un porcentaje indica cuántas partes hay de cada cien. Puedes calcularlo multiplicando la cantidad por la fracción correspondiente.", "20 % de 50 = 20/100 × 50 = 10.", "¿Cuál es el 20 % de 50?", ["5", "10", "20"], 1, "Una quinta parte de 50 es 10; 20 % equivale a una quinta parte."],
   "G08-MAT": ["Una expresión algebraica usa letras para representar valores que pueden variar. Sustituye la letra por el valor dado y sigue el orden de operaciones.", "Si x = 4, entonces 2x + 3 = 2 × 4 + 3 = 11.", "Si x = 4, ¿cuánto vale 2x + 3?", ["9", "11", "14"], 1, "Primero multiplica 2 × 4 = 8 y después suma 3."],
   "G09-MAT": ["Una ecuación cuadrática incluye una variable elevada al cuadrado. Una solución es un valor que hace verdadera la igualdad.", "En x² − 5x + 6 = 0, x = 2 funciona: 4 − 10 + 6 = 0.", "¿Cuál valor resuelve x² − 5x + 6 = 0?", ["1", "2", "4"], 1, "Al sustituir x = 2, el lado izquierdo vale cero."],
-  "G10-MAT": ["En un triángulo rectángulo, el seno de un ángulo es la razón entre el cateto opuesto y la hipotenusa.", "Si el cateto opuesto mide 3 y la hipotenusa 5, sen(ángulo) = 3/5.", "¿Cuánto vale el seno si el opuesto es 3 y la hipotenusa 5?", ["3/5", "5/3", "4/5"], 0, "El seno compara el cateto opuesto con la hipotenusa: 3 dividido entre 5."],
+  "G10-MAT": ["El seno y el coseno relacionan ángulos con posiciones en el círculo unitario. Sus valores se repiten cada vuelta y permiten describir cambios periódicos. En un triángulo rectángulo, el seno de un ángulo agudo es cateto opuesto dividido entre hipotenusa.", "Si una rueda da una vuelta cada 8 s, el movimiento se repite con período de 8 s. La altura de un punto de la rueda puede representarse con una función seno o coseno ajustada a su altura central y su amplitud.", "¿Qué representa el período de una rueda que da una vuelta cada 8 s?", ["La altura máxima", "El tiempo de una vuelta", "El radio de la rueda"], 1, "El período es el tiempo que tarda en repetirse un ciclo: 8 s."],
   "G11-MAT": ["La probabilidad simple compara casos favorables con todos los casos posibles, cuando todos tienen la misma oportunidad de salir.", "En una bolsa con 2 bolas rojas y 3 azules, la probabilidad de sacar una roja es 2/5.", "Si hay 2 bolas rojas y 3 azules, ¿cuál es la probabilidad de sacar una roja?", ["2/3", "2/5", "3/5"], 1, "Hay 2 casos favorables entre 5 bolas en total."],
   "G01-ESP": ["Las palabras se forman con sonidos que representamos mediante letras. Escuchar el sonido inicial ayuda a reconocer la letra con que empieza una palabra.", "La palabra «casa» comienza con el sonido representado por la letra c.", "¿Con qué letra empieza «casa»?", ["a", "c", "s"], 1, "La primera letra escrita de «casa» es c."],
   "G02-ESP": ["En un relato, los hechos suceden en un orden. Palabras como «primero» y «después» ayudan a reconstruirlo.", "Primero Ana siembra una semilla, después la riega y al final aparece un brote.", "¿Qué hizo Ana antes de que apareciera el brote?", ["Regó la semilla", "Recogió el brote", "Cerró el libro"], 0, "En el relato, Ana riega la semilla antes de que salga el brote."],
   "G03-ESP": ["Un texto narrativo cuenta acciones o sucesos; uno informativo presenta datos o explicaciones sobre un asunto.", "«La abeja recoge néctar de las flores» informa sobre una actividad de las abejas.", "¿Qué oración presenta un dato sobre las abejas?", ["La abeja soñó que era reina", "Las abejas visitan flores", "Había una vez una abeja mágica"], 1, "La segunda oración comunica una actividad de las abejas sin contar una historia ficticia."],
   "G04-ESP": ["La idea principal resume lo más importante de un texto. Los detalles explican o ejemplifican esa idea.", "«Los árboles ayudan al ambiente: dan sombra y sirven de refugio a animales». La primera parte expresa la idea principal.", "¿Cuál es la idea principal del ejemplo?", ["Los árboles ayudan al ambiente", "Algunos animales viven en árboles", "La sombra aparece al mediodía"], 0, "La oración sobre el ambiente reúne los detalles de sombra y refugio."],
-  "G05-ESP": ["Un texto informativo comunica información sobre un tema. Conviene organizarlo con un asunto claro y datos que lo desarrollen.", "Para informar sobre la lluvia, puedes iniciar con qué es y luego explicar cómo se forma.", "¿Cuál frase sirve para iniciar un texto informativo sobre la lluvia?", ["Había una vez una nube parlante", "La lluvia es agua que cae de las nubes", "¡Ojalá llueva mañana!"], 1, "La segunda frase presenta el tema mediante información directa."],
+  "G05-ESP": ["Para producir un texto informativo, define a quién va dirigido y qué quieres explicar. Busca datos, ordénalos en un plan, redacta y revisa si cada parte cumple el propósito.", "Para explicar la lluvia a otros estudiantes, escribe un título, una frase que presente el tema y un párrafo que explique cómo se forma usando información comprobable.", "¿Qué conviene definir antes de redactar un texto informativo?", ["Solo el color del papel", "El público y el propósito", "La última palabra"], 1, "El público y el propósito orientan el plan y la selección de información."],
   "G06-ESP": ["El propósito comunicativo es la intención de un texto: informar, narrar, explicar cómo hacer algo o convencer.", "«Mezcla la harina con agua y hornea 20 minutos» indica pasos para realizar una tarea.", "¿Qué propósito tiene una receta con pasos?", ["Explicar cómo preparar algo", "Contar una aventura", "Describir un personaje"], 0, "Las instrucciones de una receta orientan una acción paso a paso."],
   "G07-ESP": ["Un argumento presenta una idea y razones que la apoyan. Los datos o ejemplos pertinentes hacen más clara esa razón.", "«Conviene llevar agua al caminar porque el cuerpo pierde líquido al sudar» incluye una postura y una razón.", "¿Cuál frase ofrece una razón para llevar agua?", ["El agua es azul en este dibujo", "El cuerpo pierde líquido al sudar", "Caminar es una palabra de siete letras"], 1, "La pérdida de líquido explica por qué resulta útil llevar agua."],
   "G08-ESP": ["Al interpretar un texto, observa si una expresión tiene sentido literal o figurado. Una metáfora describe algo mediante otra imagen.", "«Sus palabras fueron un faro» sugiere que las palabras orientaron a alguien; no que brillaran físicamente.", "En «sus palabras fueron un faro», ¿qué significa «faro»?", ["Que orientaron a alguien", "Que eran una lámpara real", "Que estaban junto al mar"], 0, "La imagen del faro comunica orientación en sentido figurado."],
@@ -67,7 +68,7 @@ const pilotAlternateExamples: Readonly<Record<string, readonly [string, string, 
     "Borrador: «Las plantas necesitan luz». Revisión: agrega un dato que explique para qué la necesitan y verifica el título.",
   ],
   "G10-MAT": [
-    "Si el cateto opuesto mide 5 y la hipotenusa 13, sen(ángulo) = 5/13.",
+    "Una rueda que gira una vuelta cada 8 s tiene período de 8 s. Si marca una altura que se repite con cada vuelta, esa altura también tiene período de 8 s.",
     "En el círculo unitario, al girar 90° se llega al punto (0, 1): coseno = 0 y seno = 1.",
     "Una temperatura que oscila entre 18 °C y 22 °C tiene valor central 20 °C y amplitud 2 °C. Si el ciclo se repite cada 24 h, su período es 24 h.",
   ],
@@ -100,7 +101,7 @@ const pilotShortChecks: Readonly<Record<string, readonly [readonly [string, stri
     ["¿Qué parte del texto debe corresponder con el contenido al revisar?", "Título"],
   ],
   "G10-MAT": [
-    ["Si el cateto opuesto mide 5 y la hipotenusa 13, ¿cuánto vale el seno?", "5/13"],
+    ["Una rueda da una vuelta cada 8 s. ¿Cuál es el período de su altura? Escribe solo el número de segundos.", "8"],
     ["En el círculo unitario a 90°, ¿cuánto vale el seno? Escribe un número.", "1"],
     ["Una temperatura oscila entre 18 °C y 22 °C. ¿Cuántos grados mide su amplitud? Escribe solo el número.", "2"],
   ],
@@ -123,6 +124,19 @@ const pilotShortChecks: Readonly<Record<string, readonly [readonly [string, stri
 
 export function getStudyDemo(gradeId: string, subjectId: string, topicId: string): StudyDemo | null {
   const topic = topics.find((item) => item.id === topicId && item.gradeId === gradeId && item.subjectId === subjectId && item.active && item.pilotCandidate);
+  const expanded = topic && expandedTopics.find((item) => item.id === topicId);
+  if (topic && expanded) {
+    const first = expanded.questions[0];
+    return { topicId, gradeId, subjectId: topic.subjectId, title: topic.name,
+      explanation: expanded.chapters[0][1], example: expanded.chapters[0][2],
+      chapters: expanded.chapters.map(([title, explanation, example], index) => {
+        const check = expanded.questions[index * 2];
+        return { title, explanation, example,
+          shortCheck: { prompt: check[0], referenceAnswer: check[1][check[2]] } };
+      }),
+      question: { prompt: first[0], options: first[1], correctIndex: first[2], feedback: first[3] },
+      provisional: true };
+  }
   const draft = topic && drafts[topic.id];
   if (!topic || !draft) return null;
   const [explanation, example, prompt, options, correctIndex, feedback] = draft;
@@ -152,6 +166,7 @@ export function checkStudyAnswer(lesson: StudyDemo, selectedIndex: number): { co
 }
 
 export function pickStudyChapter(lesson: StudyDemo, subskill: string): StudyChapter {
+  if (lesson.topicId === "G10-MAT" && subskill === "G10-MAT:modelacion-periodica") return lesson.chapters[2];
   const tokens = subskill.toLocaleLowerCase("es-CO").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .split(/[^a-z0-9]+/).filter((token) => token.length >= 4);
   let best = lesson.chapters[0];

@@ -93,9 +93,13 @@ export default function ExplanationFollowup({ explanationId, topicId, question, 
     <p>{mode === "demo" && accountAvailable
       ? "La valoración de esta explicación se guarda en tu cuenta."
       : "Esta valoración es temporal y no se guarda en una cuenta."}</p>
-    <div role="group" aria-label="Valorar explicación">
-      <button type="button" disabled={ratingBusy || ratingLoading} aria-pressed={currentRating === "helped"} onClick={() => void selectRating("helped")}>Sí, me ayudó</button>{" "}
-      <button type="button" disabled={ratingBusy || ratingLoading} aria-pressed={currentRating === "confused"} onClick={() => void selectRating("confused")}>Todavía estoy confundido</button>
+    <div className="rating-choices" role="group" aria-label="Valorar explicación">
+      <button className="rating-choice" type="button" disabled={ratingBusy || ratingLoading} aria-pressed={currentRating === "helped"} onClick={() => void selectRating("helped")}>
+        <span className="rating-icon" aria-hidden="true">✓</span><span><strong>Sí, me ayudó</strong><small>Ya entiendo mejor el tema</small></span>
+      </button>
+      <button className="rating-choice" type="button" disabled={ratingBusy || ratingLoading} aria-pressed={currentRating === "confused"} onClick={() => void selectRating("confused")}>
+        <span className="rating-icon" aria-hidden="true">?</span><span><strong>Todavía estoy confundido</strong><small>Necesito otra forma de verlo</small></span>
+      </button>
     </div>
     {ratingLoading && <p>Recuperando valoración anterior…</p>}
     {currentRating && <p role="status">Valoración de esta explicación: {currentRating === "helped" ? "me ayudó" : "todavía estoy confundido"}. Puedes cambiarla.</p>}
@@ -105,11 +109,11 @@ export default function ExplanationFollowup({ explanationId, topicId, question, 
     {!validQuestion && <p>La pregunta de comprobación requiere revisión académica antes de publicarse.</p>}
     {validQuestion && check.status === "invalid-source" && <p>La pregunta de esta explicación todavía no está disponible.</p>}
     {validQuestion && check.status === "missing-reference" && <p>La pregunta no tiene solución de referencia; no se puede calificar.</p>}
-    {validQuestion && check.status === "ready" && <form onSubmit={(event) => { event.preventDefault(); setCheckedAnswer(answer); }}>
+    {validQuestion && check.status === "ready" && <form className="short-check-form" onSubmit={(event) => { event.preventDefault(); setCheckedAnswer(answer); }}>
       <label htmlFor={`short-check-${check.id}`}>{check.prompt}</label>
       <input id={`short-check-${check.id}`} type="text" maxLength={200} value={answer}
         onChange={(event) => { setAnswer(event.target.value); setCheckedAnswer(""); }} />
-      <button type="submit" disabled={!answer.trim()}>Comprobar respuesta</button>
+      <button className="primary-button" type="submit" disabled={!answer.trim()}>Comprobar respuesta →</button>
       {result && <p role="status">{result.status === "correct"
         ? "Coincide con la respuesta de referencia."
         : result.status === "incorrect"

@@ -1,8 +1,9 @@
 import { topics } from "./catalog.ts";
 import { getStudyDemo } from "./study-demo.ts";
 import { getPracticeSkills } from "./practice-skills.ts";
+import { expandedTopics } from "./expanded-content.ts";
 
-export const PRACTICE_BANK_VERSION = "demo-2026-10-v3";
+export const PRACTICE_BANK_VERSION = "demo-2026-11-v4";
 
 // Correcciones de clasificación de preguntas existentes. Los IDs se conservan
 // para que las respuestas históricas puedan reclasificarse sin cambiar claves.
@@ -13,6 +14,18 @@ export const PRACTICE_SKILL_CORRECTIONS: Readonly<Record<string, string>> = {
   "practice-g10-esp-02": "G10-ESP:identificar-razon",
   "practice-g10-qui-01": "G10-QUI:balanceo-coeficientes",
   "practice-g10-qui-02": "G10-QUI:atomos-en-formulas",
+};
+
+// La versión v4 cambia varias preguntas de contenido. Sus IDs siguen en
+// snapshots antiguos, por eso estas etiquetas solo aplican al banco actual.
+export const CURRENT_PRACTICE_SKILL_CORRECTIONS: Readonly<Record<string, string>> = {
+  ...PRACTICE_SKILL_CORRECTIONS,
+  "practice-g10-mat-01": "G10-MAT:modelacion-periodica",
+  "practice-g10-mat-02": "G10-MAT:modelacion-periodica",
+  "practice-g10-mat-05": "G10-MAT:modelacion-periodica",
+  "practice-g10-mat-04": "G10-MAT:modelacion-periodica",
+  "practice-g10-fis-04": "G10-FIS:leyes-de-newton",
+  "practice-g10-qui-04": "G10-QUI:conservacion-de-atomos",
 };
 
 export type PracticeQuestionView = {
@@ -44,7 +57,7 @@ const secondDrafts: Readonly<Record<string, Draft>> = {
   "G07-MAT": ["¿Cuál es el 10 % de 90?", ["9", "10", "90"], 0, "El 10 % es una décima parte: 90 ÷ 10 = 9."],
   "G08-MAT": ["Si y = 3, ¿cuánto vale 4y − 2?", ["7", "10", "14"], 1, "4 × 3 − 2 = 10."],
   "G09-MAT": ["¿Qué valor satisface x² − 9 = 0?", ["2", "3", "9"], 1, "3² − 9 = 0; también −3 satisface la ecuación."],
-  "G10-MAT": ["En un triángulo rectángulo, si el cateto opuesto mide 5 y la hipotenusa 13, ¿cuál es el seno?", ["5/13", "13/5", "12/13"], 0, "El seno se calcula como opuesto dividido entre hipotenusa."],
+  "G10-MAT": ["Una rueda completa una vuelta cada 12 segundos. ¿Cuál es el período de su movimiento?", ["12 segundos", "6 segundos", "24 segundos"], 0, "El período es el tiempo de una vuelta completa: 12 segundos."],
   "G11-MAT": ["Una moneda equilibrada se lanza una vez. ¿Cuál es la probabilidad de cara?", ["1/4", "1/2", "1"], 1, "Hay dos resultados igualmente probables y uno es cara."],
   "G01-ESP": ["¿Con qué letra empieza la palabra «luna»?", ["n", "l", "u"], 1, "La primera letra de luna es l."],
   "G02-ESP": ["Lee: «Luis abrió el libro, leyó un cuento y luego lo cerró». ¿Qué hizo al final?", ["Abrió el libro", "Leyó un cuento", "Cerró el libro"], 2, "El último hecho narrado es cerrar el libro."],
@@ -104,7 +117,7 @@ const additionalDrafts: Readonly<Record<string, readonly [Draft, Draft]>> = {
   ],
   "G10-MAT": [
     ["Si opuesto = 4 e hipotenusa = 5, ¿cuál es el seno?", ["4/5", "5/4", "3/5"], 0, "Seno = opuesto/hipotenusa."],
-    ["Si un triángulo rectángulo tiene catetos 6 y 8 e hipotenusa 10, ¿cuál es el coseno del ángulo agudo formado por el cateto de 8 y la hipotenusa?", ["6/10", "8/10", "10/8"], 1, "Para ese ángulo, el cateto adyacente mide 8; coseno = 8/10."],
+    ["Una altura comienza en 4 m y sube; oscila entre 2 m y 6 m con período de 10 s. ¿Qué modelo corresponde?", ["h(t) = 4 + 2·sen(2πt/10)", "h(t) = 2 + 4·sen(2πt/10)", "h(t) = 4 + 10·sen(2πt/2)"], 0, "Centro 4 m, amplitud 2 m y período 10 s; al iniciar en el centro subiendo corresponde seno positivo."],
   ],
   "G11-MAT": [
     ["Una bolsa contiene 1 bola roja y 3 azules. ¿Probabilidad de roja?", ["1/4", "1/3", "3/4"], 0, "Hay un resultado favorable entre cuatro bolas."],
@@ -156,7 +169,7 @@ const additionalDrafts: Readonly<Record<string, readonly [Draft, Draft]>> = {
   ],
   "G10-FIS": [
     ["Si una masa de 2 kg acelera a 4 m/s², ¿cuál es la fuerza neta?", ["2 N", "6 N", "8 N"], 2, "F = ma = 8 N."],
-    ["Un objeto de 5 kg recibe una fuerza neta de 20 N. ¿Cuál es su aceleración?", ["4 m/s²", "15 m/s²", "100 m/s²"], 0, "a = F/m = 4 m/s²."],
+    ["En un marco inercial, un carrito se mueve en línea recta a velocidad constante. ¿Qué se puede afirmar de su fuerza neta?", ["Es cero", "Debe apuntar hacia adelante", "Debe crecer con la velocidad"], 0, "La primera ley de Newton permite velocidad constante cuando la fuerza neta es cero."],
   ],
   "G11-FIS": [
     ["Con 4 A y 2 Ω, ¿qué voltaje corresponde a un resistor ideal?", ["2 V", "6 V", "8 V"], 2, "V = IR = 8 V."],
@@ -164,7 +177,7 @@ const additionalDrafts: Readonly<Record<string, readonly [Draft, Draft]>> = {
   ],
   "G10-QUI": [
     ["En H₂O, ¿cuántos átomos de hidrógeno hay por molécula?", ["1", "2", "3"], 1, "El subíndice 2 indica dos átomos de H."],
-    ["¿Qué coeficiente completa H₂ + Cl₂ → __ HCl?", ["1", "2", "3"], 1, "Dos moléculas de HCl conservan dos H y dos Cl."],
+    ["¿Por qué 2 H₂ + O₂ → 2 H₂O está balanceada?", ["Porque conserva 4 H y 2 O a cada lado", "Porque hay dos sustancias a la izquierda", "Porque cambia H₂ por H₃"], 0, "Cuenta los átomos de cada elemento: 4 H y 2 O tanto en reactivos como en productos."],
   ],
   "G11-QUI": [
     ["¿Qué grupo funcional tiene el ácido acético CH₃COOH?", ["−COOH", "−NH₂", "−OH como alcohol"], 0, "El grupo carboxilo es −COOH."],
@@ -193,8 +206,8 @@ const retryDrafts: Readonly<Record<string, readonly [Draft, Draft]>> = {
     ["Si x = 5, ¿cuánto vale 2x + 1?", ["6", "10", "11"], 2, "2 × 5 + 1 = 11."]],
   "G09-MAT": [["¿Qué valor satisface x² = 25?", ["3", "5", "10"], 1, "5² = 25; −5 también satisface la igualdad."],
     ["Si f(x) = x² + 1, ¿cuánto es f(2)?", ["3", "5", "6"], 1, "2² + 1 = 5."]],
-  "G10-MAT": [["Con cateto opuesto 2 e hipotenusa 5, ¿cuál es el seno?", ["2/5", "5/2", "3/5"], 0, "Seno es opuesto sobre hipotenusa."],
-    ["Con adyacente 3 e hipotenusa 5, ¿cuál es el coseno?", ["3/5", "5/3", "4/5"], 0, "Coseno es adyacente sobre hipotenusa."]],
+  "G10-MAT": [["Una altura varía entre 2 m y 8 m. ¿Cuál es su amplitud?", ["3 m", "5 m", "6 m"], 0, "La amplitud es la mitad de la diferencia: (8 − 2)/2 = 3 m."],
+    ["En el modelo h(t) = 4 + 2·cos(2πt/10), ¿cuál es la altura en t = 0?", ["2 m", "4 m", "6 m"], 2, "cos(0) = 1; por eso h(0) = 4 + 2 = 6 m."]],
   "G11-MAT": [["Una bolsa tiene 2 bolas verdes y 2 rojas. ¿Probabilidad de verde?", ["1/4", "1/2", "1"], 1, "Dos de cuatro bolas son verdes."],
     ["En un dado justo, ¿probabilidad de obtener 6?", ["1/6", "1/3", "1/2"], 0, "Uno de los seis resultados es 6."]],
   "G01-ESP": [["¿Con qué letra empieza «pato»?", ["a", "p", "t"], 1, "La palabra empieza con p."],
@@ -233,6 +246,18 @@ const retryDrafts: Readonly<Record<string, readonly [Draft, Draft]>> = {
 export function getPracticeBank(gradeId: string, subjectId: string, topicId: string, availableDrafts: Readonly<Record<string, Draft>> = secondDrafts): PracticeQuestion[] | null {
   const topic = topics.find((item) => item.id === topicId && item.gradeId === gradeId && item.subjectId === subjectId && item.active && item.pilotCandidate);
   if (!topic) return null;
+  const expanded = expandedTopics.find((item) => item.id === topicId);
+  if (expanded) {
+    const skills = getPracticeSkills(topicId);
+    return expanded.questions.map(([prompt, options, correctIndex, explanation], index) => ({
+      id: `practice-${topicId.toLowerCase()}-0${index + 1}`, topicId,
+      prompt, options: options.map((text, optionIndex) => ({ id: ["a", "b", "c"][optionIndex], text })),
+      correctOptionId: ["a", "b", "c"][correctIndex], explanation,
+      difficulty: index === 2 || index === 3 ? 2 as const : 1 as const,
+      skillId: skills[index === 2 || index === 3 || index === 5 ? 1 : 0].id,
+      provisional: true as const,
+    }));
+  }
   const lesson = getStudyDemo(gradeId, subjectId, topicId);
   const second = availableDrafts[topicId];
   if (!lesson || !second) return null;
@@ -284,7 +309,7 @@ export function getPracticeBank(gradeId: string, subjectId: string, topicId: str
     })),
   ];
   return questions.map((question) => {
-    const correctedSkillId = PRACTICE_SKILL_CORRECTIONS[question.id];
+    const correctedSkillId = CURRENT_PRACTICE_SKILL_CORRECTIONS[question.id];
     if (!correctedSkillId) return question;
     const skill = skills.find((item) => item.id === correctedSkillId);
     if (!skill) throw new Error(`Subtema no disponible para ${question.id}`);

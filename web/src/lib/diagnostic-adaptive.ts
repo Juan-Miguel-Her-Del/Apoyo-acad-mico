@@ -9,6 +9,7 @@ export type AdaptiveDiagnosticQuestion = {
   skill: string;
   difficulty: DiagnosticDifficulty;
   correctOptionId: string;
+  explanation?: string;
   provisional: true;
 };
 
@@ -39,13 +40,14 @@ export function getAdaptiveDiagnosticBank(
 ): AdaptiveDiagnosticQuestion[] | null {
   const provisional = getPracticeBank(gradeId, subjectId, topicId);
   if (!provisional) return null;
-  return provisional.map(({ id, prompt, options, skillId, difficulty, correctOptionId }) => ({
+  return provisional.map(({ id, prompt, options, skillId, difficulty, correctOptionId, explanation }) => ({
     id: id.replace(/^practice-/, "diagnostic-"),
     prompt,
     options: options.map((option) => ({ ...option })),
     skill: skillId,
     difficulty,
     correctOptionId,
+    explanation,
     provisional: true,
   }));
 }
