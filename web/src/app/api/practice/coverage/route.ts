@@ -4,7 +4,7 @@ import { noStore } from "@/lib/auth-http";
 
 export const runtime = "nodejs";
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const gradeId = params.get("gradeId") ?? "";
   const subjectId = params.get("subjectId") ?? "";

@@ -8,14 +8,15 @@ En Railway, crea un proyecto desde **Deploy from GitHub repo** y elige ese repos
 
 ## Persistencia
 
-Agrega un **Volume** al servicio y móntalo en `/data`. Configura estas variables en el servicio:
+Agrega un servicio **PostgreSQL** al mismo proyecto de Railway. En las variables del servicio web, crea `DATABASE_URL` como referencia a la variable del servicio de base de datos:
 
 ```text
-APOYO_DB_PATH=/data/apoyo.sqlite
-APOYO_STUDENT_DB_PATH=/data/apoyo-students.sqlite
+DATABASE_URL=${{Postgres.DATABASE_URL}}
 ```
 
-Las cuentas, sesiones, diagnósticos, práctica y progreso usan SQLite. Sin el volumen, un nuevo despliegue podría perderlos. Mantén **una réplica** mientras uses SQLite y conserva copias de seguridad del volumen. El registro de menores reales continúa bloqueado por los requisitos de autorización; el segundo archivo solo prepara el almacenamiento separado.
+Si el servicio se llama de otra forma, reemplaza `Postgres` por su nombre exacto. La referencia debe ser de tipo *Reference Variable* para que Railway gestione la contraseña sin copiarla al repositorio. Despliega de nuevo el servicio web después de añadirla. Al arrancar, la aplicación crea las tablas necesarias en PostgreSQL. La base inicia vacía, conforme a la decisión de descartar los datos de prueba de SQLite.
+
+Con `DATABASE_URL`, las cuentas adultas, sesiones, perfiles, diagnósticos, práctica, progreso y valoraciones usan PostgreSQL. En local, sin esa variable, sigue funcionando SQLite. El servicio web ya no necesita `APOYO_DB_PATH` ni un Volume para esos datos; puedes retirar ambos **después de verificar** el flujo en PostgreSQL. No borres el volumen si aún necesitas recuperar algo de él. El registro real de menores sigue deshabilitado; sus rutas preparadas conservan almacenamiento separado y no forman parte de esta migración.
 
 ## Correo y acceso
 
@@ -37,6 +38,6 @@ El valor de `APOYO_PUBLIC_URL` debe coincidir con el dominio que se usará para 
 2. Crea una cuenta de prueba de una persona adulta; confirma el correo desde el enlace de Resend.
 3. Inicia sesión, estudia y responde una ronda de práctica. Cierra sesión, vuelve a entrar y verifica que el progreso persiste.
 4. Solicita recuperar contraseña y comprueba que el correo llega y el enlace funciona.
-5. Despliega de nuevo y verifica que la cuenta y el progreso siguen presentes. Si no persisten, revisa el montaje `/data` y `APOYO_DB_PATH` antes de usar el servicio.
+5. Despliega de nuevo y verifica que la cuenta y el progreso siguen presentes. Si no persisten, comprueba la referencia `DATABASE_URL` y los logs del servicio web y PostgreSQL.
 
 El contenido de los 52 temas es provisional. La plataforma puede servir para demostración y pruebas con cuentas adultas; la publicación curricular y las cuentas de menores reales requieren resolver sus revisiones pendientes.

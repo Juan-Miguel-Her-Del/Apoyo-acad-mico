@@ -7,13 +7,13 @@ const reasons = ["inaccurate", "confusing", "inappropriate"] as const;
 type ReportReason = typeof reasons[number];
 
 export async function handleProvisionalExplanationReport(request: Request, deps: {
-  authenticated: (request: Request) => boolean;
-  record: (event: ExplanationReviewEvent) => void;
+  authenticated: (request: Request) => boolean | Promise<boolean>;
+  record: (event: ExplanationReviewEvent) => void | Promise<void>;
 }) {
   try {
     ensureSameOrigin(request);
     ensureAccountsEnabled(request);
-    if (!deps.authenticated(request)) throw new AuthError(401, "Inicia sesión para enviar el reporte.");
+    if (!await deps.authenticated(request)) throw new AuthError(401, "Inicia sesión para enviar el reporte.");
     const body = await readJson(request);
     if (!body || typeof body !== "object" || Array.isArray(body) ||
       Object.keys(body).some((key) => !["gradeId", "subjectId", "topicId", "subskillId", "exampleIndex", "sourceVersion", "reason"].includes(key))) {
@@ -28,7 +28,7 @@ export async function handleProvisionalExplanationReport(request: Request, deps:
       provisionalExplanationInput(gradeId, subjectId, topicId, subskillId, exampleIndex as number)?.sourceVersion !== sourceVersion) {
       throw new AuthError(400, "Reporte no válido.");
     }
-    deps.record({ topicId, subskillId, sourceVersion, exampleIndex: exampleIndex as number,
+    await deps.record({ topicId, subskillId, sourceVersion, exampleIndex: exampleIndex as number,
       reason: `reported_${reason as ReportReason}` });
     return Response.json({ message: "Gracias. Ocultamos esta respuesta y registramos el problema para revisión." }, { headers: noStore });
   } catch (error) { return apiError(error); }

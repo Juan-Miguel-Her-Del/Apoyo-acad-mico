@@ -1,6 +1,6 @@
 import { getDemoSubjects, getDemoTopics, grades, subjects } from "@/lib/catalog";
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const resource = params.get("resource");
   const gradeId = params.get("grade");

@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   try {
     ensureSameOrigin(request);
     ensureAccountsEnabled(request);
-    const user = authStore().sessionUser(requestToken(request));
+    const user = await authStore().sessionUser(requestToken(request));
     if (!user) throw new AuthError(401, "Inicia sesión para eliminar tu cuenta.");
     await authStore().deleteOwnAccount(user.id, await readJson(request));
     return Response.json({ message: "Recibimos tu solicitud de eliminación. La cuenta y sus datos activos fueron eliminados." }, {

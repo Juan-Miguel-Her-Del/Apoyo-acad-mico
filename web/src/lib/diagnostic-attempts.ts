@@ -6,6 +6,7 @@ import { AuthError } from "./auth.ts";
 import { getAdaptiveDiagnosticBank, selectNextDiagnosticQuestion, type AdaptiveDiagnosticQuestion } from "./diagnostic-adaptive.ts";
 import { PRACTICE_BANK_VERSION } from "./practice.ts";
 import { analyzeDemoSkills } from "./diagnostic-analysis.ts";
+import { openPostgresDiagnosticAttemptStore } from "./diagnostic-attempts-postgres.ts";
 
 const MAX_QUESTIONS = 4;
 const noAnswers = [] as { questionId: string; correct: boolean }[];
@@ -231,4 +232,9 @@ export function openDiagnosticAttemptStore(
 }
 
 let singleton: ReturnType<typeof openDiagnosticAttemptStore> | undefined;
-export function diagnosticAttemptStore() { return singleton ??= openDiagnosticAttemptStore(); }
+let postgresSingleton: ReturnType<typeof openPostgresDiagnosticAttemptStore> | undefined;
+export function diagnosticAttemptStore() {
+  return process.env.DATABASE_URL
+    ? postgresSingleton ??= openPostgresDiagnosticAttemptStore()
+    : singleton ??= openDiagnosticAttemptStore();
+}

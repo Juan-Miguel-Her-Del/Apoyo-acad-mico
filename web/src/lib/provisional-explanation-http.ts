@@ -8,10 +8,12 @@ export async function handleProvisionalExplanationRequest(request: Request, deps
   enabled: boolean;
   provider: ExplanationProvider;
   consumeQuota: () => boolean;
-  evidence: (request: Request, attemptId: string, subskillId: string) => {
+  evidence: (request: Request, attemptId: string, subskillId: string) => Promise<{
+    gradeId: string; subjectId: string; topicId: string; subskillId: string; correction: string;
+  } | null> | {
     gradeId: string; subjectId: string; topicId: string; subskillId: string; correction: string;
   } | null;
-  review?: (event: ExplanationReviewEvent) => void;
+  review?: (event: ExplanationReviewEvent) => void | Promise<void>;
 }) {
   try {
     ensureSameOrigin(request);
@@ -31,7 +33,7 @@ export async function handleProvisionalExplanationRequest(request: Request, deps
     if (typeof attemptId !== "string" || !/^[0-9a-f]{32}$/.test(attemptId)) {
       throw new AuthError(400, "Intento no válido.");
     }
-    const evidence = deps.evidence(request, attemptId, subskillId as string);
+    const evidence = await deps.evidence(request, attemptId, subskillId as string);
     if (!evidence || evidence.gradeId !== gradeId || evidence.subjectId !== subjectId ||
         evidence.topicId !== topicId || evidence.subskillId !== subskillId) {
       throw new AuthError(409, "El diagnóstico aún no ofrece evidencia suficiente para consultar la IA.");
@@ -48,7 +50,7 @@ export async function handleProvisionalExplanationRequest(request: Request, deps
     const result = validateProvisionalExplanation(output, input);
     if (!result) {
       try {
-        deps.review?.({ topicId: input.topicId, subskillId: input.subskillId,
+        await deps.review?.({ topicId: input.topicId, subskillId: input.subskillId,
           sourceVersion: input.sourceVersion, exampleIndex: input.exampleIndex,
           reason: "invalid_provider_response" });
       } catch {

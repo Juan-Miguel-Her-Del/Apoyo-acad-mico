@@ -8,6 +8,9 @@ import { getPracticeBank, publicPracticeQuestions, PRACTICE_BANK_VERSION, PRACTI
 import { correctionExplanation } from "./practice-feedback.ts";
 import { availableSelection, recommendStudy, studyStreak, type SavedSelection } from "./study-planning.ts";
 import { profileInput, type AccountProfile } from "./profile.ts";
+import { AuthError } from "./auth-error.ts";
+import { openPostgresAuthStore } from "./auth-postgres.ts";
+export { AuthError } from "./auth-error.ts";
 
 const scrypt = promisify(scryptCallback);
 const SESSION_SECONDS = 7 * 24 * 60 * 60;
@@ -45,14 +48,6 @@ type PracticeSessionRow = {
 };
 
 type UserRow = { id: string; email: string; salt: string; password_hash: string; status: string };
-
-export class AuthError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
 
 function sha256(value: string) { return createHash("sha256").update(value).digest("hex"); }
 function normalizedEmail(value: unknown) {
@@ -692,4 +687,9 @@ export function openAuthStore(dbPath = process.env.APOYO_DB_PATH || path.join(pr
 
 type Store = ReturnType<typeof openAuthStore>;
 let singleton: Store | undefined;
-export function authStore() { return singleton ??= openAuthStore(); }
+let postgresSingleton: ReturnType<typeof openPostgresAuthStore> | undefined;
+export function authStore() {
+  return process.env.DATABASE_URL
+    ? postgresSingleton ??= openPostgresAuthStore()
+    : singleton ??= openAuthStore();
+}

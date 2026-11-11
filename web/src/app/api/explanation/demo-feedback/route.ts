@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 function dependencies() {
   const store = demoFeedbackStore();
   return {
-    userId: (request: Request) => authStore().sessionUser(requestToken(request))?.id ?? null,
+    userId: async (request: Request) => (await authStore().sessionUser(requestToken(request)))?.id ?? null,
     get: store.get,
     put: store.put,
   };

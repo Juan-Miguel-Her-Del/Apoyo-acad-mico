@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   return handleExplanationRequest(request, {
-    userId: (incoming) => authStore().sessionUser(requestToken(incoming))?.id ?? null,
+    userId: async (incoming) => (await authStore().sessionUser(requestToken(incoming)))?.id ?? null,
     attempt: (userId, attemptId) => diagnosticAttemptStore().get(userId, attemptId),
     source: getReviewedExplanationSource,
     provider: configuredExplanationProvider,

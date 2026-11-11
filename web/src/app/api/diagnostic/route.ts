@@ -2,7 +2,7 @@ import { evaluateDemoAnswer, getDiagnostic } from "@/lib/diagnostic";
 
 const headers = { "Cache-Control": "no-store" };
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const result = getDiagnostic(params.get("grade") ?? "", params.get("subject") ?? "", params.get("topic") ?? "", params.get("mode") ?? "published");
   return Response.json(result.status === 200 ? result : { error: result.error }, { status: result.status, headers });

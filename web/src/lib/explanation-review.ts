@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { openPostgresExplanationReviewStore } from "./explanation-review-postgres.ts";
 
 export type ExplanationReviewEvent = {
   topicId: string; subskillId: string; sourceVersion: string;
@@ -39,4 +40,9 @@ export function openExplanationReviewStore(
 }
 
 let singleton: ReturnType<typeof openExplanationReviewStore> | null = null;
-export function explanationReviewStore() { return singleton ??= openExplanationReviewStore(); }
+let postgresSingleton: ReturnType<typeof openPostgresExplanationReviewStore> | null = null;
+export function explanationReviewStore() {
+  return process.env.DATABASE_URL
+    ? postgresSingleton ??= openPostgresExplanationReviewStore()
+    : singleton ??= openExplanationReviewStore();
+}

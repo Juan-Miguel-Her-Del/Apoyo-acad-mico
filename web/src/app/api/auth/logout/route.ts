@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   try {
     ensureSameOrigin(request);
     ensureAccountsEnabled(request);
-    authStore().logout(requestToken(request));
+    await authStore().logout(requestToken(request));
     return Response.json({ ok: true }, {
       headers: { ...noStore, "Set-Cookie": sessionCookie("", request, true) },
     });

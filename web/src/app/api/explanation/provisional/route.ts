@@ -28,9 +28,9 @@ export async function GET() {
 export async function POST(request: Request) {
   return handleProvisionalExplanationRequest(request, {
     enabled: enabled(), provider: geminiExplanationProvider, consumeQuota: consumeDemoQuota,
-    evidence: (incoming, attemptId, subskillId) => {
-      const userId = authStore().sessionUser(requestToken(incoming))?.id;
-      return userId ? diagnosticAttemptStore().explanationEvidence(userId, attemptId, subskillId) : null;
+    evidence: async (incoming, attemptId, subskillId) => {
+      const userId = (await authStore().sessionUser(requestToken(incoming)))?.id;
+      return userId ? await diagnosticAttemptStore().explanationEvidence(userId, attemptId, subskillId) : null;
     },
     review: (event) => explanationReviewStore().record(event),
   });

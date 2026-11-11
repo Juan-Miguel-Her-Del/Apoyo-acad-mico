@@ -9,10 +9,10 @@ export async function POST(request: Request) {
     ensureSameOrigin(request);
     ensureAccountsEnabled(request);
     const store = authStore();
-    const user = store.sessionUser(requestToken(request));
+    const user = await store.sessionUser(requestToken(request));
     if (!user) throw new AuthError(401, "Sesión requerida.");
     const input = await readJson(request);
-    store.assertCurrentGrade(user.id, (input as Record<string, unknown> | null)?.gradeId);
-    return Response.json(diagnosticAttemptStore().start(user.id, input), { status: 201, headers: noStore });
+    await store.assertCurrentGrade(user.id, (input as Record<string, unknown> | null)?.gradeId);
+    return Response.json(await diagnosticAttemptStore().start(user.id, input), { status: 201, headers: noStore });
   } catch (error) { return apiError(error); }
 }

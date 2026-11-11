@@ -8,8 +8,8 @@ export async function POST(request: Request) {
   try {
     ensureSameOrigin(request);
     ensureAccountsEnabled(request);
-    const user = authStore().sessionUser(requestToken(request));
+    const user = await authStore().sessionUser(requestToken(request));
     if (!user) throw new AuthError(401, "Sesión requerida.");
-    return Response.json(diagnosticAttemptStore().answer(user.id, await readJson(request)), { headers: noStore });
+    return Response.json(await diagnosticAttemptStore().answer(user.id, await readJson(request)), { headers: noStore });
   } catch (error) { return apiError(error); }
 }

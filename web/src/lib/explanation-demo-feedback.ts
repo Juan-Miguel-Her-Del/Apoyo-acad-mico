@@ -7,6 +7,7 @@ import { getStudyDemo, pickStudyChapter } from "./study-demo.ts";
 import { demoDiagnosticSkills } from "./diagnostic-skills.ts";
 import { demoExplanationId } from "./explanation-id.ts";
 import type { ExplanationRating } from "./explanation-followup.ts";
+import { openPostgresDemoFeedbackStore } from "./explanation-demo-feedback-postgres.ts";
 
 export type DemoFeedback = {
   topicId: string;
@@ -17,14 +18,14 @@ export type DemoFeedback = {
 
 export { demoExplanationId } from "./explanation-id.ts";
 
-function validDemoTopic(topicId: unknown): string {
+export function validDemoTopic(topicId: unknown): string {
   if (typeof topicId !== "string" || topicId.length > 80) throw new AuthError(400, "Tema no válido.");
   const topic = topics.find((item) => item.id === topicId);
   if (!topic || !getStudyDemo(topic.gradeId, topic.subjectId, topic.id)) throw new AuthError(400, "Tema no válido.");
   return topicId;
 }
 
-function validExplanationId(topicId: string, explanationId: unknown): string {
+export function validExplanationId(topicId: string, explanationId: unknown): string {
   if (typeof explanationId !== "string" || explanationId.length > 240) throw new AuthError(400, "Valoración no válida.");
   if (explanationId === demoExplanationId(topicId)) return explanationId;
   const topic = topics.find((item) => item.id === topicId)!;
@@ -90,4 +91,9 @@ export function openDemoFeedbackStore(dbPath = process.env.APOYO_DB_PATH || path
 }
 
 let singleton: ReturnType<typeof openDemoFeedbackStore> | undefined;
-export function demoFeedbackStore() { return singleton ??= openDemoFeedbackStore(); }
+let postgresSingleton: ReturnType<typeof openPostgresDemoFeedbackStore> | undefined;
+export function demoFeedbackStore() {
+  return process.env.DATABASE_URL
+    ? postgresSingleton ??= openPostgresDemoFeedbackStore()
+    : singleton ??= openDemoFeedbackStore();
+}

@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   return handleProvisionalExplanationReport(request, {
-    authenticated: (value) => !!authStore().sessionUser(requestToken(value)),
+    authenticated: async (value) => !!(await authStore().sessionUser(requestToken(value))),
     record: (event) => explanationReviewStore().record(event),
   });
 }

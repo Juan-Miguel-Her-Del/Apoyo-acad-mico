@@ -3,13 +3,13 @@ import { apiError, ensureAccountsEnabled, ensureSameOrigin, noStore, readJson, r
 
 export const runtime = "nodejs";
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   try {
     ensureAccountsEnabled(request);
     const store = authStore();
-    const user = store.sessionUser(requestToken(request));
+    const user = await store.sessionUser(requestToken(request));
     if (!user) throw new AuthError(401, "Sesión requerida.");
-    return Response.json(store.getLastSelection(user.id), { headers: noStore });
+    return Response.json(await store.getLastSelection(user.id), { headers: noStore });
   } catch (error) { return apiError(error); }
 }
 
@@ -18,9 +18,9 @@ export async function PUT(request: Request) {
     ensureSameOrigin(request);
     ensureAccountsEnabled(request);
     const store = authStore();
-    const user = store.sessionUser(requestToken(request));
+    const user = await store.sessionUser(requestToken(request));
     if (!user) throw new AuthError(401, "Sesión requerida.");
-    const selection = store.saveLastSelection(user.id, await readJson(request));
+    const selection = await store.saveLastSelection(user.id, await readJson(request));
     return Response.json({ selection }, { headers: noStore });
   } catch (error) { return apiError(error); }
 }

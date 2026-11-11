@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   try {
     ensureSameOrigin(request);
     ensureAccountsEnabled(request);
-    const result = authStore().verifyRegistration(await readJson(request));
+    const result = await authStore().verifyRegistration(await readJson(request));
     return Response.json({ user: result.user }, {
       headers: { ...noStore, "Set-Cookie": sessionCookie(result.token, request) },
     });

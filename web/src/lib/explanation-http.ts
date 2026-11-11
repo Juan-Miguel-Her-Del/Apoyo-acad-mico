@@ -6,19 +6,19 @@ import { ExplanationError, generateExplanation, type ExplanationAttempt, type Ex
 import type { ExplanationReviewEvent } from "./explanation-review.ts";
 
 export type ExplanationDependencies = {
-  userId: (request: Request) => string | null;
-  attempt: (userId: string, attemptId: string) => ExplanationAttempt;
+  userId: (request: Request) => string | null | Promise<string | null>;
+  attempt: (userId: string, attemptId: string) => ExplanationAttempt | Promise<ExplanationAttempt>;
   source: (topicId: string, subskillId: string) => ReviewedExplanationSource | undefined;
   provider: ExplanationProvider;
   catalog?: readonly Topic[];
-  review?: (event: ExplanationReviewEvent) => void;
+  review?: (event: ExplanationReviewEvent) => void | Promise<void>;
 };
 
 export async function handleExplanationRequest(request: Request, deps: ExplanationDependencies) {
   try {
     ensureSameOrigin(request);
     ensureAccountsEnabled(request);
-    const userId = deps.userId(request);
+    const userId = await deps.userId(request);
     if (!userId) throw new AuthError(401, "Sesión requerida.");
     const body = await readJson(request);
     if (!body || typeof body !== "object" || Array.isArray(body) ||
@@ -31,7 +31,7 @@ export async function handleExplanationRequest(request: Request, deps: Explanati
         (exampleIndex !== undefined && exampleIndex !== 0 && exampleIndex !== 1)) {
       throw new AuthError(400, "Solicitud no válida.");
     }
-    const attempt = deps.attempt(userId, attemptId);
+    const attempt = await deps.attempt(userId, attemptId);
     const source = deps.source(attempt.attempt.topicId, subskillId);
     let result;
     try {
@@ -41,7 +41,7 @@ export async function handleExplanationRequest(request: Request, deps: Explanati
       if (error instanceof ExplanationError &&
           (error.code === "invalid_provider_response" || error.code === "duplicate_example") && source) {
         try {
-          deps.review?.({ topicId: attempt.attempt.topicId, subskillId,
+          await deps.review?.({ topicId: attempt.attempt.topicId, subskillId,
             sourceVersion: source.version, exampleIndex: (exampleIndex as number | undefined) ?? 0,
             reason: error.code });
         } catch {
